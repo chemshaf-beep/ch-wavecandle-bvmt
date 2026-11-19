@@ -1,4 +1,11 @@
-﻿# ==============================================================================
+try:
+    import spaces
+    @spaces.GPU
+    def _hf_zerogpu_keepalive():
+        return True
+except Exception:
+    pass
+# ==============================================================================
 # 🦅 STATION QUANTITATIVE MAC SA : NOYAU ANALYTIQUE MICROSTRUCTUREL REEL LIVE
 # # Version Révisée 100% Découplée - Conforme Système Atos NSC / Bourse de Tunis
 # # PARTIE 1 / 20 : ADRESSAGE DYNAMIQUE SANS IMPOSITION DE LETTRE DISQUE
@@ -1737,7 +1744,173 @@ class HandlerStationCloud(BaseHTTPRequestHandler):
 def demarrer_serveur_web():
     port = int(os.environ.get("PORT", "7860"))
     ThreadingHTTPServer(("0.0.0.0", port), HandlerStationCloud).serve_forever()
+def lancer_collecteur_bvmt():
+    global FICHIER_HISTO_SEANCE, FICHIER_SOURCE, ARCHIVE_DIR, TEMP_DIR
+    if sys.platform == "win32":
+        import ctypes
+        # ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED
+        # Ordonne au noyau Windows de maintenir les threads CPU actifs même en verrouillage session
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001 | 0x00000040)
+        print("[*] 🛡️ SCELLAGE MATÉRIEL : Windows Execution State verrouillé en mode Turbo Éveillé.")
+    
+    signal.signal(signal.SIGINT, declencher_coupe_circuit_operateur)
+    print("\n================================================================================")
+    print("[*] 🚀 Station quantitative globale MAC SA allumée [MOTEUR SBE DIRECT LIVE]")
+    print(f"[*] 📂 Base de données d'activité active : {FICHIER_HISTO_SEANCE}")
+    print("================================================================================\n")
+    
+    maintenant_allumage = datetime.datetime.now()
+    date_instant_pc = maintenant_allumage.strftime("%d%m%Y")
+    est_jour_ouvre_demarrage = maintenant_allumage.weekday() < 5
+    
+    # Nettoyage immédiat des fichiers de la veille si l'heure PC dépasse 08:01:00
+    if maintenant_allumage.strftime("%H:%M:%S") > "08:01:00":
+        verifier_et_nettoyer_fichiers_veille(date_instant_pc)
+        
+    if est_jour_ouvre_demarrage or not MODE_PRODUCTION:
+        restaurer_etat_RAM_depuis_coupure()
+    else:
+        print("[*] 🛑 WEEK-END DÉTECTÉ (Samedi/Dimanche) : Station en mode veille passive (0 écriture disque).")
+    
+    thread_falcon = threading.Thread(target=boucle_background_aspiration_falcon, daemon=True)
+    thread_falcon.start()
+    print("[*] 📡 Thread asynchrone de dechargement de latence Falcon active (0.1ms CPU).")
+    
+    # Synchronisation comptable à froid sur le grand livre uniquement les jours ouvrables
+    if MODE_PRODUCTION and est_jour_ouvre_demarrage and os.path.exists(FICHIER_HISTO_SEANCE) and os.path.getsize(FICHIER_HISTO_SEANCE) > 120:
+        try:
+            df_reprise_flux = pd.read_csv(FICHIER_HISTO_SEANCE, sep=";", low_memory=False)
+            if not df_reprise_flux.empty:
+                for tk in LISTE_VALEURS_UNIFIEES:
+                    df_filtre_action = df_reprise_flux[df_reprise_flux["Ticker"] == tk]
+                    if not df_filtre_action.empty:
+                        derniere_ligne_historique = df_filtre_action.iloc[-1]
+                        val_qte_memo = int(_forcer_float_reprise(derniere_ligne_historique.get("T0_Qte_Seance", 0)))
+                        val_vol_memo = _forcer_float_reprise(derniere_ligne_historique.get("T0_Volume_Seance", 0.0))
+                        
+                        volumes_seance[tk] = val_qte_memo
+                        capitaux_seance[tk] = val_vol_memo
+                        historique_volumes_qte[tk] = val_qte_memo
+                        historique_volumes_montant[tk] = val_vol_memo
+                print(f"[*] ✅ Reprise complementaire reussie : {os.path.basename(FICHIER_HISTO_SEANCE)} synchronise a froid.")
+            del df_reprise_flux 
+        except:
+            pass
+
+    REGIME_ACTIF = detecter_regime_horaire(datetime.date.today())
+    
+    # Calage initial strict à 08:30:00 (empêche le blocage à 15:00:00 lors d'un lancement l'après-midi)
+    HEURE_CENTRALE_BVMT = "08:30:00"
+    
+    if not MODE_SIMULATION_ACTIF:
+        print("[*] 📡 Connexion aux infrastructures Falcon pour calage de l'horloge maître...")
+        try:
+            url_horloge_api = "https://online.macsa.com.tn:8443/marketApi/sbe/market-report/11,12,13,32,33,99"
+            res = requests.get(url_horloge_api, headers={"User-Agent": "Mozilla/5.0"}, timeout=1.5, verify=False)
+            if res.status_code == 200:
+                texte_nettoye = str(res.text).replace('"', '').replace("'", "").strip()
+                regex_heure = re.findall(r'(?:\d|2[0-3]):[0-5]\d:[0-5]\d', texte_nettoye)
+                if regex_heure and len(regex_heure) > 0: 
+                    HEURE_CENTRALE_BVMT = str(regex_heure[0]).strip()
+        except:
+            pass
+    else: 
+        HEURE_CENTRALE_BVMT = "08:30:00"
+    
+    print("[*] 📡 Signal d'éveil SBE initialisé.\n[*] 📡 Métronome configuré en mode TURBO CONTINU (20 ms).\n")
+    
+    # Alignement d'amorce à froid
+    DATE_JOUR_STR = date_instant_pc
+    DATE_SEANCE_EN_COURS = date_instant_pc
+    REGIME_ACTIF = detecter_regime_horaire(datetime.date.today())
+    
+    PREFIXE_LOG = "bourse_historique_reel_" if MODE_PRODUCTION else "bourse_historique_simulation_"
+    FICHIER_HISTO_RAMDISK = os.path.join(REPERTOIRE_JSON, f"temp_{PREFIXE_LOG}{DATE_JOUR_STR}.csv")
+    FICHIER_HISTO_SEANCE = os.path.join(REPERTOIRE_HISTO_REEL, f"{PREFIXE_LOG}{DATE_JOUR_STR}.csv")
+    
+    if MODE_PRODUCTION:
+        FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_reel_{DATE_JOUR_STR}.csv")
+        FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_reel_{DATE_JOUR_STR}.json")
+    else:
+        FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_simulation_{DATE_JOUR_STR}.csv")
+        FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_simulation_{DATE_JOUR_STR}.json")
+
+    if not os.path.exists(FICHIER_HISTO_RAMDISK) and (est_jour_ouvre_demarrage or not MODE_PRODUCTION):
+        executer_purge_et_reinitialisation_seance_a_chaud(date_instant_pc)
+
+    # Boucle souveraine de sûreté cadencée
+    while True:
+        try: 
+            maintenant_obj = datetime.datetime.now()
+            heure_courante_pc = maintenant_obj.strftime("%H:%M:%S")
+            date_instant_pc = maintenant_obj.strftime("%d%m%Y")
+            est_jour_ouvre_courant = maintenant_obj.weekday() < 5
+            
+            # Surveillance continue après 08:01:00 pour purger tout fichier de la veille résiduel
+            if heure_courante_pc > "08:01:00":
+                verifier_et_nettoyer_fichiers_veille(date_instant_pc)
+            
+            # Détection de bascule de séance (changement de jour après 08:00:00)
+            if heure_courante_pc >= "08:00:00" and date_instant_pc != DATE_SEANCE_EN_COURS:
+                print(f"\n[🛡️ SEUIL DE SÉANCE] Mutation horaire détectée ({DATE_SEANCE_EN_COURS} -> {date_instant_pc}).")
+                
+                # 1. Sauvegarde résiduelle de la veille si présente
+                if os.path.exists(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 100:
+                    try:
+                        df_backup = pd.read_csv(FICHIER_HISTO_RAMDISK, sep=";", low_memory=False).dropna(how='all')
+                        if not df_backup.empty and MODE_PRODUCTION:
+                            df_backup.to_csv(FICHIER_HISTO_SEANCE, sep=';', index=False, encoding='utf-8', lineterminator="\n")
+                            print("[🏁 CONSOLIDATION] Grand livre de la veille sCELLé avec succès avant purge.")
+                    except Exception as e_back:
+                        print(f"⚠️ Échec sauvegarde résiduelle bascule : {e_back}")
+
+                # 2. Réinitialisation des structures RAM à chaud
+                executer_purge_et_reinitialisation_seance_a_chaud(date_instant_pc)
+                HEURE_CENTRALE_BVMT = "08:30:00"
+                
+                # 3. Re-routage dynamique des chemins de fichiers pour la nouvelle journée
+                DATE_JOUR_STR = date_instant_pc
+                PREFIXE_LOG = "bourse_historique_reel_" if MODE_PRODUCTION else "bourse_historique_simulation_"
+                
+                FICHIER_HISTO_RAMDISK = os.path.join(REPERTOIRE_JSON, f"temp_{PREFIXE_LOG}{DATE_JOUR_STR}.csv")
+                FICHIER_HISTO_SEANCE = os.path.join(REPERTOIRE_HISTO_REEL, f"{PREFIXE_LOG}{DATE_JOUR_STR}.csv")
+                
+                if MODE_PRODUCTION:
+                    FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_reel_{DATE_JOUR_STR}.csv")
+                    FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_reel_{DATE_JOUR_STR}.json")
+                else:
+                    FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_simulation_{DATE_JOUR_STR}.csv")
+                    FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_simulation_{DATE_JOUR_STR}.json")
+                
+                DATE_SEANCE_EN_COURS = date_instant_pc
+                REGIME_ACTIF = detecter_regime_horaire(datetime.date.today())
+                print(f"[✅ SUCCÈS] Tuyauterie Cloud ré-alignée sur les nouveaux fichiers du {DATE_JOUR_STR}.\n")
+            
+            # Exécution du moteur d'analyse principal
+            recuperer_et_analyser()
+            
+            # Affichage console synchronisé
+            if not est_jour_ouvre_courant and MODE_PRODUCTION:
+                str_label_mode = "WEEK-END (VEILLE)"
+            else:
+                str_label_mode = "PRODUCTION_REEL" if MODE_PRODUCTION else "SIMULATION_VIRTUELLE"
+                
+            trame_heartbeat = f"[*] [🦅 NOYAU MASTER] PC: {heure_courante_pc} | BVMT: {HEURE_CENTRALE_BVMT} | Mode: {str_label_mode} | Noyau RAM: OK"
+            sys.stdout.write(f"\r{trame_heartbeat.ljust(110)[:110]}\x1b[K")
+            sys.stdout.flush()
+            
+        except Exception as e_boucle:
+            sys.stdout.write(f"\r⚠️ Alerte boucle souveraine : {e_boucle}")
+            sys.stdout.flush()
+            
+        # Temporisation de sûreté
+        time.sleep(0.02)
+
+
+
+
+
 if __name__ == "__main__":
     threading.Thread(target=demarrer_serveur_web, daemon=True).start()
     threading.Thread(target=boucle_synchro_github, daemon=True).start()
-    main()
+    lancer_collecteur_bvmt()﻿
