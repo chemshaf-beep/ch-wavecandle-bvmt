@@ -2142,11 +2142,24 @@ async function chargerMultiSeances() {
   let qA = 0, vA = 0, qV = 0, vV = 0, qN = 0, vN = 0;
   const modeBlocM = document.getElementById('selFiltreBlocs') ? document.getElementById('selFiltreBlocs').value : 'TOUS';
   const toutesOpsTk = [];
-  const seancesParsed = [];
-  for (const s of asc) {
-    const parsed = parserLignesCsv(await (await s.handle.getFile()).text());
-    seancesParsed.push({ s, parsed });
-    parsed.ops.forEach(op => { if (op.ticker === ticker.toUpperCase()) toutesOpsTk.push(op); });
+    const seancesParsed = new Array(asc.length);
+  const tkUpper = ticker.toUpperCase();
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < asc.length; i += BATCH_SIZE) {
+    const lot = asc.slice(i, i + BATCH_SIZE);
+    await Promise.all(lot.map(async (s, offset) => {
+      const fObj = await s.handle.getFile();
+      const txt = await fObj.text();
+      const parsed = parserLignesCsv(txt);
+      seancesParsed[i + offset] = { s, parsed };
+    }));
+  }
+  for (const item of seancesParsed) {
+    if (!item) continue;
+    const ops = item.parsed.ops;
+    for (let k = 0; k < ops.length; k++) {
+      if (ops[k].ticker === tkUpper) toutesOpsTk.push(ops[k]);
+    }
   }
   const seuilBlocM = calculerSeuilGrosBloc(toutesOpsTk);
 
