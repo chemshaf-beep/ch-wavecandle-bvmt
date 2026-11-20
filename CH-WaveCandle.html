@@ -3162,7 +3162,7 @@ window.addEventListener('load', () => {
     domChart.dataset.mobZoomReady = "1";
 
     let pinchStartDist = 0;
-    let pinchStartSpan =;
+    let pinchStartSpan = new Array(0, 100);
     let rangeSelectMode = false;
     let rangeStartPct = null;
 
@@ -3173,10 +3173,10 @@ window.addEventListener('load', () => {
     function getZoomRange() {
       const opt = chart.getOption();
       if (opt && opt.dataZoom && opt.dataZoom.length > 0) {
-        const dz0 = opt.dataZoom[0];
-        return [dz0.start ?? 0, dz0.end ?? 100];
+        const dz0 = opt.dataZoom.at(0);
+        return new Array(dz0.start ?? 0, dz0.end ?? 100);
       }
-      return;
+      return new Array(0, 100);
     }
 
     function applyZoomX(s, e) {
@@ -3187,11 +3187,11 @@ window.addEventListener('load', () => {
 
     domChart.addEventListener("touchstart", function(e) {
       if (e.touches.length === 2) {
-        const t0 = e.touches[0], t1 = e.touches[1];
+        const t0 = e.touches.item(0), t1 = e.touches.item(1);
         pinchStartDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
         pinchStartSpan = getZoomRange();
       } else if (rangeSelectMode && e.touches.length === 1) {
-        const t0 = e.touches[0];
+        const t0 = e.touches.item(0);
         const rect = domChart.getBoundingClientRect();
         rangeStartPct = Math.max(0, Math.min(100, ((t0.clientX - rect.left) / rect.width) * 100));
         selBox.style.left = t0.clientX + "px";
@@ -3202,15 +3202,15 @@ window.addEventListener('load', () => {
 
     domChart.addEventListener("touchmove", function(e) {
       if (e.touches.length === 2 && pinchStartDist > 10) {
-        const t0 = e.touches[0], t1 = e.touches[1];
+        const t0 = e.touches.item(0), t1 = e.touches.item(1);
         const curDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
         const scale = pinchStartDist / Math.max(curDist, 10);
-        const curWidth = pinchStartSpan[1] - pinchStartSpan[0];
+        const curWidth = pinchStartSpan.at(1) - pinchStartSpan.at(0);
         const newWidth = Math.max(3, Math.min(100, curWidth * scale));
-        const center = (pinchStartSpan[0] + pinchStartSpan[1]) / 2;
+        const center = (pinchStartSpan.at(0) + pinchStartSpan.at(1)) / 2;
         applyZoomX(center - newWidth / 2, center + newWidth / 2);
       } else if (rangeSelectMode && rangeStartPct !== null && e.touches.length === 1) {
-        const t0 = e.touches[0];
+        const t0 = e.touches.item(0);
         const rect = domChart.getBoundingClientRect();
         const x1 = rect.left + (rangeStartPct / 100) * rect.width;
         const x2 = Math.max(rect.left, Math.min(rect.right, t0.clientX));
@@ -3222,11 +3222,12 @@ window.addEventListener('load', () => {
     domChart.addEventListener("touchend", function(e) {
       if (e.touches.length < 2) pinchStartDist = 0;
       if (rangeSelectMode && rangeStartPct !== null && e.changedTouches && e.changedTouches.length === 1) {
-        const t0 = e.changedTouches[0];
+        const t0 = e.changedTouches.item(0);
         const rect = domChart.getBoundingClientRect();
         const endPct = Math.max(0, Math.min(100, ((t0.clientX - rect.left) / rect.width) * 100));
         selBox.style.display = "none";
-        const [curS, curE] = getZoomRange();
+        const spanArr = getZoomRange();
+        const curS = spanArr.at(0), curE = spanArr.at(1);
         const pMin = Math.min(rangeStartPct, endPct) / 100;
         const pMax = Math.max(rangeStartPct, endPct) / 100;
         rangeStartPct = null;
@@ -3266,14 +3267,14 @@ window.addEventListener('load', () => {
       btnRange.id = "chMobRangeBtn";
 
       const btnIn = mkBtn("➕", "Zoomer", () => {
-        const [s, e] = getZoomRange();
-        const mid = (s + e) / 2, half = (e - s) * 0.32;
+        const sp = getZoomRange();
+        const mid = (sp.at(0) + sp.at(1)) / 2, half = (sp.at(1) - sp.at(0)) * 0.32;
         applyZoomX(mid - half, mid + half);
       });
 
       const btnOut = mkBtn("➖", "Dézoomer", () => {
-        const [s, e] = getZoomRange();
-        const mid = (s + e) / 2, half = Math.min(50, (e - s) * 0.75);
+        const sp = getZoomRange();
+        const mid = (sp.at(0) + sp.at(1)) / 2, half = Math.min(50, (sp.at(1) - sp.at(0)) * 0.75);
         applyZoomX(mid - half, mid + half);
       });
 
