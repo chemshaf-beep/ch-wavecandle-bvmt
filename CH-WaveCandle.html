@@ -224,7 +224,41 @@ window.CH_DisqueLocal = (function() {
     document.body.appendChild(bar);
   });
 
-  return { lire, sauver, enregistrerIndexMeta };
+  async function listerFichiersLocaux() {
+    await getOpfs();
+    return Object.keys(LOCAL_MANIFEST || {}).filter(k => k.endsWith(".csv"));
+  }
+
+  async function verifierConcordanceArrierePlan(idxData, onDiffCallback) {
+    if (!idxData || !idxData.hist_meta) return;
+    enregistrerIndexMeta(idxData);
+    const aMettreAJour = [];
+    for (const [k, srvMeta] of Object.entries(idxData.hist_meta)) {
+      const clean = k.replace(/^\/+/, "");
+      const withPrefix = clean.startsWith("Historique/") ? clean : ("Historique/" + clean);
+      const locMeta = LOCAL_MANIFEST[withPrefix] || LOCAL_MANIFEST[clean];
+      if (!locMeta || locMeta.size !== srvMeta.size || locMeta.mtime !== srvMeta.mtime) {
+        aMettreAJour.push(withPrefix);
+      }
+    }
+    if (aMettreAJour.length > 0) {
+      const BATCH = 8;
+      for (let i = 0; i < aMettreAJour.length; i += BATCH) {
+        await Promise.all(aMettreAJour.slice(i, i + BATCH).map(async (relPath) => {
+          try {
+            const r = await fetch("/bvmt_api/files/" + encodeURIComponent(relPath) + "?sync=1");
+            if (r.ok) {
+              const txt = await r.text();
+              if (txt && txt.length > 10) await sauver(relPath, txt);
+            }
+          } catch (_) {}
+        }));
+      }
+      if (typeof onDiffCallback === "function") onDiffCallback(aMettreAJour);
+    }
+  }
+
+  return { lire, sauver, enregistrerIndexMeta, listerFichiersLocaux, verifierConcordanceArrierePlan };
 })();
 </script>
 <!-- CH_CACHE_GZIP_END -->
@@ -799,7 +833,7 @@ body.theme-clair .statusbar {
         const isIdx = url.includes('/bvmt_api/index') || url.includes('/api/index');
         const splitKey = url.includes('/bvmt_api/files/') ? '/bvmt_api/files/' : '/api/files/';
         const relPath = isIdx ? '' : decodeURIComponent(url.split(splitKey).pop().split('?').shift());
-        const estFichierStatique = !isIdx && !relPath.includes('Cache_Live/') && !relPath.includes('DonneesSource');
+        const forceSync = url.includes("sync=1"); const estFichierStatique = !forceSync && !isIdx && !relPath.includes('Cache_Live/') && !relPath.includes('DonneesSource');
 
         if (estFichierStatique && window.CH_DisqueLocal) {
           const contenuLocal = await window.CH_DisqueLocal.lire(relPath);
@@ -2765,32 +2799,72 @@ window.onresize = () => { chart.resize(); if (document.getElementById('selHorizo
 async function demarrageAutomatiqueHttp() {
   if (!window.location.protocol.startsWith('http')) return;
   try {
-    const r = await fetch('/bvmt_api/index' + (document.getElementById('selHorizon')?.value === 'LIVE' ? '?live=1' : ''));
-    if (!r.ok) return;
-    const idx = await r.json();
-
-    // Emulation transparente de FileSystemFileHandle sur HTTP local
     const creerHandleHttp = (cheminRel, nom, mtime = 0, taille = 0) => ({
       kind: 'file',
       name: nom,
       getFile: async () => {
-        const resp = await fetch('/bvmt_api/files/' + cheminRel + '?t=' + Date.now());
+        const resp = await fetch('/bvmt_api/files/' + cheminRel);
         const txt = await resp.text();
         return { name: nom, lastModified: mtime, size: txt.length, text: async () => txt };
       }
     });
 
-    seancesLocales = [];
-    (idx.hist || []).forEach(nom => {
-      const baseNom = nom.split('/').pop().split('\\').pop(); const c = baseNom.replace('bourse_historique_reel_', '').replace('.csv', '');
-      if (c.length === 8) {
-        seancesLocales.push({
-          date_iso: `${c.slice(4,8)}-${c.slice(2,4)}-${c.slice(0,2)}`,
-          date_fr: `${c.slice(0,2)}/${c.slice(2,4)}/${c.slice(4,8)}`,
-          handle: creerHandleHttp('Historique/' + nom, nom)
-        });
+    const construireSeancesDepuisListe = (listeNoms) => {
+      const arr = [];
+      (listeNoms || []).forEach(nom => {
+        const cleanNom = nom.replace(/^Historique\//, '');
+        const baseNom = cleanNom.split('/').pop().split('\\').pop();
+        const c = baseNom.replace('bourse_historique_reel_', '').replace('.csv', '');
+        if (c.length === 8) {
+          arr.push({
+            date_iso: `${c.slice(4,8)}-${c.slice(2,4)}-${c.slice(0,2)}`,
+            date_fr: `${c.slice(0,2)}/${c.slice(2,4)}/${c.slice(4,8)}`,
+            handle: creerHandleHttp('Historique/' + cleanNom, cleanNom)
+          });
+        }
+      });
+      arr.sort((a, b) => b.date_iso.localeCompare(a.date_iso));
+      return arr;
+    };
+
+    // 1. DEMARRAGE IMMEDIAT DEPUIS LE CACHE LOCAL (0 ms d'attente réseau)
+    let renduInitialFait = false;
+    if (window.CH_DisqueLocal && window.CH_DisqueLocal.listerFichiersLocaux) {
+      const locaux = await window.CH_DisqueLocal.listerFichiersLocaux();
+      if (locaux && locaux.length > 0) {
+        seancesLocales = construireSeancesDepuisListe(locaux);
+        if (seancesLocales.length > 0) {
+          renduInitialFait = true;
+          const dern = seancesLocales;
+          const inpDate = document.getElementById('txtDateSeance');
+          if (inpDate && !inpDate.value) inpDate.value = dern.date_fr;
+          const hInit = document.getElementById('selHorizon')?.value || 'SEANCE';
+          if (hInit === 'MULTI') chargerMultiSeances();
+          else if (hInit !== 'LIVE') chargerDonnees(dern.date_iso, document.getElementById('selTicker')?.value || 'DELICE HOLDING', false);
+        }
       }
-    });
+    }
+
+    // 2. VERIFICATION DE CONCORDANCE AVEC LE SERVEUR EN ARRIERE-PLAN
+    const r = await fetch('/bvmt_api/index' + (document.getElementById('selHorizon')?.value === 'LIVE' ? '?live=1' : ''));
+    if (!r.ok) return;
+    const idx = await r.json();
+
+    const nouvellesSeances = construireSeancesDepuisListe(idx.hist || []);
+    const avantCount = seancesLocales.length;
+    seancesLocales = nouvellesSeances;
+
+    if (window.CH_DisqueLocal && window.CH_DisqueLocal.verifierConcordanceArrierePlan) {
+      window.CH_DisqueLocal.verifierConcordanceArrierePlan(idx, (fichiersModifies) => {
+        if (fichiersModifies && fichiersModifies.length > 0) {
+          const hAct = document.getElementById('selHorizon')?.value || 'SEANCE';
+          if (hAct === 'MULTI') chargerMultiSeances();
+          else if (hAct !== 'LIVE' && seancesLocales.length > 0) {
+            chargerDonnees(seancesLocales.date_iso, document.getElementById('selTicker')?.value || 'DELICE HOLDING', false);
+          }
+        }
+      });
+    }
     seancesLocales.sort((a, b) => b.date_iso.localeCompare(a.date_iso));
 
     dirHandleLive = {
