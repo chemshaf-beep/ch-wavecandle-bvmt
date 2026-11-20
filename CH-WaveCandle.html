@@ -2842,7 +2842,7 @@ async function demarrageAutomatiqueHttp() {
         seancesLocales = construireSeancesDepuisListe(locaux);
         if (seancesLocales.length > 0) {
           renduInitialFait = true;
-          const dern = seancesLocales;
+          const dern = seancesLocales.at(0);
           const inpDate = document.getElementById('txtDateSeance');
           if (inpDate && !inpDate.value) inpDate.value = dern.date_fr;
           const hInit = document.getElementById('selHorizon')?.value || 'SEANCE';
@@ -2867,11 +2867,12 @@ async function demarrageAutomatiqueHttp() {
           const hAct = document.getElementById('selHorizon')?.value || 'SEANCE';
           if (hAct === 'MULTI') chargerMultiSeances();
           else if (hAct !== 'LIVE' && seancesLocales.length > 0) {
-            chargerDonnees(seancesLocales.date_iso, document.getElementById('selTicker')?.value || 'DELICE HOLDING', false);
+            chargerDonnees(seancesLocales.at(0).date_iso, document.getElementById('selTicker')?.value || 'DELICE HOLDING', false);
           }
         }
       });
     }
+    if (renduInitialFait) return;
     seancesLocales.sort((a, b) => b.date_iso.localeCompare(a.date_iso));
 
     dirHandleLive = {
