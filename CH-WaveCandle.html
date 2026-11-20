@@ -559,13 +559,13 @@ body.theme-clair .statusbar {
         display: block !important;
         width: 100vw !important;
         height: calc(100dvh - 44px) !important;
-        touch-action: pan-x pan-y pinch-zoom !important;
+        touch-action: none !important;
       }
     }
 
     /* === MODE PAYSAGE (HORIZONTAL) : 100% GRAPHIQUE PLEIN ECRAN === */
     @media screen and (orientation: landscape) {
-      .ch-kpi-strip {
+      .ch-kpi-strip, .ch-bottom-bar {
         display: none !important;
       }
       canvas {
@@ -573,7 +573,7 @@ body.theme-clair .statusbar {
         inset: 0 !important;
         width: 100vw !important;
         height: 100dvh !important;
-        touch-action: pan-x pan-y pinch-zoom !important;
+        touch-action: none !important;
       }
     }
   }
@@ -2928,5 +2928,89 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_MOBILE_JS_END -->
+<!-- CH_TOUCH_PIE_START -->
+<script>
+(function() {
+  function initTouchCanvasBridge() {
+    // Marquer la barre du bas pour la masquer en paysage plein écran
+    document.querySelectorAll("div, footer").forEach(el => {
+      if (el.textContent && el.textContent.includes("CH-WAVECANDLE HFT") && el.offsetHeight > 0 && el.offsetHeight < 90) {
+        el.classList.add("ch-bottom-bar");
+      }
+    });
+
+    document.querySelectorAll("canvas").forEach(cv => {
+      if (cv.dataset.touchBridgeReady) return;
+      cv.dataset.touchBridgeReady = "1";
+
+      let isDraggingTouch = false;
+      let rafPending = false;
+
+      function dispatchMouseFromTouch(mouseType, touch) {
+        const evt = new MouseEvent(mouseType, {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          screenX: touch.screenX,
+          screenY: touch.screenY,
+          button: 0,
+          buttons: mouseType === "mouseup" ? 0 : 1
+        });
+        cv.dispatchEvent(evt);
+      }
+
+      cv.addEventListener("touchstart", function(e) {
+        if (e.touches.length === 1) {
+          isDraggingTouch = true;
+          // Empêche le navigateur de synthétiser un mousedown/mousemove en double
+          if (e.cancelable) e.preventDefault();
+          dispatchMouseFromTouch("mousedown", e.touches[0]);
+        }
+      }, { passive: false });
+
+      cv.addEventListener("touchmove", function(e) {
+        if (isDraggingTouch && e.touches.length === 1) {
+          if (e.cancelable) e.preventDefault();
+          const t = e.touches[0];
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+              rafPending = false;
+              dispatchMouseFromTouch("mousemove", t);
+              // Force un rafraîchissement complet propre pour effacer l'ancienne position du titre
+              if (typeof window.dessiner === "function") {
+                try { window.dessiner(); } catch (_) {}
+              }
+            });
+          }
+        }
+      }, { passive: false });
+
+      function endTouch(e) {
+        if (!isDraggingTouch) return;
+        isDraggingTouch = false;
+        if (e.cancelable) e.preventDefault();
+        const t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : { clientX: 0, clientY: 0, screenX: 0, screenY: 0 };
+        dispatchMouseFromTouch("mouseup", t);
+        if (typeof window.dessiner === "function") {
+          try { window.dessiner(); } catch (_) {}
+        }
+      }
+
+      cv.addEventListener("touchend", endTouch, { passive: false });
+      cv.addEventListener("touchcancel", endTouch, { passive: false });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTouchCanvasBridge);
+  } else {
+    initTouchCanvasBridge();
+  }
+})();
+</script>
+<!-- CH_TOUCH_PIE_END -->
 </body>
 </html>
