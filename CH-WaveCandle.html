@@ -784,7 +784,7 @@ body.theme-clair .statusbar {
     border-top: 1px solid #CBD5E1 !important;
   }
 
-  body.theme-clair #chCacheBarWrap, body.light-mode #chCacheBarWrap {
+  body.theme-clair #statusText, body.light-mode #statusText { color: #0F172A !important; font-weight: 600 !important; } body.theme-clair #chCacheBarWrap, body.light-mode #chCacheBarWrap {
     background: #FFFFFF !important;
     border-color: #CBD5E1 !important;
     color: #334155 !important;
@@ -812,7 +812,7 @@ body.theme-clair .statusbar {
 </style>
 <!-- CH_LIGHT_THEME_PRO_END -->
 <!-- CH_LOGO_HEAD_START -->
-<link id="chFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://w3.org' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='%23090D16' stroke='%2300E5FF' stroke-width='2.4'/%3E%3Cpath d='M 10 44 C 18 42, 24 30, 34 26 L 14 22 L 38 18 L 52 12 L 42 28 L 28 32 C 22 38, 16 46, 10 44 Z' fill='%2300E5FF' fill-opacity='0.22' stroke='%2300E5FF' stroke-width='2' stroke-linejoin='round'/%3E%3Cpolyline points='10,50 22,42 31,45 43,29 54,16' fill='none' stroke='%23FFD700' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolyline points='45,15 55,15 54,25' fill='none' stroke='%2310B981' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link id="chFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://w3.org' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='13' fill='%230A0A0A' stroke='%23FFD700' stroke-width='2.5'/%3E%3Cpolygon points='8,53 18,39 28,45 40,25 55,14 55,53' fill='%23059669' fill-opacity='0.35'/%3E%3Cpolyline points='8,53 18,39 28,45 40,25 55,14' fill='none' stroke='%2310B981' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolyline points='47,13 56,13 55,22' fill='none' stroke='%2338BDF8' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='21' y1='15' x2='21' y2='44' stroke='%23FFD700' stroke-width='2'/%3E%3Crect x='17' y='21' width='8' height='15' rx='1.5' fill='%23FFD700'/%3E%3Cline x1='42' y1='10' x2='42' y2='36' stroke='%23FFD700' stroke-width='2'/%3E%3Crect x='38' y='15' width='8' height='13' rx='1.5' fill='%230A0A0A' stroke='%23FFD700' stroke-width='2'/%3E%3C/svg%3E">
 <link id="chAppleIcon" rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://w3.org' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230A0A0A' stroke='%23FFD700' stroke-width='2.5'/%3E%3Cpolygon points='8,52 18,38 28,44 40,24 56,14 56,52' fill='%23059669' fill-opacity='0.32'/%3E%3Cpolyline points='8,52 18,38 28,44 40,24 56,14' fill='none' stroke='%2310B981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='22' y1='16' x2='22' y2='44' stroke='%23FFD700' stroke-width='2'/%3E%3Crect x1='18' y1='22' width='8' height='14' rx='1.5' fill='%23FFD700'/%3E%3Cline x1='42' y1='10' x2='42' y2='36' stroke='%23FFD700' stroke-width='2'/%3E%3Crect x1='38' y1='15' width='8' height='13' rx='1.5' fill='%230A0A0A' stroke='%23FFD700' stroke-width='2'/%3E%3C/svg%3E">
 <style id="ch-brand-logo-css">
   .ch-brand-wrap {
@@ -3909,10 +3909,24 @@ window.addEventListener('load', () => {
 <script>
 (function() {
   const SVG_LOGO_MARKUP = `<svg xmlns="http://w3.org" viewBox="0 0 64 64">
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="#090D16" stroke="#00E5FF" stroke-width="2.4"/>
-  <path d="M 10 44 C 18 42, 24 30, 34 26 L 14 22 L 38 18 L 52 12 L 42 28 L 28 32 C 22 38, 16 46, 10 44 Z" fill="#00E5FF" fill-opacity="0.22" stroke="#00E5FF" stroke-width="2" stroke-linejoin="round"/>
-  <polyline points="10,50 22,42 31,45 43,29 54,16" fill="none" stroke="#FFD700" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <polyline points="45,15 55,15 54,25" fill="none" stroke="#10B981" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="chGoldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE55C"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="chWaveFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#059669" stop-opacity="0.06"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="13" fill="#0A0A0A" stroke="url(#chGoldGrad)" stroke-width="2.5"/>
+  <polygon points="8,53 18,39 28,45 40,25 55,14 55,53" fill="url(#chWaveFill)"/>
+  <polyline points="8,53 18,39 28,45 40,25 55,14" fill="none" stroke="#10B981" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="47,13 56,13 55,22" fill="none" stroke="#38BDF8" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="21" y1="15" x2="21" y2="44" stroke="#FFD700" stroke-width="2"/>
+  <rect x="17" y="21" width="8" height="15" rx="1.5" fill="url(#chGoldGrad)"/>
+  <line x1="42" y1="10" x2="42" y2="36" stroke="#FFD700" stroke-width="2"/>
+  <rect x="38" y="15" width="8" height="13" rx="1.5" fill="#0A0A0A" stroke="#FFD700" stroke-width="2"/>
 </svg>`;
 
   function monterLogoStation() {
