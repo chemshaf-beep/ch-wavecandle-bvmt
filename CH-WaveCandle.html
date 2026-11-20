@@ -3141,13 +3141,13 @@ window.addEventListener('load', () => {
 <script>
 (function() {
   document.addEventListener("contextmenu", function(e) {
-    if (e.target && (e.target.tagName === "CANVAS" || e.target.closest("#chart, #mainChart"))) {
+    if (e.target instanceof Element && (e.target.tagName === "CANVAS" || e.target.closest("#chart, #mainChart"))) {
       e.preventDefault();
     }
   }, { passive: false });
 
   document.addEventListener("selectstart", function(e) {
-    if (e.target && (e.target.tagName === "CANVAS" || e.target.closest("#chart, #mainChart"))) {
+    if (e.target instanceof Element && (e.target.tagName === "CANVAS" || e.target.closest("#chart, #mainChart"))) {
       e.preventDefault();
     }
   }, { passive: false });
@@ -3245,6 +3245,14 @@ window.addEventListener('load', () => {
     }, { passive: true });
 
     if (window.innerWidth <= 960 && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 768)) {
+      try {
+        chart.setOption({
+          dataZoom: new Array(
+            { id: "zoomX_inside", disabled: false },
+            { id: "zoomY_inside", disabled: true }
+          )
+        });
+      } catch (_) {}
       const zBar = document.createElement("div");
       zBar.id = "chMobZoomPad";
       zBar.style.cssText = "position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));right:calc(12px + env(safe-area-inset-right));z-index:100002;display:flex;gap:5px;";
