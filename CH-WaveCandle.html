@@ -3557,5 +3557,70 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_BTN_TOUTE_SEANCE_END -->
+<!-- CH_MOB_RADAR_SYNC_START -->
+<script>
+(function() {
+  function synchroniserValeurMobile(nomValeur) {
+    const selMob = document.getElementById("chMobTickerSel");
+    const selOrig = document.getElementById("selTicker");
+    if (!selMob) return;
+
+    // Si le sélecteur principal a de nouvelles options, les recopier
+    if (selOrig && selMob.options.length !== selOrig.options.length) {
+      selMob.innerHTML = selOrig.innerHTML;
+    }
+
+    const cible = (nomValeur || (selOrig ? selOrig.value : "") || "").trim().toUpperCase();
+    if (!cible) return;
+
+    // Si la valeur du Radar n'est pas encore dans les options, l'ajouter temporairement
+    let existe = Array.from(selMob.options).some(o => o.value.toUpperCase() === cible);
+    if (!existe) {
+      const opt = document.createElement("option");
+      opt.value = cible;
+      opt.textContent = cible;
+      selMob.appendChild(opt);
+    }
+    if (selMob.value.toUpperCase() !== cible) {
+      selMob.value = cible;
+    }
+  }
+
+  function hookRadarSyncMobile() {
+    if (typeof window.dessinerGraphique !== "function" || typeof window.dessinerChandeliersMulti !== "function") {
+      setTimeout(hookRadarSyncMobile, 150);
+      return;
+    }
+
+    const origDraw1 = window.dessinerGraphique;
+    window.dessinerGraphique = function(data) {
+      const r = origDraw1.apply(this, arguments);
+      if (data && data.ticker) synchroniserValeurMobile(data.ticker);
+      return r;
+    };
+
+    const origDraw2 = window.dessinerChandeliersMulti;
+    window.dessinerChandeliersMulti = function(data) {
+      const r = origDraw2.apply(this, arguments);
+      if (data && data.ticker) synchroniserValeurMobile(data.ticker);
+      return r;
+    };
+
+    // Vérification continue légère (toutes les 400 ms) au cas où le mode Radar modifie #selTicker par code
+    setInterval(() => {
+      const selOrig = document.getElementById("selTicker");
+      const tkData = (typeof globalData !== "undefined" && globalData && globalData.ticker) ? globalData.ticker : "";
+      synchroniserValeurMobile(tkData || (selOrig ? selOrig.value : ""));
+    }, 400);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", hookRadarSyncMobile);
+  } else {
+    hookRadarSyncMobile();
+  }
+})();
+</script>
+<!-- CH_MOB_RADAR_SYNC_END -->
 </body>
 </html>
