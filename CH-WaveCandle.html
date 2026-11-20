@@ -674,6 +674,138 @@ body.theme-clair .statusbar {
   }
 </style>
 <!-- CH_MOBILE_MODE_END -->
+<!-- CH_LIGHT_THEME_PRO_START -->
+<style id="ch-light-theme-pro">
+  /* Typographie financière nette et chiffres tabulaires alignés */
+  body.theme-clair, body.light-mode {
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+  }
+
+  body.theme-clair .topbar, body.light-mode .topbar {
+    background: #F1F5F9 !important;
+    border-bottom: 1px solid #CBD5E1 !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+  }
+
+  body.theme-clair .ticker-title, body.light-mode .ticker-title {
+    color: #0F172A !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  /* Sélecteurs et champs de saisie reposants sur fond clair */
+  body.theme-clair select, body.light-mode select,
+  body.theme-clair input[type="text"], body.light-mode input[type="text"] {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 6px !important;
+    font-family: 'Segoe UI', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  }
+
+  body.theme-clair select:focus, body.light-mode select:focus,
+  body.theme-clair input[type="text"]:focus, body.light-mode input[type="text"]:focus {
+    border-color: #0284C7 !important;
+    outline: none !important;
+  }
+
+  /* Boutons d'action calibrés (contrastes doux, zéro néon) */
+  body.theme-clair .btn-action, body.light-mode .btn-action {
+    background: #FFFFFF !important;
+    color: #0369A1 !important;
+    border: 1px solid #93C5FD !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    transition: all 0.15s ease !important;
+  }
+
+  body.theme-clair .btn-action:hover, body.light-mode .btn-action:hover {
+    background: #0284C7 !important;
+    color: #FFFFFF !important;
+    border-color: #0284C7 !important;
+  }
+
+  /* Bandeau KPI institutionnel clair */
+  body.theme-clair .kpi-grid, body.light-mode .kpi-grid {
+    background: #F1F5F9 !important;
+    border-bottom: 1px solid #CBD5E1 !important;
+  }
+
+  body.theme-clair .kpi, body.light-mode .kpi {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  }
+
+  body.theme-clair .kpi label, body.light-mode .kpi label {
+    color: #64748B !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  body.theme-clair .kpi span, body.light-mode .kpi span {
+    color: #0F172A !important;
+    font-family: 'Consolas', 'JetBrains Mono', monospace !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  /* Couleurs financières calibrées pour le confort visuel en mode clair */
+  body.theme-clair .green, body.light-mode .green { color: #059669 !important; }
+  body.theme-clair .red, body.light-mode .red { color: #DC2626 !important; }
+  body.theme-clair .yellow, body.light-mode .yellow { color: #B45309 !important; }
+
+  body.theme-clair .live-badge, body.light-mode .live-badge {
+    background: #ECFDF5 !important;
+    border-color: #10B981 !important;
+    color: #047857 !important;
+  }
+
+  body.theme-clair #boxHorlogeMarche, body.light-mode #boxHorlogeMarche {
+    background: #FFFFFF !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+  }
+
+  /* Pied de page & barre Disque local en mode clair */
+  body.theme-clair .statusbar, body.light-mode .statusbar,
+  body.theme-clair footer, body.light-mode footer {
+    background: #F1F5F9 !important;
+    color: #334155 !important;
+    border-top: 1px solid #CBD5E1 !important;
+  }
+
+  body.theme-clair #chCacheBarWrap, body.light-mode #chCacheBarWrap {
+    background: #FFFFFF !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+  }
+
+  /* Contrôles flottants mobile et tiroir en mode clair */
+  body.theme-clair #chMobControls button, body.light-mode #chMobControls button,
+  body.theme-clair #chMobZoomPad button, body.light-mode #chMobZoomPad button {
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #0369A1 !important;
+    border-color: #93C5FD !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  body.theme-clair #chMobControls select, body.light-mode #chMobControls select {
+    background: rgba(255, 255, 255, 0.94) !important;
+    color: #B45309 !important;
+    border-color: #F59E0B !important;
+  }
+
+  body.theme-clair .topbar.ch-mobile-drawer, body.light-mode .topbar.ch-mobile-drawer {
+    background: #F8FAFC !important;
+    border-right: 1px solid #CBD5E1 !important;
+  }
+</style>
+<!-- CH_LIGHT_THEME_PRO_END -->
 </head>
 <body>
 <style>
@@ -3622,5 +3754,74 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_MOB_RADAR_SYNC_END -->
+<!-- CH_LIGHT_ECHARTS_START -->
+<script>
+(function() {
+  function harmoniserCouleurClair(col) {
+    if (typeof col !== "string") return col;
+    const c = col.trim().toUpperCase();
+    // Remplacer les couleurs fluo du mode sombre par leurs équivalents ergonomiques haute lisibilité sur fond clair
+    if (c === "#00FF66" || c === "#80FFAA" || c === "#2E7D32") return "#059669"; // Émeraude soutenu
+    if (c === "#FF3B3B" || c === "#FF8A8A" || c === "#FF5252") return "#DC2626"; // Carmin net
+    if (c === "#FFD700" || c === "#FFC107") return "#B45309";                    // Ambre bronze lisible
+    if (c === "#00E5FF" || c === "#38BDF8") return "#0284C7";                    // Bleu saphir
+    if (c === "#0A0A0A" || c === "#121212" || c === "#0E0E0E") return "#F8FAFC"; // Fond perle doux
+    if (c === "#1E1E1E" || c === "#2A2A2A" || c === "#333333" || c === "#333") return "#CBD5E1"; // Grilles douces
+    if (c === "#999999" || c === "#999" || c === "#BBBBBB") return "#475569";    // Textes d'axes anthracite
+    return col;
+  }
+
+  function transformerObjetClair(obj, depth = 0) {
+    if (!obj || typeof obj !== "object" || depth > 7) return obj;
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) transformerObjetClair(obj.at(i), depth + 1);
+      return obj;
+    }
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      if (typeof v === "string" && v.startsWith("#")) {
+        obj[k] = harmoniserCouleurClair(v);
+      } else if (v && typeof v === "object") {
+        transformerObjetClair(v, depth + 1);
+      }
+    }
+    return obj;
+  }
+
+  function hookEchartsLightPro() {
+    if (typeof chart === "undefined" || !chart || chart.__lightProHooked) {
+      if (typeof chart === "undefined" || !chart) setTimeout(hookEchartsLightPro, 150);
+      return;
+    }
+    chart.__lightProHooked = true;
+
+    const origSetOption = chart.setOption.bind(chart);
+    chart.setOption = function(opt, opts) {
+      const isClair = (typeof estThemeClair === "function" && estThemeClair()) ||
+                      document.body.classList.contains("theme-clair") ||
+                      document.body.classList.contains("light-mode");
+      if (isClair && opt && typeof opt === "object") {
+        try {
+          transformerObjetClair(opt);
+          if (opt.backgroundColor) opt.backgroundColor = "#F8FAFC";
+          if (opt.tooltip) {
+            opt.tooltip.backgroundColor = "rgba(255, 255, 255, 0.97)";
+            opt.tooltip.borderColor = "#CBD5E1";
+            opt.tooltip.textStyle = { ...(opt.tooltip.textStyle || {}), color: "#0F172A" };
+          }
+        } catch (_) {}
+      }
+      return origSetOption(opt, opts);
+    };
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", hookEchartsLightPro);
+  } else {
+    hookEchartsLightPro();
+  }
+})();
+</script>
+<!-- CH_LIGHT_ECHARTS_END -->
 </body>
 </html>
