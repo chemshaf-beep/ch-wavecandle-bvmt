@@ -812,7 +812,7 @@ body.theme-clair .statusbar {
 </style>
 <!-- CH_LIGHT_THEME_PRO_END -->
 <!-- CH_LOGO_HEAD_START -->
-<link id="chFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://w3.org' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='%23F8FAFC' stroke='%23D97706' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='32' r='23' fill='none' stroke='%23E2E8F0' stroke-width='4'/%3E%3Cpath d='M 32 9 A 23 23 0 1 1 12 43' fill='none' stroke='%23059669' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M 12 43 A 23 23 0 0 1 32 9' fill='none' stroke='%23DC2626' stroke-width='4' stroke-linecap='round'/%3E%3Crect x='20' y='34' width='4' height='10' rx='1' fill='%230284C7'/%3E%3Crect x='27' y='28' width='4' height='16' rx='1' fill='%230284C7'/%3E%3Crect x='34' y='22' width='4' height='22' rx='1' fill='%23059669'/%3E%3Cpolyline points='18,32 28,24 35,27 45,16' fill='none' stroke='%23B45309' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolyline points='39,16 45,16 45,22' fill='none' stroke='%23B45309' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link id="chFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://w3.org' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='%23090D16' stroke='%2300E5FF' stroke-width='2.4'/%3E%3Cpath d='M 10 44 C 18 42, 24 30, 34 26 L 14 22 L 38 18 L 52 12 L 42 28 L 28 32 C 22 38, 16 46, 10 44 Z' fill='%2300E5FF' fill-opacity='0.22' stroke='%2300E5FF' stroke-width='2' stroke-linejoin='round'/%3E%3Cpolyline points='10,50 22,42 31,45 43,29 54,16' fill='none' stroke='%23FFD700' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolyline points='45,15 55,15 54,25' fill='none' stroke='%2310B981' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link id="chAppleIcon" rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://w3.org' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230A0A0A' stroke='%23FFD700' stroke-width='2.5'/%3E%3Cpolygon points='8,52 18,38 28,44 40,24 56,14 56,52' fill='%23059669' fill-opacity='0.32'/%3E%3Cpolyline points='8,52 18,38 28,44 40,24 56,14' fill='none' stroke='%2310B981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='22' y1='16' x2='22' y2='44' stroke='%23FFD700' stroke-width='2'/%3E%3Crect x1='18' y1='22' width='8' height='14' rx='1.5' fill='%23FFD700'/%3E%3Cline x1='42' y1='10' x2='42' y2='36' stroke='%23FFD700' stroke-width='2'/%3E%3Crect x1='38' y1='15' width='8' height='13' rx='1.5' fill='%230A0A0A' stroke='%23FFD700' stroke-width='2'/%3E%3C/svg%3E">
 <style id="ch-brand-logo-css">
   .ch-brand-wrap {
@@ -862,6 +862,25 @@ body.theme-clair .statusbar {
   body.theme-clair .ch-brand-sub, body.light-mode .ch-brand-sub { color: #047857 !important; }
 </style>
 <!-- CH_LOGO_HEAD_END -->
+<!-- CH_ZBAR_FS_CSS_START -->
+<style id="ch-zbar-fullscreen-only">
+  #chMobZoomPad {
+    display: none !important;
+  }
+  :fullscreen #chMobZoomPad,
+  :-webkit-full-screen #chMobZoomPad,
+  body.ch-is-fullscreen #chMobZoomPad {
+    display: flex !important;
+    position: fixed !important;
+    top: calc(4px + env(safe-area-inset-top)) !important;
+    bottom: auto !important;
+    right: calc(115px + env(safe-area-inset-right)) !important;
+    left: auto !important;
+    z-index: 100002 !important;
+    gap: 4px !important;
+  }
+</style>
+<!-- CH_ZBAR_FS_CSS_END -->
 </head>
 <body>
 <style>
@@ -3275,7 +3294,7 @@ window.addEventListener('load', () => {
     };
 
     document.addEventListener("fullscreenchange", () => {
-      btnFull.textContent = document.fullscreenElement ? "🗗 Quitter" : "⛶ Plein écran";
+      const isFsNow = !!(document.fullscreenElement || document.webkitFullscreenElement); document.body.classList.toggle("ch-is-fullscreen", isFsNow); btnFull.textContent = isFsNow ? "🗗 Quitter" : "⛶ Plein écran";
       setTimeout(synchroniserCanvas, 250);
     });
 
@@ -3890,15 +3909,10 @@ window.addEventListener('load', () => {
 <script>
 (function() {
   const SVG_LOGO_MARKUP = `<svg xmlns="http://w3.org" viewBox="0 0 64 64">
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="#F8FAFC" stroke="#D97706" stroke-width="2.5"/>
-  <circle cx="32" cy="32" r="23" fill="none" stroke="#E2E8F0" stroke-width="4"/>
-  <path d="M 32 9 A 23 23 0 1 1 12 43" fill="none" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 12 43 A 23 23 0 0 1 32 9" fill="none" stroke="#DC2626" stroke-width="4" stroke-linecap="round"/>
-  <rect x="20" y="34" width="4" height="10" rx="1" fill="#0284C7"/>
-  <rect x="27" y="28" width="4" height="16" rx="1" fill="#0284C7"/>
-  <rect x="34" y="22" width="4" height="22" rx="1" fill="#059669"/>
-  <polyline points="18,32 28,24 35,27 45,16" fill="none" stroke="#B45309" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <polyline points="39,16 45,16 45,22" fill="none" stroke="#B45309" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#090D16" stroke="#00E5FF" stroke-width="2.4"/>
+  <path d="M 10 44 C 18 42, 24 30, 34 26 L 14 22 L 38 18 L 52 12 L 42 28 L 28 32 C 22 38, 16 46, 10 44 Z" fill="#00E5FF" fill-opacity="0.22" stroke="#00E5FF" stroke-width="2" stroke-linejoin="round"/>
+  <polyline points="10,50 22,42 31,45 43,29 54,16" fill="none" stroke="#FFD700" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="45,15 55,15 54,25" fill="none" stroke="#10B981" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
   function monterLogoStation() {
