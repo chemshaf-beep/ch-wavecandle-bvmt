@@ -2021,7 +2021,19 @@ function dessinerGraphique(data) {
 let dirHandleHist = null, dirHandleLive = null, seancesLocales = [], dernierTailleLive = "";
 let timerLive = null, liveEnPause = false, requeteLiveEnCours = false;
 
+const _PARSED_CSV_CACHE = new Map();
 function parserLignesCsv(texte) {
+  if (texte && texte.length > 50) {
+    const sig = texte.length + "_" + texte.slice(0, 64) + "_" + texte.slice(-64);
+    if (_PARSED_CSV_CACHE.has(sig)) return _PARSED_CSV_CACHE.get(sig);
+    const res = _parserLignesCsvImpl(texte);
+    if (_PARSED_CSV_CACHE.size > 120) _PARSED_CSV_CACHE.clear();
+    _PARSED_CSV_CACHE.set(sig, res);
+    return res;
+  }
+  return _parserLignesCsvImpl(texte);
+}
+function _parserLignesCsvImpl(texte) {
   const lignes = texte.split(/\r?\n/), ops = [], tks = new Set();
   for (let i = 0; i < lignes.length; i++) {
     const c = lignes[i].split(';');

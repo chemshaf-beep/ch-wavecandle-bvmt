@@ -2278,6 +2278,65 @@ def _construire_index():
         "err": ""
     }
 
+_MULTI_AGG_CACHE = {}
+
+def _calculer_multi_rapide(ticker_cible: str):
+    tk_up = ticker_cible.strip().upper()
+    bougies = []
+    for root, _, files in os.walk(_HIST_DIR):
+        if "Backup" in root: continue
+        for fn in sorted(files):
+            if not fn.endswith(".csv"): continue
+            fp = os.path.join(root, fn)
+            mt = int(os.path.getmtime(fp))
+            key = (fp, mt)
+            if key not in _MULTI_AGG_CACHE:
+                par_tk = {}
+                try:
+                    with open(fp, "r", encoding="utf-8-sig", errors="replace") as f:
+                        header = f.readline().strip().split(";")
+                        idx_tk = next((i for i, c in enumerate(header) if "VALEUR" in c.upper() or "TICKER" in c.upper()), 0)
+                        idx_px = next((i for i, c in enumerate(header) if "DERNIER" in c.upper() or "PRIX" in c.upper()), 4)
+                        idx_qt = next((i for i, c in enumerate(header) if "QUANTITE" in c.upper() or "QTE" in c.upper()), 6)
+                        idx_sn = next((i for i, c in enumerate(header) if "SENS" in c.upper()), 10)
+                        for line in f:
+                            cols = line.split(";")
+                            if len(cols) <= max(idx_tk, idx_px, idx_qt): continue
+                            v_tk = cols[idx_tk].strip().strip('"').upper()
+                            if not v_tk: continue
+                            try:
+                                px = float(cols[idx_px].replace(",", ".").strip().strip('"'))
+                                qt = int(float(cols[idx_qt].replace(" ", "").replace(",", ".").strip().strip('"')))
+                            except Exception:
+                                continue
+                            if px <= 0 or qt <= 0: continue
+                            sn = cols[idx_sn].strip().strip('"').upper() if idx_sn < len(cols) else ""
+                            st = par_tk.get(v_tk)
+                            if not st:
+                                st = {"o": px, "h": px, "l": px, "c": px, "v": 0, "m": 0.0, "qa": 0, "ma": 0.0, "qv": 0, "mv": 0.0, "qn": 0, "mn": 0.0, "n": 0}
+                                par_tk[v_tk] = st
+                            if px > st["h"]: st["h"] = px
+                            if px < st["l"]: st["l"] = px
+                            st["c"] = px
+                            st["v"] += qt
+                            st["m"] += px * qt
+                            st["n"] += 1
+                            if "ACH" in sn:
+                                st["qa"] += qt; st["ma"] += px * qt
+                            elif "VEN" in sn:
+                                st["qv"] += qt; st["mv"] += px * qt
+                            else:
+                                st["qn"] += qt; st["mn"] += px * qt
+                except Exception:
+                    pass
+                _MULTI_AGG_CACHE[key] = par_tk
+            if tk_up in _MULTI_AGG_CACHE[key]:
+                st = _MULTI_AGG_CACHE[key][tk_up]
+                d_str = "".join(ch for ch in fn if ch.isdigit())
+                date_fr = f"{d_str[:2]}/{d_str[2:4]}/{d_str[4:8]}" if len(d_str) >= 8 else fn
+                bougies.append({"date": date_fr, **st})
+    return bougies
+
 def _rpc_data(payload_json: str):
     try:
         b = json.loads(payload_json)
@@ -2285,6 +2344,8 @@ def _rpc_data(payload_json: str):
         if tk not in _TOKENS_ACTIFS:
             return json.dumps({"status": 401, "err": "Authentification requise"})
         cmd = str(b.get("cmd", ""))
+        if cmd == "multi_agg":
+            return json.dumps({"status": 200, "bougies": _calculer_multi_rapide(str(b.get("ticker", "")))})
         if cmd == "index":
             return json.dumps({"status": 200, "data": _construire_index()})
         rel_path = str(b.get("path", "")).lstrip("/")
