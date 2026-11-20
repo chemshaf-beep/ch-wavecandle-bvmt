@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
 <!-- CH_CACHE_GZIP_START -->
 <script>
 window.CH_DisqueLocal = (function() {
@@ -390,89 +391,6 @@ body.theme-clair .statusbar {
   border-top: 1px solid #B0BDCE !important;
 }
 </style>
-<!-- CH_MOBILE_MODE_START -->
-<style id="ch-mobile-responsive-css">
-  /* Bouton tiroir masqué sur ordinateur */
-  #chMobileToggleBtn { display: none; }
-
-  @media screen and (max-width: 768px) {
-    html, body {
-      height: 100dvh !important;
-      max-height: 100dvh !important;
-      overflow-x: hidden !important;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    /* Barre supérieure compacte adaptée au pouce */
-    header, .top-bar, #topBar, div:has(> #selTicker) {
-      flex-wrap: wrap !important;
-      gap: 4px !important;
-      padding: 6px 8px !important;
-      max-height: 46px !important;
-      overflow: hidden !important;
-      transition: max-height 0.25s ease;
-    }
-
-    /* Lorsque le menu mobile est ouvert */
-    body.ch-mobile-menu-open header,
-    body.ch-mobile-menu-open .top-bar,
-    body.ch-mobile-menu-open #topBar,
-    body.ch-mobile-menu-open div:has(> #selTicker) {
-      max-height: 360px !important;
-      overflow-y: auto !important;
-    }
-
-    /* Taille minimale 16px sur input/select pour bloquer l'auto-zoom Safari iPhone */
-    select, input, button {
-      font-size: 14px !important;
-      min-height: 32px !important;
-      padding: 4px 8px !important;
-      border-radius: 6px !important;
-    }
-
-    #selTicker {
-      min-width: 115px !important;
-      max-width: 145px !important;
-      font-weight: 700 !important;
-    }
-
-    #chMobileToggleBtn {
-      display: inline-flex !important;
-      align-items: center;
-      justify-content: center;
-      background: #1e293b !important;
-      color: #38bdf8 !important;
-      border: 1px solid #38bdf8 !important;
-      font-weight: 600 !important;
-      margin-left: auto !important;
-      order: -1;
-    }
-
-    /* Ruban KPI compact en défilement horizontal */
-    div:has(> #kDernier), .kpi-bar, #kpiBar {
-      display: flex !important;
-      flex-wrap: nowrap !important;
-      overflow-x: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-      gap: 8px !important;
-      padding: 4px 8px !important;
-      scrollbar-width: none;
-    }
-    div:has(> #kDernier)::-webkit-scrollbar { display: none; }
-
-    /* Graphique principal : occupe tout l'espace restant et gère le toucher */
-    canvas {
-      touch-action: pan-x pan-y pinch-zoom !important;
-      max-width: 100vw !important;
-    }
-
-    /* Masquer les badges flottants encombrants sur petit écran */
-    #chCacheBadge { display: none !important; }
-  }
-</style>
-<!-- CH_MOBILE_MODE_END -->
 <!-- CH_WEB_LIVE_FIX_START -->
 <style>
   /* Masquer les sélecteurs de dossiers/fichiers locaux en mode Web hébergé */
@@ -526,6 +444,142 @@ body.theme-clair .statusbar {
 })();
 </script>
 <!-- CH_WEB_LIVE_FIX_END -->
+<!-- CH_MOBILE_MODE_START -->
+<style id="ch-mobile-pro-css">
+  #chMobFabBtn, #chMobBackdrop { display: none; }
+
+  /* Détection smartphone (portrait <= 768px OU paysage hauteur <= 520px) */
+  @media screen and (max-width: 768px), screen and (max-height: 520px) and (orientation: landscape) {
+    html, body {
+      width: 100vw !important;
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Bouton flottant discret pour ouvrir/fermer le tiroir de commandes */
+    #chMobFabBtn {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      position: fixed !important;
+      top: calc(6px + env(safe-area-inset-top)) !important;
+      left: calc(8px + env(safe-area-inset-left)) !important;
+      z-index: 100002 !important;
+      background: rgba(15, 23, 42, 0.85) !important;
+      backdrop-filter: blur(6px);
+      color: #38bdf8 !important;
+      border: 1px solid rgba(56, 189, 248, 0.6) !important;
+      border-radius: 8px !important;
+      padding: 5px 10px !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      cursor: pointer;
+    }
+
+    /* Fond sombre derrière le tiroir lorsqu'il est ouvert */
+    #chMobBackdrop {
+      position: fixed !important;
+      inset: 0 !important;
+      background: rgba(0, 0, 0, 0.55) !important;
+      z-index: 100000 !important;
+    }
+    body.ch-drawer-open #chMobBackdrop { display: block !important; }
+
+    /* Transformation de la barre supérieure en tiroir coulissant à la demande */
+    header, .top-bar, #topBar, div:has(> #selTicker) {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      width: min(320px, 84vw) !important;
+      max-width: 84vw !important;
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      z-index: 100001 !important;
+      background: #0f172a !important;
+      border-right: 1px solid #334155 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+      padding: calc(48px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)) 12px !important;
+      overflow-y: auto !important;
+      transform: translateX(-105%) !important;
+      transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1) !important;
+      box-shadow: 6px 0 24px rgba(0,0,0,0.65);
+    }
+
+    body.ch-drawer-open header,
+    body.ch-drawer-open .top-bar,
+    body.ch-drawer-open #topBar,
+    body.ch-drawer-open div:has(> #selTicker) {
+      transform: translateX(0) !important;
+    }
+
+    /* Éléments confortables au doigt à l'intérieur du tiroir */
+    header select, header input, header button,
+    div:has(> #selTicker) select, div:has(> #selTicker) input, div:has(> #selTicker) button {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-height: 36px !important;
+      font-size: 14px !important;
+      border-radius: 6px !important;
+      margin: 0 !important;
+    }
+
+    /* Masquer le pied de page et les badges flottants encombrants sur mobile */
+    footer, #chCacheBadge, div:has(> #diagBadge) {
+      display: none !important;
+    }
+
+    /* === MODE PORTRAIT : MINI-BARRE KPI EN HAUT + GRAPHIQUE SUR LE RESTE === */
+    @media screen and (orientation: portrait) {
+      div:has(> #kDernier), .kpi-bar, #kpiBar {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: calc(6px + env(safe-area-inset-top)) 8px 6px 96px !important;
+        min-height: 38px !important;
+        max-height: 42px !important;
+        gap: 8px !important;
+        font-size: 11px !important;
+        scrollbar-width: none;
+      }
+      div:has(> #kDernier)::-webkit-scrollbar { display: none; }
+
+      canvas {
+        width: 100vw !important;
+        height: calc(100dvh - 42px) !important;
+        touch-action: pan-x pan-y pinch-zoom !important;
+      }
+    }
+
+    /* === MODE PAYSAGE (HORIZONTAL) : 100% GRAPHIQUE PLEIN ECRAN === */
+    @media screen and (orientation: landscape) {
+      div:has(> #kDernier), .kpi-bar, #kpiBar {
+        display: none !important;
+      }
+
+      canvas {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        touch-action: pan-x pan-y pinch-zoom !important;
+      }
+    }
+  }
+</style>
+<!-- CH_MOBILE_MODE_END -->
 </head>
 <body>
 <style>
@@ -2725,36 +2779,73 @@ window.addEventListener('load', () => {
 <!-- CH_MOBILE_JS_START -->
 <script>
 (function() {
-  function initModeMobile() {
+  function estMobile() {
+    return window.innerWidth <= 768 || (window.innerHeight <= 520 && window.innerWidth > window.innerHeight);
+  }
+
+  function forcerResizeGraphique() {
+    window.dispatchEvent(new Event("resize"));
+    if (typeof window.dessiner === "function") {
+      try { window.dessiner(); } catch (_) {}
+    }
+  }
+
+  function initInterfaceMobilePro() {
+    if (document.getElementById("chMobFabBtn")) return;
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "chMobBackdrop";
+
+    const fab = document.createElement("button");
+    fab.id = "chMobFabBtn";
+    fab.type = "button";
+    fab.innerHTML = "☰ Menu";
+
+    function basculerMenu(etatForce) {
+      const ouvrir = (typeof etatForce === "boolean") ? etatForce : !document.body.classList.contains("ch-drawer-open");
+      document.body.classList.toggle("ch-drawer-open", ouvrir);
+      fab.innerHTML = ouvrir ? "✕ Fermer" : "☰ Menu";
+      setTimeout(forcerResizeGraphique, 260);
+    }
+
+    fab.onclick = () => basculerMenu();
+    backdrop.onclick = () => basculerMenu(false);
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(fab);
+
+    // Fermer automatiquement le tiroir après sélection d'une valeur ou clic sur Charger/Live
     const tickerEl = document.getElementById("selTicker");
-    if (!tickerEl || document.getElementById("chMobileToggleBtn")) return;
+    if (tickerEl && tickerEl.parentElement) {
+      tickerEl.parentElement.addEventListener("change", (e) => {
+        if (estMobile() && (e.target.id === "selTicker" || e.target.id === "selHorizon" || e.target.tagName === "SELECT")) {
+          setTimeout(() => basculerMenu(false), 180);
+        }
+      });
+      tickerEl.parentElement.addEventListener("click", (e) => {
+        if (estMobile() && e.target.tagName === "BUTTON" && e.target.id !== "chMobFabBtn") {
+          setTimeout(() => basculerMenu(false), 180);
+        }
+      });
+    }
 
-    const topContainer = tickerEl.parentElement;
-    if (!topContainer) return;
-
-    // Création du bouton d'ouverture/fermeture des contrôles sur smartphone
-    const btn = document.createElement("button");
-    btn.id = "chMobileToggleBtn";
-    btn.type = "button";
-    btn.textContent = "⚙️ Outils";
-    btn.onclick = function() {
-      const ouvert = document.body.classList.toggle("ch-mobile-menu-open");
-      btn.textContent = ouvert ? "✖ Fermer" : "⚙️ Outils";
-      // Déclencher un redimensionnement propre du canvas après ouverture/fermeture
-      setTimeout(() => window.dispatchEvent(new Event("resize")), 260);
-    };
-    topContainer.insertBefore(btn, topContainer.firstChild);
-
-    // Adaptation automatique lors de la rotation portrait <-> paysage sur Android / iPhone
+    // Recalculer instantanément les dimensions du canvas lors du basculement Portrait <-> Paysage
     window.addEventListener("orientationchange", () => {
-      setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
+      basculerMenu(false);
+      setTimeout(forcerResizeGraphique, 200);
+      setTimeout(forcerResizeGraphique, 500);
+    });
+    window.addEventListener("resize", () => {
+      if (!estMobile() && document.body.classList.contains("ch-drawer-open")) {
+        basculerMenu(false);
+      }
     });
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initModeMobile);
+    document.addEventListener("DOMContentLoaded", initInterfaceMobilePro);
   } else {
-    initModeMobile();
+    initInterfaceMobilePro();
   }
 })();
 </script>
