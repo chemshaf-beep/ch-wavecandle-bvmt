@@ -3313,5 +3313,83 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_MOBILE_ZOOM_END -->
+<!-- CH_FAST_MULTI_START -->
+<script>
+(function() {
+  // Mini-coffre IndexedDB ultra-rapide pour les résultats déjà calculés (Multi-Séances & Séance Unique)
+  function idbFast(mode, key, val) {
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open("CH_Fast_Render_Cache", 1);
+        req.onupgradeneeded = (e) => {
+          if (!e.target.result.objectStoreNames.contains("views")) {
+            e.target.result.createObjectStore("views");
+          }
+        };
+        req.onsuccess = (e) => {
+          const db = e.target.result;
+          const tx = db.transaction("views", mode === "set" ? "readwrite" : "readonly");
+          const st = tx.objectStore("views");
+          const r = mode === "set" ? st.put(val, key) : st.get(key);
+          r.onsuccess = () => resolve(r.result || null);
+          r.onerror = () => resolve(null);
+        };
+        req.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  function hookFastRender() {
+    if (typeof window.chargerMultiSeances !== "function") {
+      setTimeout(hookFastRender, 150);
+      return;
+    }
+    const origMulti = window.chargerMultiSeances;
+    window.chargerMultiSeances = async function(forcerRecalcul = false) {
+      const tk = (document.getElementById("selTicker")?.value || "DELICE HOLDING").toUpperCase();
+      const gran = document.getElementById("selGranularite")?.value || "JOUR";
+      const bloc = document.getElementById("selFiltreBlocs")?.value || "TOUS";
+      const sigSeances = (typeof seancesLocales !== "undefined" && seancesLocales.length)
+        ? (seancesLocales.length + "_" + seancesLocales.at(0).date_iso)
+        : "init";
+      const cacheKey = `MULTI_${tk}_${gran}_${bloc}`;
+
+      // 1. Afficher INSTANTANEMENT la vue en cache (< 20 ms) si disponible
+      if (!forcerRecalcul) {
+        const cached = await idbFast("get", cacheKey);
+        if (cached && cached.data && cached.data.bougies && cached.data.bougies.length > 0) {
+          globalData = cached.data;
+          chart.clear();
+          appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
+          dessinerChandeliersMulti(globalData);
+          const stEl = document.getElementById("statusText");
+          if (stEl) stEl.innerText = `Multi-Séances (${globalData.date_deb_fr} → ${globalData.date_fin_fr}) — ${globalData.bougies.length} chandeliers [Cache instantané]`;
+
+          // Si le nombre de séances ou la dernière date est identique, on s'arrête là (0 recalcul)
+          if (cached.sig === sigSeances && sigSeances !== "init") {
+            return;
+          }
+        }
+      }
+
+      // 2. Calcul complet (uniquement au premier passage ou si une nouvelle séance est détectée)
+      await origMulti.apply(this, arguments);
+      if (typeof globalData !== "undefined" && globalData && globalData.bougies && globalData.bougies.length > 0) {
+        const finalSig = (typeof seancesLocales !== "undefined" && seancesLocales.length)
+          ? (seancesLocales.length + "_" + seancesLocales.at(0).date_iso)
+          : sigSeances;
+        idbFast("set", cacheKey, { sig: finalSig, data: globalData });
+      }
+    };
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", hookFastRender);
+  } else {
+    hookFastRender();
+  }
+})();
+</script>
+<!-- CH_FAST_MULTI_END -->
 </body>
 </html>
