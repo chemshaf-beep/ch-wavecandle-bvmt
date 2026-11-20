@@ -3187,6 +3187,8 @@ window.addEventListener('load', () => {
 
     domChart.addEventListener("touchstart", function(e) {
       if (e.touches.length === 2) {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
         const t0 = e.touches.item(0), t1 = e.touches.item(1);
         pinchStartDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
         pinchStartSpan = getZoomRange();
@@ -3198,10 +3200,12 @@ window.addEventListener('load', () => {
         selBox.style.width = "2px";
         selBox.style.display = "block";
       }
-    }, { passive: true });
+    }, { passive: false, capture: true });
 
     domChart.addEventListener("touchmove", function(e) {
       if (e.touches.length === 2 && pinchStartDist > 10) {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
         const t0 = e.touches.item(0), t1 = e.touches.item(1);
         const curDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
         const scale = pinchStartDist / Math.max(curDist, 10);
@@ -3217,7 +3221,7 @@ window.addEventListener('load', () => {
         selBox.style.left = Math.min(x1, x2) + "px";
         selBox.style.width = Math.abs(x2 - x1) + "px";
       }
-    }, { passive: true });
+    }, { passive: false, capture: true });
 
     domChart.addEventListener("touchend", function(e) {
       if (e.touches.length < 2) pinchStartDist = 0;
@@ -3242,7 +3246,7 @@ window.addEventListener('load', () => {
           btnPlage.style.color = "#38bdf8";
         }
       }
-    }, { passive: true });
+    }, { passive: false, capture: true });
 
     if (window.innerWidth <= 960 && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 768)) {
       try {
