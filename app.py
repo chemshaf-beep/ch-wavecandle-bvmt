@@ -1721,7 +1721,7 @@ def sync_github_cloud():
                 continue
             fp = os.path.join(root, fn)
             rel = "Historique/" + os.path.relpath(fp, _HIST_DIR).replace("\\", "/")
-            api_url = f"https://github.com{repo}/contents/{rel}"
+            api_url = f"https://api.github.com/repos/{repo}/contents/{rel}"
             try:
                 sha = None
                 try:
@@ -2048,7 +2048,7 @@ def _pull_users_github():
     repo = _get_users_repo()
     tk = globals().get("GH_TOKEN", "").strip()
     if not tk or not repo: return
-    api_url = f"https://github.com{repo}/contents/users_db.json"
+    api_url = f"https://api.github.com/repos/{repo}/contents/users_db.json"
     headers = {
         "Authorization": f"Bearer {tk}",
         "Accept": "application/vnd.github+json",
@@ -2071,7 +2071,7 @@ def _push_users_github():
     repo = _get_users_repo()
     tk = globals().get("GH_TOKEN", "").strip()
     if not tk or not repo or not os.path.exists(_USERS_FILE): return
-    api_url = f"https://github.com{repo}/contents/users_db.json"
+    api_url = f"https://api.github.com/repos/{repo}/contents/users_db.json"
     headers = {
         "Authorization": f"Bearer {tk}",
         "Accept": "application/vnd.github+json",
