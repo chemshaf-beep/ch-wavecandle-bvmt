@@ -191,7 +191,7 @@ window.CH_DisqueLocal = (function() {
     }
 
     const bar = document.createElement("div");
-    bar.style.cssText = "position:fixed;bottom:32px;right:12px;z-index:99999;display:flex;gap:6px;align-items:center;background:#0f172a;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-family:monospace;font-size:11px;color:#94a3b8;";
+    bar.id = "chCacheBarWrap"; bar.style.cssText = "display:inline-flex;gap:6px;align-items:center;background:#0f172a;border:1px solid #334155;border-radius:4px;padding:1px 8px;font-family:monospace;font-size:11px;color:#94a3b8;margin:0 10px;";
     const span = document.createElement("span");
     span.id = "chCacheBadge";
     span.textContent = "💾 Disque local : prêt" + (userDir ? " [" + userDir.name + "]" : "");
@@ -221,7 +221,7 @@ window.CH_DisqueLocal = (function() {
       } catch (_) {}
     };
     bar.appendChild(span); bar.appendChild(btn);
-    document.body.appendChild(bar);
+    const stFoot = document.getElementById("statusText")?.parentElement; if (stFoot && stFoot.lastElementChild) { stFoot.insertBefore(bar, stFoot.lastElementChild); } else { document.body.appendChild(bar); }
   });
 
   async function listerFichiersLocaux() {
@@ -625,7 +625,7 @@ body.theme-clair .statusbar {
       font-size: 13px !important;
     }
 
-    footer, #chCacheBadge, div:has(> #diagBadge) { display: none !important; }
+    footer, #chCacheBarWrap, #chCacheBadge, div:has(> #diagBadge) { display: none !important; }
 
     /* === MODE PORTRAIT : MINI-RUBAN KPI COMPACT + GRAPHIQUE SUR 90% DE L'ECRAN === */
     @media screen and (orientation: portrait) {
@@ -3109,7 +3109,7 @@ window.addEventListener('load', () => {
     bar.appendChild(btnFull);
     bar.appendChild(selMobTicker);
     document.body.appendChild(backdrop);
-    document.body.appendChild(bar);
+    const stFoot = document.getElementById("statusText")?.parentElement; if (stFoot && stFoot.lastElementChild) { stFoot.insertBefore(bar, stFoot.lastElementChild); } else { document.body.appendChild(bar); }
 
     const tickerEl = document.getElementById("selTicker");
     if (tickerEl && tickerEl.parentElement) {
