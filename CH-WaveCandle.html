@@ -2409,7 +2409,7 @@ chart.getZr().on('click', () => {
   const now = Date.now();
   if (now - _lastZrTap > 40 && now - _lastZrTap < 340) { _lastZrTap = 0; _resetZoomXY(); }
   else { _lastZrTap = now; }
-}); chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 1, start: 0, end: 100 }); });
+});
 
 document.getElementById('selHorizon').onchange = e => {
   const m = e.target.value; arreterModeLive();
