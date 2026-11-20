@@ -1,6 +1,187 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- CH_CACHE_GZIP_START -->
+<script>
+window.CH_DisqueLocal = (function() {
+  const MEM = new Map();
+  const META = new Map();
+  let LOCAL_MANIFEST = {}; // { cleanPath: { size, mtime } }
+  let opfsRoot = null;
+  let userDir = null;
+  let hits = 0, dls = 0;
+
+  function majBadge() {
+    const el = document.getElementById("chCacheBadge");
+    if (el) el.textContent = "💾 Disque local : " + hits + " lus | " + dls + " téléchargés" + (userDir ? " [" + userDir.name + "]" : "");
+  }
+
+  // Persistance du handle de dossier PC dans IndexedDB
+  function idbHandle(mode, val) {
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open("CH_DirHandle_DB", 1);
+        req.onupgradeneeded = (e) => e.target.result.createObjectStore("handles");
+        req.onsuccess = (e) => {
+          const db = e.target.result;
+          const tx = db.transaction("handles", mode === "set" ? "readwrite" : "readonly");
+          const store = tx.objectStore("handles");
+          const r = mode === "set" ? store.put(val, "userDir") : store.get("userDir");
+          r.onsuccess = () => resolve(r.result || null);
+          r.onerror = () => resolve(null);
+        };
+        req.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  async function getOpfs() {
+    if (!opfsRoot && navigator.storage && navigator.storage.getDirectory) {
+      try {
+        opfsRoot = await navigator.storage.getDirectory();
+        // Charger le manifeste local depuis OPFS
+        try {
+          const fh = await opfsRoot.getFileHandle("_manifest.json");
+          LOCAL_MANIFEST = JSON.parse(await (await fh.getFile()).text()) || {};
+        } catch (_) {}
+      } catch (_) {}
+    }
+    return opfsRoot;
+  }
+
+  async function sauverManifeste() {
+    const json = JSON.stringify(LOCAL_MANIFEST);
+    for (const dir of [userDir, await getOpfs()]) {
+      if (!dir) continue;
+      try {
+        const fh = await dir.getFileHandle("_manifest.json", { create: true });
+        const w = await fh.createWritable();
+        await w.write(json);
+        await w.close();
+      } catch (_) {}
+    }
+  }
+
+  function toSafeName(relPath) {
+    return relPath.replace(/[^a-zA-Z0-9._-]/g, "_");
+  }
+
+  function enregistrerIndexMeta(idxData) {
+    if (!idxData || !idxData.hist_meta) return;
+    for (const [k, v] of Object.entries(idxData.hist_meta)) {
+      const clean = k.replace(/^\/+/, "");
+      META.set(clean, v);
+      META.set("Historique/" + clean, v);
+    }
+  }
+
+  async function lire(relPath) {
+    const clean = relPath.replace(/^\/+/, "");
+    const srvMeta = META.get(clean);
+    const locMeta = LOCAL_MANIFEST[clean];
+
+    if (MEM.has(clean)) {
+      if (!srvMeta || (locMeta && locMeta.size === srvMeta.size && locMeta.mtime === srvMeta.mtime)) {
+        hits++; majBadge(); return MEM.get(clean);
+      }
+    }
+
+    // Si le serveur indique une taille/date différente de notre manifeste local, on retélécharge
+    if (srvMeta && locMeta && (locMeta.size !== srvMeta.size || locMeta.mtime !== srvMeta.mtime)) {
+      return null;
+    }
+
+    const fname = toSafeName(clean);
+    for (const dir of [userDir, await getOpfs()]) {
+      if (!dir) continue;
+      try {
+        const fh = await dir.getFileHandle(fname);
+        const txt = await (await fh.getFile()).text();
+        if (txt && txt.length > 10) {
+          MEM.set(clean, txt);
+          if (srvMeta && !locMeta) {
+            LOCAL_MANIFEST[clean] = { size: srvMeta.size, mtime: srvMeta.mtime };
+            sauverManifeste();
+          }
+          hits++; majBadge(); return txt;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  async function sauver(relPath, text) {
+    const clean = relPath.replace(/^\/+/, "");
+    if (!clean || !text || text.length < 10) return;
+    const srvMeta = META.get(clean);
+    MEM.set(clean, text);
+    if (srvMeta) {
+      LOCAL_MANIFEST[clean] = { size: srvMeta.size, mtime: srvMeta.mtime };
+      sauverManifeste();
+    }
+    dls++; majBadge();
+    const fname = toSafeName(clean);
+    for (const dir of [userDir, await getOpfs()]) {
+      if (!dir) continue;
+      try {
+        const fh = await dir.getFileHandle(fname, { create: true });
+        const w = await fh.createWritable();
+        await w.write(text);
+        await w.close();
+      } catch (_) {}
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    await getOpfs();
+    const savedHandle = await idbHandle("get");
+    if (savedHandle) {
+      try {
+        if ((await savedHandle.queryPermission({ mode: "readwrite" })) === "granted") {
+          userDir = savedHandle;
+        }
+      } catch (_) {}
+    }
+
+    const bar = document.createElement("div");
+    bar.style.cssText = "position:fixed;bottom:32px;right:12px;z-index:99999;display:flex;gap:6px;align-items:center;background:#0f172a;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-family:monospace;font-size:11px;color:#94a3b8;";
+    const span = document.createElement("span");
+    span.id = "chCacheBadge";
+    span.textContent = "💾 Disque local : prêt" + (userDir ? " [" + userDir.name + "]" : "");
+    const btn = document.createElement("button");
+    btn.textContent = userDir ? "📂 " + userDir.name : "📂 Dossier PC";
+    if (userDir) { btn.style.color = "#4ade80"; btn.style.borderColor = "#4ade80"; }
+    else { btn.style.color = "#38bdf8"; btn.style.borderColor = "#38bdf8"; }
+    btn.style.cssText += ";background:#1e293b;border-width:1px;border-style:solid;border-radius:3px;padding:2px 6px;cursor:pointer;font-size:11px;";
+
+    btn.onclick = async () => {
+      try {
+        if (savedHandle && !userDir) {
+          const perm = await savedHandle.requestPermission({ mode: "readwrite" });
+          if (perm === "granted") { userDir = savedHandle; }
+        }
+        if (!userDir && window.showDirectoryPicker) {
+          userDir = await window.showDirectoryPicker({ mode: "readwrite" });
+          await idbHandle("set", userDir);
+        }
+        if (userDir) {
+          btn.textContent = "📂 " + userDir.name;
+          btn.style.color = "#4ade80"; btn.style.borderColor = "#4ade80";
+          for (const [k, txt] of MEM.entries()) await sauver(k, txt);
+          await sauverManifeste();
+          majBadge();
+        }
+      } catch (_) {}
+    };
+    bar.appendChild(span); bar.appendChild(btn);
+    document.body.appendChild(bar);
+  });
+
+  return { lire, sauver, enregistrerIndexMeta };
+})();
+</script>
+<!-- CH_CACHE_GZIP_END -->
 <script>
 window.__diagLogs = [];
 window.__logDiag = function(niveau, msg) {
@@ -209,8 +390,448 @@ body.theme-clair .statusbar {
   border-top: 1px solid #B0BDCE !important;
 }
 </style>
+<!-- CH_MOBILE_MODE_START -->
+<style id="ch-mobile-responsive-css">
+  /* Bouton tiroir masqué sur ordinateur */
+  #chMobileToggleBtn { display: none; }
+
+  @media screen and (max-width: 768px) {
+    html, body {
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      overflow-x: hidden !important;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Barre supérieure compacte adaptée au pouce */
+    header, .top-bar, #topBar, div:has(> #selTicker) {
+      flex-wrap: wrap !important;
+      gap: 4px !important;
+      padding: 6px 8px !important;
+      max-height: 46px !important;
+      overflow: hidden !important;
+      transition: max-height 0.25s ease;
+    }
+
+    /* Lorsque le menu mobile est ouvert */
+    body.ch-mobile-menu-open header,
+    body.ch-mobile-menu-open .top-bar,
+    body.ch-mobile-menu-open #topBar,
+    body.ch-mobile-menu-open div:has(> #selTicker) {
+      max-height: 360px !important;
+      overflow-y: auto !important;
+    }
+
+    /* Taille minimale 16px sur input/select pour bloquer l'auto-zoom Safari iPhone */
+    select, input, button {
+      font-size: 14px !important;
+      min-height: 32px !important;
+      padding: 4px 8px !important;
+      border-radius: 6px !important;
+    }
+
+    #selTicker {
+      min-width: 115px !important;
+      max-width: 145px !important;
+      font-weight: 700 !important;
+    }
+
+    #chMobileToggleBtn {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      background: #1e293b !important;
+      color: #38bdf8 !important;
+      border: 1px solid #38bdf8 !important;
+      font-weight: 600 !important;
+      margin-left: auto !important;
+      order: -1;
+    }
+
+    /* Ruban KPI compact en défilement horizontal */
+    div:has(> #kDernier), .kpi-bar, #kpiBar {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      gap: 8px !important;
+      padding: 4px 8px !important;
+      scrollbar-width: none;
+    }
+    div:has(> #kDernier)::-webkit-scrollbar { display: none; }
+
+    /* Graphique principal : occupe tout l'espace restant et gère le toucher */
+    canvas {
+      touch-action: pan-x pan-y pinch-zoom !important;
+      max-width: 100vw !important;
+    }
+
+    /* Masquer les badges flottants encombrants sur petit écran */
+    #chCacheBadge { display: none !important; }
+  }
+</style>
+<!-- CH_MOBILE_MODE_END -->
+<!-- CH_WEB_LIVE_FIX_START -->
+<style>
+  /* Masquer les sélecteurs de dossiers/fichiers locaux en mode Web hébergé */
+  #btnDossierLive, #btnFichiersLive, #btnDossierRacine, #btnAutoSetup,
+  button[id*="DossierLive"], button[id*="FichiersLive"] {
+    display: none !important;
+  }
+</style>
+<script>
+(function() {
+  function nettoyerInterfaceWeb() {
+    // Masquer aussi par libellé au cas où les IDs diffèrent
+    document.querySelectorAll("button").forEach(btn => {
+      const txt = (btn.textContent || "").trim();
+      if (txt.includes("Dossier Live") || txt.includes("Fichiers Live") || txt.includes("Dossier Station")) {
+        btn.style.display = "none";
+      }
+    });
+  }
+
+  // Filtrer l'index live côté client pour éliminer tout fichier temp d'une date passée
+  const origParse = JSON.parse;
+  JSON.parse = function(txt, rev) {
+    const res = origParse.call(this, txt, rev);
+    if (res && typeof res === "object" && Array.isArray(res.live)) {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, "0");
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yyyy = String(now.getFullYear());
+      const dateStr = dd + mm + yyyy; // ex: 20112026
+
+      const liveDuJour = res.live.filter(f => {
+        const name = typeof f === "string" ? f : (f && f.Name ? f.Name : "");
+        if (name.startsWith("temp_bourse_historique_")) {
+          return name.includes(dateStr);
+        }
+        return true;
+      });
+      if (liveDuJour.length > 0 || res.live.some(f => (f.Name || f).includes("temp_bourse_historique_"))) {
+        res.live = liveDuJour;
+      }
+    }
+    return res;
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", nettoyerInterfaceWeb);
+  } else {
+    nettoyerInterfaceWeb();
+  }
+})();
+</script>
+<!-- CH_WEB_LIVE_FIX_END -->
 </head>
 <body>
+<style>
+  #portailAccueilOverlay {
+    position: fixed; inset: 0; z-index: 99999;
+    background-color: #0B0F17;
+    background-image:
+      radial-gradient(rgba(0, 229, 255, 0.08) 1px, transparent 0),
+      linear-gradient(135deg, #161E2E 0%, #090C12 60%, #111722 100%);
+    background-size: 16px 16px, 100% 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 18px; font-family: 'Consolas', monospace;
+  }
+  .accueil-card {
+    width: 100%; max-width: 470px;
+    background: linear-gradient(180deg, #1B2332 0%, #10151F 100%);
+    border: 1px solid #354259; border-radius: 10px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    padding: 26px 28px; color: #E2E8F0;
+  }
+  .accueil-badge {
+    display: inline-block; background: rgba(0, 229, 255, 0.12);
+    border: 1px solid #00E5FF; color: #00E5FF;
+    font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px;
+  }
+  .accueil-titre { font-size: 21px; font-weight: bold; color: #FFD700; margin-bottom: 6px; }
+  .accueil-sous { font-size: 12px; color: #94A3B8; line-height: 1.5; margin-bottom: 16px; }
+  .accueil-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 18px; background: #080B10; padding: 4px; border-radius: 6px; border: 1px solid #263042; }
+  .accueil-tab { background: transparent; border: none; color: #94A3B8; padding: 8px; font-weight: bold; font-size: 13px; border-radius: 4px; cursor: pointer; font-family: 'Consolas', monospace; }
+  .accueil-tab.active { background: #1E293B; color: #00E5FF; border: 1px solid #334155; }
+  .accueil-field { margin-bottom: 12px; }
+  .accueil-field label { display: block; font-size: 11px; color: #94A3B8; margin-bottom: 4px; text-transform: uppercase; }
+  .accueil-field input {
+    width: 100%; background: #070A0F; border: 1px solid #354259; color: #FFFFFF;
+    padding: 9px 12px; border-radius: 5px; font-size: 13px; font-family: 'Consolas', monospace;
+  }
+  .accueil-field input:focus { outline: none; border-color: #00E5FF; }
+  .pwd-hint { font-size: 11px; color: #64748B; margin-top: 4px; }
+  .accueil-btn {
+    width: 100%; background: linear-gradient(180deg, #00E5FF 0%, #0284C7 100%);
+    color: #05080D; font-weight: bold; font-size: 13px; border: none;
+    padding: 11px; border-radius: 5px; cursor: pointer; margin-top: 6px;
+  }
+  .accueil-btn.green-btn { background: linear-gradient(180deg, #00FF66 0%, #059669 100%); }
+  #accueilMsg { font-size: 12px; margin-top: 10px; min-height: 18px; text-align: center; }
+</style>
+
+<div id="portailAccueilOverlay">
+  <div class="accueil-card">
+    <div class="accueil-badge">STATION QUANTITATIVE BVMT • HFT</div>
+    <div class="accueil-titre">CH-WaveCandle Station</div>
+    <div class="accueil-sous">
+      Analyse tick-par-tick, vagues polygonales et flux institutionnel de la Bourse de Tunis en temps réel.
+    </div>
+
+    <div class="accueil-tabs">
+      <button type="button" id="tabBtnLogin" class="accueil-tab active" onclick="window.__switchPortailTab('login')">🔐 Se connecter</button>
+      <button type="button" id="tabBtnSub" class="accueil-tab" onclick="window.__switchPortailTab('sub')">✨ S'abonner</button>
+    </div>
+
+    <form id="paneLogin" onsubmit="return window.__actionLogin(event)">
+      <div class="accueil-field">
+        <label>Adresse E-mail</label>
+        <input type="email" id="logEmail" required placeholder="exemple@domaine.com" />
+      </div>
+      <div class="accueil-field">
+        <label>Mot de passe</label>
+        <input type="password" id="logPass" required placeholder="••••••••" />
+      </div>
+      <button type="submit" class="accueil-btn" id="btnDoLogin">🔓 Accéder à la Station</button>
+    </form>
+
+    <form id="paneSub" style="display:none;" onsubmit="return window.__actionRegister(event)">
+      <div class="accueil-field">
+        <label>Nom ou Pseudo</label>
+        <input type="text" id="subNom" required placeholder="Votre nom" />
+      </div>
+      <div class="accueil-field">
+        <label>Adresse E-mail (pour validation)</label>
+        <input type="email" id="subEmail" required placeholder="exemple@domaine.com" />
+      </div>
+      <div class="accueil-field">
+        <label>Choisir un mot de passe</label>
+        <input type="password" id="subPass1" required placeholder="Min. 8 caractères (lettres + chiffres)" />
+      </div>
+      <div class="accueil-field">
+        <label>Confirmer le mot de passe</label>
+        <input type="password" id="subPass2" required placeholder="Répétez le mot de passe" />
+        <div class="pwd-hint" id="pwdStrengthTxt">8 caractères minimum avec au moins 1 lettre et 1 chiffre.</div>
+      </div>
+      <button type="submit" class="accueil-btn" id="btnDoSub">📩 Recevoir le code de validation</button>
+    </form>
+
+    <form id="paneVerify" style="display:none;" onsubmit="return window.__actionVerify(event)">
+      <div class="accueil-sous" style="color:#00E5FF;margin-bottom:12px;">
+        Un code de validation à 6 chiffres vient d'être envoyé à votre adresse e-mail.
+      </div>
+      <div class="accueil-field">
+        <label>Code de vérification (6 chiffres)</label>
+        <input type="text" id="verCode" maxlength="6" pattern="[0-9]{6}" required placeholder="123456" style="text-align:center;font-size:18px;letter-spacing:4px;" />
+      </div>
+      <button type="submit" class="accueil-btn green-btn" id="btnDoVerify">✅ Valider mon e-mail et activer mon accès</button>
+    </form>
+
+    <div id="accueilMsg"></div>
+  </div>
+</div>
+<script>
+(function() {
+  const CLE_TK = 'ch_bvmt_auth_token';
+  const origFetch = window.fetch.bind(window);
+  let pendingEmail = '';
+
+    function tracerDiag(tag, msg) {
+    console.error('[' + tag + ']', msg);
+    if (typeof window.__logDiag === 'function') {
+      window.__logDiag(tag, msg);
+    } else {
+      window.__earlyDiagQueue = window.__earlyDiagQueue || [];
+      window.__earlyDiagQueue.push({ tag: tag, msg: msg });
+    }
+  }
+
+  async function appelerGradioApi(apiName, payloadObj) {
+    const r1 = await origFetch('/gradio_api/call/' + apiName, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: [JSON.stringify(payloadObj)] })
+    });
+    if (!r1.ok) {
+      const errTxt = await r1.text();
+      tracerDiag('GRADIO_POST_' + r1.status, apiName + ' -> ' + errTxt.slice(0, 180));
+      throw new Error('HTTP ' + r1.status + ' sur ' + apiName);
+    }
+    const j1 = await r1.json();
+    const eventId = j1.event_id;
+    const r2 = await origFetch('/gradio_api/call/' + apiName + '/' + eventId);
+    const txt = await r2.text();
+    if (txt.includes('event: error')) {
+      tracerDiag('GRADIO_SSE_ERR', apiName + ' -> ' + txt.slice(0, 240));
+      throw new Error('Erreur serveur Gradio sur ' + apiName);
+    }
+    const lignes = txt.split('\n');
+    for (let i = lignes.length - 1; i >= 0; i--) {
+      if (lignes[i].startsWith('data: ')) {
+        const arr = JSON.parse(lignes[i].slice(6));
+        const brut = Array.isArray(arr) ? arr.shift() : arr;
+        return typeof brut === 'string' ? JSON.parse(brut) : brut;
+      }
+    }
+    tracerDiag('GRADIO_EMPTY', apiName + ' -> Flux SSE vide : ' + txt.slice(0, 160));
+    throw new Error('Réponse Gradio vide sur ' + apiName);
+  }
+
+  window.fetch = async function(input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+    if (url.includes('/bvmt_api/index') || url.includes('/bvmt_api/files/') || url.includes('/api/index') || url.includes('/api/files/')) {
+      const tk = sessionStorage.getItem(CLE_TK) || '';
+      if (!tk) {
+        tracerDiag('AUTH_MISSING', 'Jeton de session absent pour ' + url);
+        return new Response(JSON.stringify({ error: 'Non connecté' }), { status: 401 });
+      }
+      try {
+        const isIdx = url.includes('/bvmt_api/index') || url.includes('/api/index');
+        const splitKey = url.includes('/bvmt_api/files/') ? '/bvmt_api/files/' : '/api/files/';
+        const relPath = isIdx ? '' : decodeURIComponent(url.split(splitKey).pop().split('?').shift());
+        const estFichierStatique = !isIdx && !relPath.includes('Cache_Live/') && !relPath.includes('DonneesSource');
+
+        if (estFichierStatique && window.CH_DisqueLocal) {
+          const contenuLocal = await window.CH_DisqueLocal.lire(relPath);
+          if (contenuLocal !== null) {
+            return new Response(contenuLocal, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+          }
+        }
+
+        const payload = isIdx ? { token: tk, cmd: 'index' } : { token: tk, cmd: 'file', path: relPath };
+        const res = await appelerGradioApi('bvmt_data', payload);
+
+        if (isIdx && res.status === 200 && res.data && window.CH_DisqueLocal) {
+          window.CH_DisqueLocal.enregistrerIndexMeta(res.data);
+        }
+        if (estFichierStatique && res.status === 200 && res.text && window.CH_DisqueLocal) {
+          await window.CH_DisqueLocal.sauver(relPath, res.text);
+        }
+
+        if (res.status === 401) {
+          tracerDiag('AUTH_401', 'Session expirée ou refusée par le serveur (' + (res.err || '') + ')');
+          sessionStorage.removeItem(CLE_TK);
+          const ov = document.getElementById('portailAccueilOverlay');
+          if (ov) ov.style.display = 'flex';
+          return new Response(JSON.stringify(res), { status: 401 });
+        }
+        if (res.status !== 200) {
+          tracerDiag('BVMT_API_' + res.status, (isIdx ? 'index' : relPath) + ' -> ' + (res.err || 'Introuvable'));
+        }
+        if (isIdx) {
+          return new Response(JSON.stringify(res.data || {}), { status: res.status || 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        return new Response(res.text || '', { status: res.status || 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      } catch (e) {
+        tracerDiag('FETCH_BRIDGE_ERR', url + ' -> ' + (e && e.message ? e.message : e));
+        return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+      }
+    }
+    return origFetch(input, init);
+  };
+
+  function setMsg(txt, isOk) {
+    const el = document.getElementById('accueilMsg');
+    el.style.color = isOk ? '#00FF66' : '#FF4D4D';
+    el.textContent = txt;
+  }
+
+  window.__switchPortailTab = function(tab) {
+    setMsg('', true);
+    document.getElementById('tabBtnLogin').classList.toggle('active', tab === 'login');
+    document.getElementById('tabBtnSub').classList.toggle('active', tab === 'sub');
+    document.getElementById('paneLogin').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('paneSub').style.display = tab === 'sub' ? 'block' : 'none';
+    document.getElementById('paneVerify').style.display = 'none';
+  };
+
+  window.__actionLogin = async function(e) {
+    e.preventDefault();
+    setMsg('', true);
+    const btn = document.getElementById('btnDoLogin');
+    btn.disabled = true;
+    try {
+      const d = await appelerGradioApi('bvmt_login', {
+        email: document.getElementById('logEmail').value,
+        pass: document.getElementById('logPass').value
+      });
+      if (d.ok) {
+        sessionStorage.setItem(CLE_TK, d.token);
+        document.getElementById('portailAccueilOverlay').style.display = 'none';
+        location.reload();
+      } else { setMsg(d.err || 'Identifiants invalides.', false); }
+    } catch (ex) { setMsg('Erreur : ' + ex.message, false); }
+    btn.disabled = false;
+    return false;
+  };
+
+  window.__actionRegister = async function(e) {
+    e.preventDefault();
+    setMsg('', true);
+    const p1 = document.getElementById('subPass1').value;
+    const p2 = document.getElementById('subPass2').value;
+    if (p1 !== p2) { setMsg('Les deux mots de passe ne correspondent pas.', false); return false; }
+    const email = document.getElementById('subEmail').value.trim();
+    const btn = document.getElementById('btnDoSub');
+    btn.disabled = true; btn.textContent = 'Envoi du code en cours...';
+    try {
+      const d = await appelerGradioApi('bvmt_register', {
+        nom: document.getElementById('subNom').value,
+        email: email,
+        pass: p1
+      });
+      if (d.ok) {
+        pendingEmail = email;
+        document.getElementById('paneSub').style.display = 'none';
+        document.getElementById('paneVerify').style.display = 'block';
+        setMsg(d.msg || 'Code envoyé par e-mail.', true);
+      } else { setMsg(d.err || 'Impossible de créer le compte.', false); }
+    } catch (ex) { setMsg('Erreur : ' + ex.message, false); }
+    btn.disabled = false; btn.textContent = '📩 Recevoir le code de validation';
+    return false;
+  };
+
+  window.__actionVerify = async function(e) {
+    e.preventDefault();
+    setMsg('', true);
+    const btn = document.getElementById('btnDoVerify');
+    btn.disabled = true;
+    try {
+      const d = await appelerGradioApi('bvmt_verify', {
+        email: pendingEmail,
+        code: document.getElementById('verCode').value
+      });
+      if (d.ok) {
+        sessionStorage.setItem(CLE_TK, d.token);
+        document.getElementById('portailAccueilOverlay').style.display = 'none';
+        location.reload();
+      } else { setMsg(d.err || 'Code invalide.', false); }
+    } catch (ex) { setMsg('Erreur : ' + ex.message, false); }
+    btn.disabled = false;
+    return false;
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (sessionStorage.getItem(CLE_TK)) {
+      const ov = document.getElementById('portailAccueilOverlay');
+      if (ov) ov.style.display = 'none';
+    }
+    const tb = document.querySelector('.topbar');
+    if (tb && !document.getElementById('btnLogoutStation')) {
+      const bOut = document.createElement('button');
+      bOut.id = 'btnLogoutStation';
+      bOut.className = 'btn-action';
+      bOut.style.cssText = 'border-color:#FF4D4D;color:#FF4D4D;margin-left:auto;';
+      bOut.textContent = '🔒 Déconnexion';
+      bOut.onclick = () => { sessionStorage.removeItem(CLE_TK); location.reload(); };
+      tb.appendChild(bOut);
+    }
+  });
+})();
+</script>
 
 <div class="topbar">
   <span class="ticker-title" id="lblTicker">MODE PORTABLE</span>
@@ -1440,7 +2061,7 @@ async function rafraichirFluxLive(forcer = false) {
   if (!dirHandleLive && !timerSimulLive && window.location.protocol.startsWith('http')) {
     dirHandleLive = {
       values: async function* () {
-        const rL = await fetch('/api/index', { cache: 'no-store' });
+        const rL = await fetch('/bvmt_api/index', { cache: 'no-store' });
         const dL = await rL.json();
         window.__srvUrlVerifiee = dL.url || '';
         if (dL.audit && window.__logDiag && !window.__auditLogged) { window.__auditLogged = true; window.__logDiag('AUDIT_CSV', 'Auto-réparation au démarrage : ' + dL.audit); }
@@ -1456,7 +2077,7 @@ async function rafraichirFluxLive(forcer = false) {
   if (!dirHandleLive && !timerSimulLive && window.location.protocol.startsWith('http')) {
     dirHandleLive = {
       values: async function* () {
-        const rL = await fetch('/api/index', { cache: 'no-store' });
+        const rL = await fetch('/bvmt_api/index', { cache: 'no-store' });
         const dL = await rL.json();
         window.__srvUrlVerifiee = dL.url || '';
         if (dL.audit && window.__logDiag && !window.__auditLogged) { window.__auditLogged = true; window.__logDiag('AUDIT_CSV', 'Auto-réparation au démarrage : ' + dL.audit); }
@@ -1989,7 +2610,7 @@ window.onresize = () => { chart.resize(); if (document.getElementById('selHorizo
 async function demarrageAutomatiqueHttp() {
   if (!window.location.protocol.startsWith('http')) return;
   try {
-    const r = await fetch('/api/index' + (document.getElementById('selHorizon')?.value === 'LIVE' ? '?live=1' : ''));
+    const r = await fetch('/bvmt_api/index' + (document.getElementById('selHorizon')?.value === 'LIVE' ? '?live=1' : ''));
     if (!r.ok) return;
     const idx = await r.json();
 
@@ -1998,7 +2619,7 @@ async function demarrageAutomatiqueHttp() {
       kind: 'file',
       name: nom,
       getFile: async () => {
-        const resp = await fetch('/files/' + cheminRel + '?t=' + Date.now());
+        const resp = await fetch('/bvmt_api/files/' + cheminRel + '?t=' + Date.now());
         const txt = await resp.text();
         return { name: nom, lastModified: mtime, size: txt.length, text: async () => txt };
       }
@@ -2101,5 +2722,42 @@ window.addEventListener('load', () => {
   [100, 400, 1000].forEach(ms => setTimeout(() => { if (typeof chart !== 'undefined' && chart) chart.resize(); }, ms));
 });
 </script>
+<!-- CH_MOBILE_JS_START -->
+<script>
+(function() {
+  function initModeMobile() {
+    const tickerEl = document.getElementById("selTicker");
+    if (!tickerEl || document.getElementById("chMobileToggleBtn")) return;
+
+    const topContainer = tickerEl.parentElement;
+    if (!topContainer) return;
+
+    // Création du bouton d'ouverture/fermeture des contrôles sur smartphone
+    const btn = document.createElement("button");
+    btn.id = "chMobileToggleBtn";
+    btn.type = "button";
+    btn.textContent = "⚙️ Outils";
+    btn.onclick = function() {
+      const ouvert = document.body.classList.toggle("ch-mobile-menu-open");
+      btn.textContent = ouvert ? "✖ Fermer" : "⚙️ Outils";
+      // Déclencher un redimensionnement propre du canvas après ouverture/fermeture
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 260);
+    };
+    topContainer.insertBefore(btn, topContainer.firstChild);
+
+    // Adaptation automatique lors de la rotation portrait <-> paysage sur Android / iPhone
+    window.addEventListener("orientationchange", () => {
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initModeMobile);
+  } else {
+    initModeMobile();
+  }
+})();
+</script>
+<!-- CH_MOBILE_JS_END -->
 </body>
 </html>
