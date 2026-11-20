@@ -472,6 +472,19 @@ body.theme-clair .statusbar {
       z-index: 100002 !important;
     }
 
+    #chMobControls select {
+      background: rgba(15, 23, 42, 0.82) !important;
+      backdrop-filter: blur(4px);
+      color: #FFD700 !important;
+      border: 1px solid rgba(255, 215, 0, 0.55) !important;
+      border-radius: 5px !important;
+      padding: 2px 6px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      min-height: 24px !important;
+      max-width: 135px !important;
+      cursor: pointer;
+    }
     #chMobControls button {
       background: rgba(15, 23, 42, 0.78) !important;
       backdrop-filter: blur(4px);
@@ -2897,8 +2910,34 @@ window.addEventListener('load', () => {
       setTimeout(synchroniserCanvas, 250);
     });
 
+    const selMobTicker = document.createElement("select");
+    selMobTicker.id = "chMobTickerSel";
+    selMobTicker.title = "Choix de valeur à afficher";
+
+    const origTicker = document.getElementById("selTicker");
+    if (origTicker) {
+      const syncOptions = () => {
+        selMobTicker.innerHTML = origTicker.innerHTML;
+        selMobTicker.value = origTicker.value;
+      };
+      syncOptions();
+
+      // Observer tout chargement/mise à jour de la liste des valeurs
+      new MutationObserver(syncOptions).observe(origTicker, { childList: true, subtree: true });
+
+      // Synchronisation bidirectionnelle lors d'un changement de valeur
+      selMobTicker.onchange = () => {
+        origTicker.value = selMobTicker.value;
+        origTicker.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      origTicker.addEventListener("change", () => {
+        if (selMobTicker.value !== origTicker.value) selMobTicker.value = origTicker.value;
+      });
+    }
+
     bar.appendChild(btnMenu);
     bar.appendChild(btnFull);
+    bar.appendChild(selMobTicker);
     document.body.appendChild(backdrop);
     document.body.appendChild(bar);
 
