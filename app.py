@@ -1699,14 +1699,14 @@ def sync_github_cloud():
     global _LAST_GH_SYNC
     tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
     repo = os.environ.get("GH_REPO", "").strip() or globals().get("GH_REPO", "").strip()
+    # Nettoyer GH_REPO au cas où il contiendrait une URL complète
+    repo = repo.replace("https://github.com", "").replace("http://github.com", "").strip("/")
     if not tk or not repo:
-        if not getattr(sync_github_cloud, "_warn_missing", False):
-            sync_github_cloud._warn_missing = True
-            print("[⚠️ GITHUB-SYNC] Secrets GH_TOKEN ou GH_REPO manquants dans Hugging Face !", flush=True)
         return
     if (time.time() - _LAST_GH_SYNC) < 120:
         return
     _LAST_GH_SYNC = time.time()
+    date_jour = datetime.datetime.now().strftime("%d%m%Y")
     headers = {
         "Authorization": f"Bearer {tk}",
         "Accept": "application/vnd.github+json",
@@ -1716,13 +1716,13 @@ def sync_github_cloud():
     for root, _, files in os.walk(_HIST_DIR):
         if "Backup" in root: continue
         for fn in files:
-            if not fn.endswith(".csv"): continue
+            # Synchroniser uniquement le fichier de la séance du jour (évite de repousser les 38 archives)
+            if not fn.endswith(".csv") or date_jour not in fn:
+                continue
             fp = os.path.join(root, fn)
-            # Synchroniser tout fichier créé ou modifié dans les dernières 24h (86400s)
-            if (time.time() - os.path.getmtime(fp)) > 86400: continue
             rel = "Historique/" + os.path.relpath(fp, _HIST_DIR).replace("\\", "/")
+            api_url = f"https://github.com{repo}/contents/{rel}"
             try:
-                api_url = "https://" + f"://github.com{repo}/contents/{rel}"
                 sha = None
                 try:
                     with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=10) as r:
@@ -1736,7 +1736,7 @@ def sync_github_cloud():
                 urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
                 print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
             except Exception as ex_gh:
-                print(f"[⚠️ GITHUB-SYNC-ERR] {rel} : {ex_gh}", flush=True)
+                print(f"[⚠️ GITHUB-SYNC-ERR] ({api_url}) : {ex_gh}", flush=True)
 
 def boucle_synchro_github():
     time.sleep(10)
