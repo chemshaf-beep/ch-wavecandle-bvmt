@@ -1,1 +1,4 @@
 ﻿spaces
+gradio
+fastapi
+uvicorn
