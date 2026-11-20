@@ -19,7 +19,7 @@ window.CH_DisqueLocal = (function() {
 
   function majBadge() {
     const el = document.getElementById("chCacheBadge");
-    if (el) el.textContent = "💾 Disque local : " + hits + " lus | " + dls + " téléchargés" + (userDir ? " [" + userDir.name + "]" : "");
+    if (el) el.textContent = "▣ Disque local : " + hits + " lus | " + dls + " téléchargés" + (userDir ? " [" + userDir.name + "]" : "");
   }
 
   // Persistance du handle de dossier PC dans IndexedDB
@@ -194,7 +194,7 @@ window.CH_DisqueLocal = (function() {
     bar.id = "chCacheBarWrap"; bar.style.cssText = "display:inline-flex;gap:6px;align-items:center;background:#0f172a;border:1px solid #334155;border-radius:4px;padding:1px 8px;font-family:monospace;font-size:11px;color:#94a3b8;margin:0 10px;";
     const span = document.createElement("span");
     span.id = "chCacheBadge";
-    span.textContent = "💾 Disque local : prêt" + (userDir ? " [" + userDir.name + "]" : "");
+    span.textContent = "▣ Disque local : prêt" + (userDir ? " [" + userDir.name + "]" : "");
     const btn = document.createElement("button");
     btn.textContent = userDir ? "📂 " + userDir.name : "📂 Dossier PC";
     if (userDir) { btn.style.color = "#4ade80"; btn.style.borderColor = "#4ade80"; }
@@ -723,6 +723,11 @@ body.theme-clair .statusbar {
     transition: all 0.15s ease !important;
   }
 
+  body.theme-clair #btnToggleTheme, body.light-mode #btnToggleTheme {
+    background: #1E293B !important;
+    color: #F8FAFC !important;
+    border-color: #0F172A !important;
+  }
   body.theme-clair .btn-action:hover, body.light-mode .btn-action:hover {
     background: #0284C7 !important;
     color: #FFFFFF !important;
@@ -1372,7 +1377,7 @@ function detecterCentreCamembert(pointsPrix, prixMin, prixMax) {
         }
       }
       // Legere preference pour les bords (droite/gauche) a score de collision egal
-      const penaliteCentre = (c.xNorm > 0.25 && c.xNorm < 0.70 ? 0.12 : 0) + (r.yNorm < 0.40 ? 0.05 : 0);
+      const penaliteCentre = (c.xNorm > 0.35 && c.xNorm < 0.65 ? 0.03 : 0);
       const scoreTotal = scoreCollision + penaliteCentre;
 
       if (scoreTotal < meilleurScore) {
@@ -1431,8 +1436,8 @@ function creerElementAgressivite(posPct, st) {
     z: 130,
     silent: true,
     children: [
-      { id: 'pieTxtTop', type: 'text', style: { text: txtTitre, x: cx, y: yTop, fill: isClair ? '#B8860B' : '#FFD700', font: 'bold 11px Consolas', textAlign: 'center', textVerticalAlign: 'top' } },
-      { id: 'pieTxtBot', type: 'text', style: { text: agr.texte, x: cx, y: yBot, fill: agr.couleur, font: 'bold 11px Consolas', textAlign: 'center', textVerticalAlign: 'top' } }
+      { id: 'pieTxtTop', type: 'text', style: { text: txtTitre, x: cx, y: yTop, fill: isClair ? '#92400E' : '#FFD700', textBorderColor: isClair ? '#F8FAFC' : '#0A0A0A', textBorderWidth: 3, font: 'bold 11.5px Consolas', textAlign: 'center', textVerticalAlign: 'top' } },
+      { id: 'pieTxtBot', type: 'text', style: { text: agr.texte, x: cx, y: yBot, fill: isClair ? (agr.couleur === '#80FFAA' || agr.couleur === '#047857' ? '#047857' : (agr.couleur === '#FF8A8A' || agr.couleur === '#DC2626' ? '#B91C1C' : '#92400E')) : agr.couleur, textBorderColor: isClair ? '#F8FAFC' : '#0A0A0A', textBorderWidth: 3, font: 'bold 11.5px Consolas', textAlign: 'center', textVerticalAlign: 'top' } }
     ]
   };
 }
@@ -3761,8 +3766,8 @@ window.addEventListener('load', () => {
     if (typeof col !== "string") return col;
     const c = col.trim().toUpperCase();
     // Remplacer les couleurs fluo du mode sombre par leurs équivalents ergonomiques haute lisibilité sur fond clair
-    if (c === "#00FF66" || c === "#80FFAA" || c === "#2E7D32") return "#059669"; // Émeraude soutenu
-    if (c === "#FF3B3B" || c === "#FF8A8A" || c === "#FF5252") return "#DC2626"; // Carmin net
+    if (c === "#00FF66" || c === "#80FFAA" || c === "#2E7D32" || c === "#00E676") return "#047857"; // Émeraude soutenu
+    if (c === "#FF3B3B" || c === "#FF8A8A" || c === "#FF5252" || c === "#FF1744") return "#B91C1C"; // Carmin net
     if (c === "#FFD700" || c === "#FFC107") return "#B45309";                    // Ambre bronze lisible
     if (c === "#00E5FF" || c === "#38BDF8") return "#0284C7";                    // Bleu saphir
     if (c === "#0A0A0A" || c === "#121212" || c === "#0E0E0E") return "#F8FAFC"; // Fond perle doux
