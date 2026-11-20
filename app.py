@@ -1,8 +1,15 @@
+import shutil
+import tempfile
+import os, time
+os.environ["TZ"] = "Africa/Tunis"
+if hasattr(time, "tzset"):
+    try: time.tzset()
+    except Exception: pass
+import gzip
+import os, time
+os.environ['TZ'] = 'Africa/Tunis'
 try:
-    import spaces
-    @spaces.GPU
-    def _hf_zerogpu_keepalive():
-        return True
+    time.tzset()
 except Exception:
     pass
 # ==============================================================================
@@ -1418,15 +1425,31 @@ def boucle_background_aspiration_falcon():
             else:
                 # --- MARCHE REEL LIVE : Interrogation OLE du serveur Falcon avec Timeout assoupli ---
                 # Le passage à timeout=3.0 permet d absorber le retard de handshake à l allumage
-                reponse = requests.get(URL_API, verify=False, timeout=3.0)
+                hdrs_sbe = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                    "Accept": "text/plain, text/html, */*",
+                    "Cache-Control": "no-cache"
+                }
+                reponse = requests.get(URL_API, headers=hdrs_sbe, verify=False, timeout=10.0)
                 if reponse.status_code == 200:
                     reponse.encoding = 'latin1'
                     with VERROU_PARTAGE_THREAD:
                         BUFFER_TEXTE_RESEAU_FALCON = reponse.text
-                time.sleep(0.02)
+                    if not hasattr(boucle_background_aspiration_falcon, "_ok_logged"):
+                        boucle_background_aspiration_falcon._ok_logged = True
+                        print(f"[✅ SBE-LIVE] Flux MAC SA connecté ({len(reponse.text)} octets reçus).", flush=True)
+                else:
+                    now_t = time.time()
+                    if now_t - getattr(boucle_background_aspiration_falcon, "_last_err_t", 0) > 15:
+                        boucle_background_aspiration_falcon._last_err_t = now_t
+                        print(f"[⚠️ SBE-HTTP] Statut {reponse.status_code} depuis {URL_API}", flush=True)
+                time.sleep(0.05)
         except Exception as e_net:
-            # En cas d échec, on maintient le buffer pour ne pas paralyser le Quartz principal
-            time.sleep(0.05)
+            now_t = time.time()
+            if now_t - getattr(boucle_background_aspiration_falcon, "_last_err_t", 0) > 15:
+                boucle_background_aspiration_falcon._last_err_t = now_t
+                print(f"[❌ SBE-NET-ERR] Échec connexion {URL_API} : {e_net}", flush=True)
+            time.sleep(0.2)
 
 def executer_requete_sbe_marche_live():
     global BUFFER_TEXTE_RESEAU_FALCON, VERROU_PARTAGE_THREAD
@@ -1674,34 +1697,51 @@ _LAST_GH_SYNC = 0.0
 
 def sync_github_cloud():
     global _LAST_GH_SYNC
-    if not GH_TOKEN or not GH_REPO or (time.time() - _LAST_GH_SYNC) < 120:
+    tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
+    repo = os.environ.get("GH_REPO", "").strip() or globals().get("GH_REPO", "").strip()
+    if not tk or not repo:
+        if not getattr(sync_github_cloud, "_warn_missing", False):
+            sync_github_cloud._warn_missing = True
+            print("[⚠️ GITHUB-SYNC] Secrets GH_TOKEN ou GH_REPO manquants dans Hugging Face !", flush=True)
+        return
+    if (time.time() - _LAST_GH_SYNC) < 120:
         return
     _LAST_GH_SYNC = time.time()
-    headers = {"Authorization": f"Bearer {GH_TOKEN}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT"}
-    for root, _, files in os.walk(ARCHIVE_DIR):
+    headers = {
+        "Authorization": f"Bearer {tk}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "CH-WaveCandle-HFT",
+        "Content-Type": "application/json"
+    }
+    for root, _, files in os.walk(_HIST_DIR):
         if "Backup" in root: continue
         for fn in files:
             if not fn.endswith(".csv"): continue
             fp = os.path.join(root, fn)
-            if (time.time() - os.path.getmtime(fp)) > 300: continue
-            rel = "Historique/" + os.path.relpath(fp, ARCHIVE_DIR).replace("\\", "/")
+            # Synchroniser tout fichier créé ou modifié dans les dernières 24h (86400s)
+            if (time.time() - os.path.getmtime(fp)) > 86400: continue
+            rel = "Historique/" + os.path.relpath(fp, _HIST_DIR).replace("\\", "/")
             try:
-                api_url = f"https://github.com{GH_REPO}/contents/{rel}"
+                api_url = "https://" + f"://github.com{repo}/contents/{rel}"
                 sha = None
                 try:
-                    with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=8) as r:
+                    with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=10) as r:
                         sha = json.loads(r.read().decode("utf-8")).get("sha")
-                except Exception:
-                    pass
+                except urllib.error.HTTPError as he:
+                    if he.code != 404: raise
                 with open(fp, "rb") as f:
                     b64 = base64.b64encode(f.read()).decode("ascii")
                 payload = {"message": f"Auto-save BVMT {rel}", "content": b64}
                 if sha: payload["sha"] = sha
-                urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=12).read()
-            except Exception:
-                pass
+                urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
+                print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
+            except Exception as ex_gh:
+                print(f"[⚠️ GITHUB-SYNC-ERR] {rel} : {ex_gh}", flush=True)
 
 def boucle_synchro_github():
+    time.sleep(10)
+    try: sync_github_cloud()
+    except Exception: pass
     while True:
         time.sleep(60)
         try: sync_github_cloud()
@@ -1717,7 +1757,7 @@ class HandlerStationCloud(BaseHTTPRequestHandler):
             self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.end_headers(); self.wfile.write(data)
         elif p == "/api/index":
             hf = []
-            for root, _, files in os.walk(ARCHIVE_DIR):
+            for root, _, files in os.walk(_HIST_DIR):
                 if "Backup" in root: continue
                 for fn in files:
                     if fn.endswith(".csv"):
@@ -1728,7 +1768,7 @@ class HandlerStationCloud(BaseHTTPRequestHandler):
                     fp = os.path.join(TEMP_DIR, fn)
                     if os.path.isfile(fp):
                         lf.append({"Name": fn, "Length": os.path.getsize(fp), "Mtime": int(os.path.getmtime(fp) * 1000)})
-            body = json.dumps({"hist": sorted(hf), "live": lf, "py": True, "url": URL_SBE, "err": ""}).encode("utf-8")
+            body = json.dumps({"hist": sorted(hf), "live": lf, "py": True, "url": globals().get("URL_SBE", "https://macsa.com.tn"), "err": ""}).encode("utf-8")
             self.send_response(200); self.send_header("Content-Type", "application/json; charset=utf-8"); self.end_headers(); self.wfile.write(body)
         elif p.startswith("/files/"):
             rel = unquote(p[7:]).replace("/", os.sep)
@@ -1753,7 +1793,10 @@ def lancer_collecteur_bvmt():
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001 | 0x00000040)
         print("[*] 🛡️ SCELLAGE MATÉRIEL : Windows Execution State verrouillé en mode Turbo Éveillé.")
     
-    signal.signal(signal.SIGINT, declencher_coupe_circuit_operateur)
+    try:
+        signal.signal(signal.SIGINT, declencher_coupe_circuit_operateur)
+    except ValueError:
+        pass
     print("\n================================================================================")
     print("[*] 🚀 Station quantitative globale MAC SA allumée [MOTEUR SBE DIRECT LIVE]")
     print(f"[*] 📂 Base de données d'activité active : {FICHIER_HISTO_SEANCE}")
@@ -1888,6 +1931,16 @@ def lancer_collecteur_bvmt():
             
             # Exécution du moteur d'analyse principal
             recuperer_et_analyser()
+            if MODE_PRODUCTION and os.path.exists(FICHIER_HISTO_RAMDISK) and (time.time() - getattr(lancer_collecteur_bvmt, "_last_hist_sync", 0) >= 2.0):
+                lancer_collecteur_bvmt._last_hist_sync = time.time()
+                try:
+                    if not os.path.exists(FICHIER_HISTO_SEANCE) or os.path.getsize(FICHIER_HISTO_RAMDISK) != os.path.getsize(FICHIER_HISTO_SEANCE):
+                        os.makedirs(os.path.dirname(FICHIER_HISTO_SEANCE), exist_ok=True)
+                        tmp_dest = FICHIER_HISTO_SEANCE + ".tmp"
+                        shutil.copy2(FICHIER_HISTO_RAMDISK, tmp_dest)
+                        os.replace(tmp_dest, FICHIER_HISTO_SEANCE)
+                except Exception:
+                    pass
             
             # Affichage console synchronisé
             if not est_jour_ouvre_courant and MODE_PRODUCTION:
@@ -1910,7 +1963,354 @@ def lancer_collecteur_bvmt():
 
 
 
+import traceback
+import spaces, gradio as gr
+
+@spaces.GPU
+def _hf_gpu_ping():
+    return "OK"
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_HIST_DIR = os.path.join(_BASE_DIR, "Historique")
+_CACHE_DIR = os.path.join(_BASE_DIR, "Cache_Live")
+_INDEX_FILE = os.path.join(_BASE_DIR, "index.json")
+os.makedirs(_HIST_DIR, exist_ok=True)
+os.makedirs(_CACHE_DIR, exist_ok=True)
+
+_DIAG_PY = []
+def log_diag_py(tag, msg):
+    h_tunis = datetime.datetime.now().strftime("%H:%M:%S")
+    entry = f"[{h_tunis}] [{tag}] {msg}"
+    _DIAG_PY.append(entry)
+    if len(_DIAG_PY) > 50:
+        _DIAG_PY.pop(0)
+
+def _generer_index_et_whitelist():
+    hf = []
+    fichiers_autorises = [os.path.join(_BASE_DIR, "CH-WaveCandle.html"), _INDEX_FILE]
+    for root, _, files in os.walk(_HIST_DIR):
+        if "Backup" in root: continue
+        for fn in files:
+            if fn.endswith(".csv"):
+                full_p = os.path.join(root, fn)
+                fichiers_autorises.append(full_p)
+                hf.append(os.path.relpath(full_p, _HIST_DIR).replace("\\", "/"))
+    lf = []
+    if os.path.exists(_CACHE_DIR):
+        for fn in os.listdir(_CACHE_DIR):
+            fp = os.path.join(_CACHE_DIR, fn)
+            if os.path.isfile(fp) and fn != "index.json":
+                fichiers_autorises.append(fp)
+                lf.append({"Name": fn, "Length": os.path.getsize(fp), "Mtime": int(os.path.getmtime(fp) * 1000)})
+    payload = {
+        "base": _BASE_DIR.replace("\\", "/"),
+        "hist": sorted(hf),
+        "live": lf,
+        "py": True,
+        "url": globals().get("URL_SBE", "https://macsa.com.tn"),
+        "err": _DIAG_PY[-1] if _DIAG_PY else "",
+        "diag": list(_DIAG_PY),
+        "gh_ok": bool(GH_TOKEN and GH_REPO)
+    }
+    with open(_INDEX_FILE, "w", encoding="utf-8") as f:
+        f.write(json.dumps(payload))
+    gr.set_static_paths(paths=fichiers_autorises)
+
+# Exécuter avant le lancement pour que index.json et tous les CSV soient whitelistes dans Gradio
+_generer_index_et_whitelist()
+
+def _boucle_index_cloud():
+    while True:
+        try:
+            _generer_index_et_whitelist()
+        except Exception as ex:
+            log_diag_py("INDEX_LOOP_ERR", str(ex))
+        time.sleep(1.5)
+
+import hashlib, random, smtplib
+from email.message import EmailMessage
+import hashlib, random, smtplib
+from email.message import EmailMessage
+
+_USERS_FILE = os.path.join(_BASE_DIR, "users_db.json")
+_TOKENS_ACTIFS = {}
+_PENDING_OTP = {}
+
+import urllib.request, urllib.error
+def _get_users_repo():
+    return os.environ.get("GH_USERS_REPO", "").strip() or globals().get("GH_REPO", "").strip()
+
+def _pull_users_github():
+    repo = _get_users_repo()
+    tk = globals().get("GH_TOKEN", "").strip()
+    if not tk or not repo: return
+    api_url = f"https://github.com{repo}/contents/users_db.json"
+    headers = {
+        "Authorization": f"Bearer {tk}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "CH-WaveCandle-HFT"
+    }
+    try:
+        req = urllib.request.Request(api_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            info = json.loads(resp.read().decode("utf-8"))
+            raw_content = base64.b64decode(info["content"]).decode("utf-8")
+            with open(_USERS_FILE, "w", encoding="utf-8") as f:
+                f.write(raw_content)
+    except urllib.error.HTTPError as he:
+        if he.code != 404:
+            log_diag_py("GH_PULL_USERS_HTTP", f"HTTP {he.code}")
+    except Exception as ex:
+        log_diag_py("GH_PULL_USERS_ERR", str(ex))
+
+def _push_users_github():
+    repo = _get_users_repo()
+    tk = globals().get("GH_TOKEN", "").strip()
+    if not tk or not repo or not os.path.exists(_USERS_FILE): return
+    api_url = f"https://github.com{repo}/contents/users_db.json"
+    headers = {
+        "Authorization": f"Bearer {tk}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "CH-WaveCandle-HFT",
+        "Content-Type": "application/json"
+    }
+    try:
+        sha = None
+        try:
+            req_get = urllib.request.Request(api_url, headers=headers)
+            with urllib.request.urlopen(req_get, timeout=10) as r_get:
+                sha = json.loads(r_get.read().decode("utf-8")).get("sha")
+        except urllib.error.HTTPError as he:
+            if he.code != 404: raise
+        with open(_USERS_FILE, "rb") as f:
+            b64_data = base64.b64encode(f.read()).decode("ascii")
+        payload = {"message": "Sync users_db.json", "content": b64_data}
+        if sha: payload["sha"] = sha
+        req_put = urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT")
+        urllib.request.urlopen(req_put, timeout=12).read()
+    except Exception as ex:
+        log_diag_py("GH_PUSH_USERS_ERR", str(ex))
+
+def _charger_users():
+    if not os.path.exists(_USERS_FILE):
+        _pull_users_github()
+    if os.path.exists(_USERS_FILE):
+        try:
+            with open(_USERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"users": {}}
+
+def _sauver_users(db_obj):
+    with open(_USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(db_obj, f, indent=2, ensure_ascii=False)
+    threading.Thread(target=_push_users_github, daemon=True).start()
+
+def _hash_pwd(email: str, pwd: str):
+    salt = os.urandom(16).hex()
+    dk = hashlib.pbkdf2_hmac("sha256", pwd.encode("utf-8"), salt.encode("utf-8"), 100000).hex()
+    return f"pbkdf2_sha256${salt}${dk}"
+
+def _verifier_pwd(email: str, pwd: str, stored_hash: str):
+    if not stored_hash:
+        return False
+    if stored_hash.startswith("pbkdf2_sha256$"):
+        parts = stored_hash.split("$")
+        if len(parts) != 3:
+            return False
+        _, salt, expected_dk = parts
+        dk = hashlib.pbkdf2_hmac("sha256", pwd.encode("utf-8"), salt.encode("utf-8"), 100000).hex()
+        return (lambda a, b: len(a) == len(b) and sum(ord(x) ^ ord(y) for x, y in zip(a, b)) == 0)(dk, expected_dk)
+    # Rétrocompatibilité avec les anciens comptes SHA-256
+    legacy = hashlib.sha256(f"{email.lower().strip()}:{pwd}:BVMT_SALT_2026".encode("utf-8")).hexdigest()
+    return (lambda a, b: len(a) == len(b) and sum(ord(x) ^ ord(y) for x, y in zip(a, b)) == 0)(legacy, stored_hash)
+
+def _envoyer_code_mail(dest_email: str, code_otp: str):
+    sujet = f"[{code_otp}] Code de validation CH-WaveCandle HFT"
+    corps = f"Bienvenue sur la station CH-WaveCandle HFT (Bourse de Tunis).\n\nVotre code de validation à 6 chiffres est : {code_otp}\n\nCe code est valable 15 minutes."
+    webhook = os.environ.get("MAIL_WEBHOOK_URL", "").strip()
+    if webhook:
+        try:
+            req = urllib.request.Request(
+                webhook,
+                data=json.dumps({"to": dest_email, "subject": sujet, "body": corps}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "CH-WaveCandle-HFT"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                rep_txt = resp.read().decode("utf-8", errors="replace")
+                if resp.status in (200, 201, 202, 302) and "ServiceLogin" not in rep_txt:
+                    return True, ""
+                return False, "Webhook Google Apps Script non autorisé (vérifiez accès : Tout le monde)."
+        except Exception as ex:
+            return False, f"Webhook Mail : {ex}"
+
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not api_key:
+        return False, "Configurez MAIL_WEBHOOK_URL (Google Apps Script) ou RESEND_API_KEY."
+    expediteur = os.environ.get("RESEND_FROM", "CH-WaveCandle BVMT <onboarding@resend.dev>").strip()
+    try:
+        payload = {"from": expediteur, "to": [dest_email], "subject": sujet, "text": corps}
+        req = urllib.request.Request(
+            "https://resend.com",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "CH-WaveCandle-HFT"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            return (True, "") if resp.status in (200, 201, 202) else (False, f"HTTP {resp.status}")
+    except urllib.error.HTTPError as he:
+        return False, f"HTTP {he.code} : {he.read().decode('utf-8', errors='replace')}"
+    except Exception as ex:
+        return False, str(ex)
+def _rpc_register(payload_json: str):
+    try:
+        b = json.loads(payload_json)
+        nom = str(b.get("nom", "")).strip()
+        email = str(b.get("email", "")).strip().lower()
+        pwd = str(b.get("pass", ""))
+        if "@" not in email or "." not in email.split("@")[-1]:
+            return json.dumps({"ok": False, "err": "Adresse e-mail invalide."})
+        if len(pwd) < 8 or not any(c.isdigit() for c in pwd) or not any(c.isalpha() for c in pwd):
+            return json.dumps({"ok": False, "err": "Mot de passe : 8 caractères min. avec lettres et chiffres."})
+        db = _charger_users()
+        if email in db and db[email].get("verified"):
+            return json.dumps({"ok": False, "err": "Cet e-mail est déjà inscrit. Connectez-vous."})
+        otp = f"{random.randint(100000, 999999)}"
+        _PENDING_OTP[email] = {
+            "otp": otp, "exp": time.time() + 900, "nom": nom,
+            "hash": _hash_pwd(email, pwd),
+            "date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        }
+        ok_mail, err_mail = _envoyer_code_mail(email, otp)
+        if not ok_mail:
+            return json.dumps({"ok": False, "err": f"Échec envoi e-mail : {err_mail}"})
+        return json.dumps({"ok": True, "msg": f"Code envoyé à {email}"})
+    except Exception as ex:
+        return json.dumps({"ok": False, "err": str(ex)})
+
+def _rpc_verify(payload_json: str):
+    try:
+        b = json.loads(payload_json)
+        email = str(b.get("email", "")).strip().lower()
+        code_saisi = str(b.get("code", "")).strip()
+        pend = _PENDING_OTP.get(email)
+        if not pend or time.time() > pend["exp"]:
+            return json.dumps({"ok": False, "err": "Code expiré ou inexistant. Recommencez."})
+        if code_saisi != pend["otp"]:
+            return json.dumps({"ok": False, "err": "Code à 6 chiffres incorrect."})
+        db = _charger_users()
+        db[email] = {
+            "nom": pend["nom"], "hash": pend["hash"],
+            "verified": True, "plan": "ACTIF", "inscrit_le": pend["date"]
+        }
+        _sauver_users(db)
+        del _PENDING_OTP[email]
+        tk = hashlib.sha256(f"{email}:{time.time()}:CH_SESSION".encode("utf-8")).hexdigest()[:32]
+        _TOKENS_ACTIFS[tk] = email
+        return json.dumps({"ok": True, "token": tk, "user": pend["nom"] or email})
+    except Exception as ex:
+        return json.dumps({"ok": False, "err": str(ex)})
+
+def _rpc_login(payload_json: str):
+    try:
+        b = json.loads(payload_json)
+        email = str(b.get("email", "")).strip().lower()
+        pwd = str(b.get("pass", ""))
+        db = _charger_users()
+        u = db.get(email)
+        if u and u.get("verified") and _verifier_pwd(email, pwd, u.get("hash", "")):
+            tk = hashlib.sha256(f"{email}:{time.time()}:CH_SESSION".encode("utf-8")).hexdigest()[:32]
+            _TOKENS_ACTIFS[tk] = email
+            return json.dumps({"ok": True, "token": tk, "user": u.get("nom") or email})
+        return json.dumps({"ok": False, "err": "E-mail ou mot de passe incorrect."})
+    except Exception as ex:
+        return json.dumps({"ok": False, "err": str(ex)})
+
+def _get_live_dirs():
+    dirs = []
+    for d in [globals().get("REPERTOIRE_JSON"), "/dev/shm/Bourse_MACSA_Cache", globals().get("_CACHE_DIR"), os.path.join(tempfile.gettempdir(), "Bourse_MACSA_Cache")]:
+        if d and os.path.exists(d) and d not in dirs:
+            dirs.append(d)
+    return dirs
+
+def _construire_index():
+    hf, hmeta = [], {}
+    for root, _, files in os.walk(_HIST_DIR):
+        if "Backup" in root: continue
+        for fn in files:
+            if fn.endswith(".csv"):
+                fp = os.path.join(root, fn)
+                rel = os.path.relpath(fp, _HIST_DIR).replace("\\", "/")
+                hf.append(rel)
+                hmeta[rel] = {"size": os.path.getsize(fp), "mtime": int(os.path.getmtime(fp) * 1000)}
+    lf = []
+    vus = set()
+    date_jour = datetime.datetime.now().strftime("%d%m%Y")
+    for live_dir in _get_live_dirs():
+        for fn in os.listdir(live_dir):
+            fp = os.path.join(live_dir, fn)
+            if not os.path.isfile(fp) or fn == "index.json" or fn in vus:
+                continue
+            if fn.startswith("temp_bourse_historique_") and date_jour not in fn:
+                try: os.remove(fp)
+                except Exception: pass
+                continue
+            vus.add(fn)
+            lf.append({
+                "Name": fn,
+                "Length": os.path.getsize(fp),
+                "Mtime": int(os.path.getmtime(fp) * 1000)
+            })
+    lf.sort(key=lambda x: x["Mtime"], reverse=True)
+    return {
+        "hist": sorted(hf),
+        "hist_meta": hmeta,
+        "live": lf,
+        "server_date": date_jour,
+        "py": True,
+        "url": globals().get("URL_SBE", "https://macsa.com.tn"),
+        "err": ""
+    }
+
+def _rpc_data(payload_json: str):
+    try:
+        b = json.loads(payload_json)
+        tk = str(b.get("token", ""))
+        if tk not in _TOKENS_ACTIFS:
+            return json.dumps({"status": 401, "err": "Authentification requise"})
+        cmd = str(b.get("cmd", ""))
+        if cmd == "index":
+            return json.dumps({"status": 200, "data": _construire_index()})
+        rel_path = str(b.get("path", "")).lstrip("/")
+        # 1. Lecture stricte depuis _BASE_DIR (inclut Historique/...)
+        fp = os.path.abspath(os.path.join(_BASE_DIR, rel_path.replace("/", os.sep)))
+        if fp.startswith(_BASE_DIR) and os.path.isfile(fp):
+            with open(fp, "r", encoding="utf-8", errors="replace") as f:
+                return json.dumps({"status": 200, "text": f.read()})
+        # 2. Lecture depuis les répertoires temp uniquement pour le mode Live (Cache_Live/ ou temp_...)
+        if "Cache_Live/" in rel_path or os.path.basename(rel_path).startswith("temp_"):
+            fname = os.path.basename(rel_path)
+            for live_dir in _get_live_dirs():
+                cand = os.path.join(live_dir, fname)
+                if os.path.isfile(cand):
+                    with open(cand, "r", encoding="utf-8", errors="replace") as f:
+                        return json.dumps({"status": 200, "text": f.read()})
+        return json.dumps({"status": 404, "text": ""})
+    except Exception as ex:
+        return json.dumps({"status": 500, "err": str(ex)})
+
+with gr.Blocks(title="CH-WaveCandle HFT") as demo:
+    gr.HTML('<iframe src="/gradio_api/file=CH-WaveCandle.html" style="width:100vw;height:100vh;border:none;position:fixed;inset:0;z-index:9999;"></iframe>')
+    gr.Interface(fn=_rpc_register, inputs="text", outputs="text", api_name="bvmt_register", visible=False)
+    gr.Interface(fn=_rpc_verify, inputs="text", outputs="text", api_name="bvmt_verify", visible=False)
+    gr.Interface(fn=_rpc_login, inputs="text", outputs="text", api_name="bvmt_login", visible=False)
+    gr.Interface(fn=_rpc_data, inputs="text", outputs="text", api_name="bvmt_data", visible=False)
+    btn_ping = gr.Button("Ping", visible=False)
+    btn_ping.click(fn=_hf_gpu_ping, inputs=None, outputs=None)
+
 if __name__ == "__main__":
-    threading.Thread(target=demarrer_serveur_web, daemon=True).start()
+    threading.Thread(target=lancer_collecteur_bvmt, daemon=True).start()
     threading.Thread(target=boucle_synchro_github, daemon=True).start()
-    lancer_collecteur_bvmt()﻿
+    demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", "7860")), ssr_mode=False)
