@@ -1243,24 +1243,37 @@ function creerElementAgressivite(posPct, st) {
   const cy = (parseFloat(posPct.at(1)) / 100) * h;
   const rayonPx = Math.min(w, h) * 0.11;
   const agr = infoAgressivite(st);
+  const isClair = typeof estThemeClair === 'function' ? estThemeClair() : false;
+
   const optT = chart.getOption()?.title;
-  const tObj = Array.isArray(optT) ? optT.at(0) : optT;
-  const txtTitre = (tObj && tObj.text) ? tObj.text : (typeof globalData !== 'undefined' && globalData ? 'Séance ' + globalData.date_fr : '');
-  const isClair = document.body.classList.contains('theme-clair');
+  const t0 = Array.isArray(optT) ? optT[0] : optT;
+  if (t0 && t0.text) window._dernierPieTitre = t0.text;
+  const txtTitre = window._dernierPieTitre || (globalData && globalData.date_deb_fr ? `${globalData.date_deb_fr} → ${globalData.date_fin_fr}` : "");
+
+  const yTop = Math.max(6, cy - rayonPx - 20);
+  const yBot = Math.min(h - 22, cy + rayonPx + 8);
   return {
-    id: 'lblAgressivitePie',
+    id: 'grpAgressivitePie',
     type: 'group',
-    z: 120,
+    z: 130,
     silent: true,
     children: [
-      { type: 'text', style: { text: txtTitre, x: cx, y: Math.max(8, cy - rayonPx - 14), fill: isClair ? '#B8860B' : '#FFD700', font: 'bold 11.5px Consolas', textAlign: 'center', textVerticalAlign: 'bottom' } },
-      { type: 'text', style: { text: agr.texte, x: cx, y: Math.min(h - 24, cy + rayonPx + 10), fill: agr.couleur, font: 'bold 11px Consolas', textAlign: 'center', textVerticalAlign: 'top' } }
+      { id: 'pieTxtTop', type: 'text', style: { text: txtTitre, x: cx, y: yTop, fill: isClair ? '#B8860B' : '#FFD700', font: 'bold 11px Consolas', textAlign: 'center', textVerticalAlign: 'top' } },
+      { id: 'pieTxtBot', type: 'text', style: { text: agr.texte, x: cx, y: yBot, fill: agr.couleur, font: 'bold 11px Consolas', textAlign: 'center', textVerticalAlign: 'top' } }
     ]
   };
 }
 function placerLabelAgressivite(posPct, st) {
   const elPie = creerElementAgressivite(posPct, st);
-  if (elPie) chart.setOption({ graphic: [elPie] });
+  if (elPie && chart) {
+    chart.setOption({
+      title: [{ show: false }, { show: false }],
+      graphic: [
+        { id: 'lblAgressivitePie', $action: 'remove' },
+        elPie
+      ]
+    });
+  }
 }
 function _old_placer(posPct, st) {
   const w = chart.getWidth(), h = chart.getHeight();
@@ -1550,7 +1563,7 @@ function dessinerChandeliersMulti(data) {
   const option = {
     backgroundColor: '#0A0A0A',
     animation: false,
-    title: { show: false,  id: 'titreCamembert', text: `${data.date_deb_fr} → ${data.date_fin_fr}`, left: pieAuto.pos[0], top: pieAuto.topTitle, textAlign: 'center', textStyle: { color: '#FFD700', fontSize: 11, fontFamily: 'Consolas', fontWeight: 'bold' } },
+    title: { show: false, id: 'titreCamembert', text: `${data.date_deb_fr} → ${data.date_fin_fr}`, left: pieAuto.pos[0], top: pieAuto.topTitle, textAlign: 'center', textStyle: { color: '#FFD700', fontSize: 11, fontFamily: 'Consolas', fontWeight: 'bold' } },
     grid: { left: 45, right: 92, top: 35, bottom: 62 },
     tooltip: {
       trigger: 'item', z: 999, backgroundColor: 'rgba(18,18,18,0.96)', borderColor: '#444', textStyle: { color: '#FFF', fontFamily: 'Consolas', fontSize: 12 },
@@ -1979,7 +1992,7 @@ function dessinerGraphique(data) {
 
   chart.setOption({
     backgroundColor: '#0A0A0A', animation: false,
-    title: { show: false,  id: 'titreCamembert', text: `Séance ${data.date_fr} (09:00 → 15:00)`, left: pieAutoV.pos[0], top: pieAutoV.topTitle, textAlign: 'center', textStyle: { color: '#FFD700', fontSize: 11, fontFamily: 'Consolas', fontWeight: 'bold' } },
+    title: { show: false, id: 'titreCamembert', text: `Séance ${data.date_fr} (09:00 → 15:00)`, left: pieAutoV.pos[0], top: pieAutoV.topTitle, textAlign: 'center', textStyle: { color: '#FFD700', fontSize: 11, fontFamily: 'Consolas', fontWeight: 'bold' } },
     grid: { left: 45, right: 92, top: 35, bottom: 55 },
     tooltip: {
       trigger: 'item', z: 999, backgroundColor: 'rgba(18,18,18,0.96)', borderColor: '#444', textStyle: { color: '#FFF', fontFamily: 'Consolas', fontSize: 12 },
@@ -2335,9 +2348,11 @@ chart.on('datazoom', () => {
     _dernierPiePos = pieM.pos;
     _dernierPieSt = stM;
     chart.setOption({
-      title: { show: false,  id: 'titreCamembert', text: (stM.bPrem && stM.bDern) ? `${stM.bPrem.label} → ${stM.bDern.label}` : "", left: pieM.pos[0], top: pieM.topTitle },
+      title: { show: false, id: 'titreCamembert', text: (stM.bPrem && stM.bDern) ? `${stM.bPrem.label} → ${stM.bDern.label}` : "", left: pieM.pos[0], top: pieM.topTitle },
       series: [{ id: 'pieCamembert', center: pieM.pos, data: genererDataCamembert(stM) }]
     });
+    window._dernierPieTitre = (stM.bPrem && stM.bDern) ? `${stM.bPrem.label} → ${stM.bDern.label}` : window._dernierPieTitre;
+    placerLabelAgressivite(pieM.pos, stM);
     dessinerMarqueursMoisAxe();
     return;
   }
@@ -2354,7 +2369,7 @@ chart.on('datazoom', () => {
   const pieV = detecterCentreCamembert(ptsV, bYV.min, bYV.max);
 
   chart.setOption({
-    title: { show: false,  id: 'titreCamembert', text: `Séance ${globalData.date_fr} (${heureDepuisSec(sMin).slice(0,5)} → ${heureDepuisSec(sMax).slice(0,5)})`, left: pieV.pos[0], top: pieV.topTitle },
+    title: { show: false, id: 'titreCamembert', text: `Séance ${globalData.date_fr} (${heureDepuisSec(sMin).slice(0,5)} → ${heureDepuisSec(sMax).slice(0,5)})`, left: pieV.pos[0], top: pieV.topTitle },
     series: [{ id: 'pieCamembert', center: pieV.pos, data: genererDataCamembert(st) }]
   });
   placerLabelAgressivite(pieV.pos, st);
@@ -2383,7 +2398,18 @@ chart.on('mouseover', p => {
 
 chart.on('mouseout', restaurerStatsGlobales);
 chart.on('globalout', restaurerStatsGlobales);
-chart.getZr().on('dblclick', () => { chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 0, start: 0, end: 100 }); chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 1, start: 0, end: 100 }); });
+const _resetZoomXY = () => {
+  chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 0, start: 0, end: 100 });
+  chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 1, start: 0, end: 100 });
+  if (typeof restaurerStatsGlobales === 'function') restaurerStatsGlobales();
+};
+chart.getZr().on('dblclick', _resetZoomXY);
+let _lastZrTap = 0;
+chart.getZr().on('click', () => {
+  const now = Date.now();
+  if (now - _lastZrTap > 40 && now - _lastZrTap < 340) { _lastZrTap = 0; _resetZoomXY(); }
+  else { _lastZrTap = now; }
+}); chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 1, start: 0, end: 100 }); });
 
 document.getElementById('selHorizon').onchange = e => {
   const m = e.target.value; arreterModeLive();
