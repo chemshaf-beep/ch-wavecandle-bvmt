@@ -3391,5 +3391,109 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_FAST_MULTI_END -->
+<!-- CH_INSTANT_BOOT_START -->
+<script>
+(function() {
+  function idbBoot(mode, key, val) {
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open("CH_Instant_Boot_DB", 1);
+        req.onupgradeneeded = (e) => {
+          if (!e.target.result.objectStoreNames.contains("boot")) {
+            e.target.result.createObjectStore("boot");
+          }
+        };
+        req.onsuccess = (e) => {
+          const db = e.target.result;
+          const tx = db.transaction("boot", mode === "set" ? "readwrite" : "readonly");
+          const st = tx.objectStore("boot");
+          const r = mode === "set" ? st.put(val, key) : st.get(key);
+          r.onsuccess = () => resolve(r.result || null);
+          r.onerror = () => resolve(null);
+        };
+        req.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  // 1. Dès que ECharts ('chart') existe dans le DOM, restaurer immédiatement le dernier graphique local (< 15 ms)
+  async function amorcerAffichageLocalImmediat() {
+    if (typeof chart === "undefined" || !chart || typeof dessinerGraphique !== "function" || typeof dessinerChandeliersMulti !== "function") {
+      setTimeout(amorcerAffichageLocalImmediat, 30);
+      return;
+    }
+    if (window.__chInstantBootDone) return;
+    window.__chInstantBootDone = true;
+
+    const snap = await idbBoot("get", "last_view");
+    if (!snap || !snap.data) return;
+
+    try {
+      // Restaurer la liste des valeurs et sélecteurs immédiatement
+      const selTk = document.getElementById("selTicker");
+      if (selTk && Array.isArray(snap.tickers) && snap.tickers.length > 0 && selTk.options.length <= 1) {
+        selTk.innerHTML = snap.tickers.map(t => `<option value="${t}">${t}</option>`).join("");
+      }
+      if (selTk && snap.ticker) selTk.value = snap.ticker;
+
+      const selH = document.getElementById("selHorizon");
+      if (selH && snap.horizon && snap.horizon !== "LIVE") selH.value = snap.horizon;
+
+      const inpD = document.getElementById("txtDateSeance");
+      if (inpD && snap.date_fr) inpD.value = snap.date_fr;
+
+      globalData = snap.data;
+      if (snap.horizon === "MULTI" && globalData.bougies) {
+        appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
+        dessinerChandeliersMulti(globalData);
+      } else if (globalData.vagues) {
+        appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
+        dessinerGraphique(globalData);
+      }
+      const stEl = document.getElementById("statusText");
+      if (stEl) stEl.innerText = (snap.status || "Données locales affichées") + " • Vérification serveur en arrière-plan...";
+    } catch (_) {}
+  }
+
+  // 2. Capturer silencieusement chaque rendu réussi pour le prochain démarrage instantané
+  function brancherCaptureRendu() {
+    if (typeof dessinerGraphique !== "function" || typeof dessinerChandeliersMulti !== "function") {
+      setTimeout(brancherCaptureRendu, 100);
+      return;
+    }
+    const saveSnap = (horizon, data) => {
+      if (!data) return;
+      const selTk = document.getElementById("selTicker");
+      const tickers = selTk ? Array.from(selTk.options).map(o => o.value).filter(Boolean) : [];
+      idbBoot("set", "last_view", {
+        horizon,
+        ticker: data.ticker || selTk?.value || "DELICE HOLDING",
+        date_fr: data.date_fr || document.getElementById("txtDateSeance")?.value || "",
+        tickers,
+        status: document.getElementById("statusText")?.innerText || "",
+        data
+      });
+    };
+
+    const origDessiner = window.dessinerGraphique;
+    window.dessinerGraphique = function(data) {
+      const r = origDessiner.apply(this, arguments);
+      saveSnap(document.getElementById("selHorizon")?.value || "SEANCE", data);
+      return r;
+    };
+
+    const origMultiDraw = window.dessinerChandeliersMulti;
+    window.dessinerChandeliersMulti = function(data) {
+      const r = origMultiDraw.apply(this, arguments);
+      saveSnap("MULTI", data);
+      return r;
+    };
+  }
+
+  amorcerAffichageLocalImmediat();
+  brancherCaptureRendu();
+})();
+</script>
+<!-- CH_INSTANT_BOOT_END -->
 </body>
 </html>
