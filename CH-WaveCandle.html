@@ -2872,12 +2872,22 @@ async function demarrageAutomatiqueHttp() {
         }
       });
     }
+    dirHandleLive = {
+      values: async function* () {
+        const r2 = await fetch('/bvmt_api/index?live=1&t=' + Date.now());
+        const idx2 = await r2.json();
+        for (const f of (idx2.live || [])) {
+          yield creerHandleHttp('Cache_Live/' + f.Name, f.Name, f.Mtime, f.Length);
+        }
+      },
+      getFileHandle: async (nomFichier) => creerHandleHttp('Cache_Live/' + nomFichier, nomFichier)
+    };
     if (renduInitialFait) return;
     seancesLocales.sort((a, b) => b.date_iso.localeCompare(a.date_iso));
 
     dirHandleLive = {
       values: async function* () {
-        const r2 = await fetch('/api/index?t=' + Date.now());
+        const r2 = await fetch('/bvmt_api/index?live=1&t=' + Date.now());
         const idx2 = await r2.json();
         for (const f of (idx2.live || [])) {
           yield creerHandleHttp('Cache_Live/' + f.Name, f.Name, f.Mtime, f.Length);
