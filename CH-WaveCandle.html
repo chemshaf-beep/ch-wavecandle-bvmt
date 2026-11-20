@@ -41,16 +41,45 @@ window.CH_DisqueLocal = (function() {
     });
   }
 
+  // Base IndexedDB universelle (fonctionne sur 100% des smartphones Android & iPhone sans permission)
+  function idbCsv(mode, key, val) {
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open("CH_Mobile_CSV_Vault", 1);
+        req.onupgradeneeded = (e) => {
+          if (!e.target.result.objectStoreNames.contains("files")) {
+            e.target.result.createObjectStore("files");
+          }
+        };
+        req.onsuccess = (e) => {
+          const db = e.target.result;
+          const tx = db.transaction("files", mode === "set" ? "readwrite" : "readonly");
+          const st = tx.objectStore("files");
+          const r = mode === "set" ? st.put(val, key) : st.get(key);
+          r.onsuccess = () => resolve(r.result || null);
+          r.onerror = () => resolve(null);
+        };
+        req.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+
   async function getOpfs() {
+    if (navigator.storage && navigator.storage.persist) {
+      try { await navigator.storage.persist(); } catch (_) {}
+    }
     if (!opfsRoot && navigator.storage && navigator.storage.getDirectory) {
       try {
         opfsRoot = await navigator.storage.getDirectory();
-        // Charger le manifeste local depuis OPFS
         try {
           const fh = await opfsRoot.getFileHandle("_manifest.json");
           LOCAL_MANIFEST = JSON.parse(await (await fh.getFile()).text()) || {};
         } catch (_) {}
       } catch (_) {}
+    }
+    if (!Object.keys(LOCAL_MANIFEST).length) {
+      const idbMan = await idbCsv("get", "_manifest");
+      if (idbMan) LOCAL_MANIFEST = idbMan;
     }
     return opfsRoot;
   }
@@ -98,6 +127,11 @@ window.CH_DisqueLocal = (function() {
     }
 
     const fname = toSafeName(clean);
+    const idbTxt = await idbCsv("get", fname);
+    if (idbTxt && idbTxt.length > 10) {
+      MEM.set(clean, idbTxt);
+      hits++; majBadge(); return idbTxt;
+    }
     for (const dir of [userDir, await getOpfs()]) {
       if (!dir) continue;
       try {
@@ -127,6 +161,13 @@ window.CH_DisqueLocal = (function() {
     }
     dls++; majBadge();
     const fname = toSafeName(clean);
+    idbCsv("set", fname, text);
+    idbCsv("set", "_manifest", LOCAL_MANIFEST);
+    const idbTxt = await idbCsv("get", fname);
+    if (idbTxt && idbTxt.length > 10) {
+      MEM.set(clean, idbTxt);
+      hits++; majBadge(); return idbTxt;
+    }
     for (const dir of [userDir, await getOpfs()]) {
       if (!dir) continue;
       try {
