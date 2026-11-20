@@ -2337,6 +2337,50 @@ def _calculer_multi_rapide(ticker_cible: str):
                 bougies.append({"date": date_fr, **st})
     return bougies
 
+_CHAT_FILE = os.path.join(_BASE_DIR, "chat_messages.json")
+_CHAT_LOCK = threading.Lock()
+
+def _charger_messages_chat():
+    try:
+        if os.path.isfile(_CHAT_FILE):
+            with open(_CHAT_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data[-300:]
+    except Exception:
+        pass
+    return []
+
+def _sauver_messages_chat(msgs):
+    try:
+        tmp = _CHAT_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(msgs[-300:], f, ensure_ascii=False, indent=2)
+        os.replace(tmp, _CHAT_FILE)
+    except Exception:
+        pass
+    def _push_chat_gh():
+        try:
+            tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
+            repo = (os.environ.get("GH_REPO", "").strip() or globals().get("GH_REPO", "").strip()).replace("https://github.com", "").strip("/")
+            if not tk or not repo or not os.path.isfile(_CHAT_FILE): return
+            api_url = f"https://github.com{repo}/contents/chat_messages.json"
+            headers = {"Authorization": f"Bearer {tk}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT", "Content-Type": "application/json"}
+            sha = None
+            try:
+                with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=8) as r:
+                    sha = json.loads(r.read().decode("utf-8")).get("sha")
+            except urllib.error.HTTPError as he:
+                if he.code != 404: return
+            with open(_CHAT_FILE, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            payload = {"message": "Sync chat communautaire", "content": b64}
+            if sha: payload["sha"] = sha
+            urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=12).read()
+        except Exception:
+            pass
+    threading.Thread(target=_push_chat_gh, daemon=True).start()
+
 def _rpc_data(payload_json: str):
     try:
         b = json.loads(payload_json)
@@ -2346,6 +2390,39 @@ def _rpc_data(payload_json: str):
         cmd = str(b.get("cmd", ""))
         if cmd == "multi_agg":
             return json.dumps({"status": 200, "bougies": _calculer_multi_rapide(str(b.get("ticker", "")))})
+        if cmd == "chat_list":
+            salon = str(b.get("salon", "GENERAL")).strip().upper()
+            msgs = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
+            return json.dumps({"status": 200, "messages": msgs[-120:]})
+        if cmd == "chat_post":
+            texte = str(b.get("text", "")).strip()
+            if not texte or len(texte) > 1000:
+                return json.dumps({"status": 400, "err": "Message vide ou trop long (max 1000 caractères)"})
+            salon = str(b.get("salon", "GENERAL")).strip().upper()
+            sentiment = str(b.get("sentiment", "NEUTRE")).strip().upper()
+            quote = str(b.get("quote", "")).strip()[:160]
+            ticker_tag = str(b.get("ticker_tag", "")).strip()[:80]
+            user_info = _TOKENS_ACTIFS.get(tk)
+            auteur = "Membre"
+            if isinstance(user_info, dict):
+                auteur = str(user_info.get("nom") or user_info.get("email") or "Membre").partition("@")[0]
+            elif isinstance(user_info, str) and "@" in user_info:
+                auteur = user_info.partition("@")[0]
+            with _CHAT_LOCK:
+                msgs = _charger_messages_chat()
+                nouv = {
+                    "id": str(int(time.time() * 1000)),
+                    "auteur": auteur,
+                    "salon": salon,
+                    "sentiment": sentiment,
+                    "quote": quote,
+                    "ticker_tag": ticker_tag,
+                    "text": texte,
+                    "heure": datetime.datetime.now().strftime("%d/%m %H:%M")
+                }
+                msgs.append(nouv)
+                _sauver_messages_chat(msgs)
+            return json.dumps({"status": 200, "message": nouv})
         if cmd == "index":
             return json.dumps({"status": 200, "data": _construire_index()})
         rel_path = str(b.get("path", "")).lstrip("/")

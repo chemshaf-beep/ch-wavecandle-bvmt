@@ -3990,5 +3990,347 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_LOGO_JS_END -->
+<!-- CH_CHAT_HTML_START -->
+<style id="ch-chat-css">
+  #chChatDrawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(410px, 95vw);
+    background: #0F172A;
+    border-left: 1px solid #334155;
+    z-index: 100010;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(105%);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: -8px 0 28px rgba(0, 0, 0, 0.65);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #E2E8F0;
+  }
+  #chChatDrawer.open { transform: translateX(0); }
+  .ch-chat-hdr {
+    padding: 10px 14px;
+    background: #1E293B;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ch-chat-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 6px 10px;
+    background: #0B1120;
+    border-bottom: 1px solid #1E293B;
+  }
+  .ch-chat-tab {
+    flex: 1;
+    padding: 5px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 5px;
+    border: 1px solid #334155;
+    background: #1E293B;
+    color: #94A3B8;
+    cursor: pointer;
+    text-align: center;
+  }
+  .ch-chat-tab.active {
+    background: #0284C7;
+    color: #FFFFFF;
+    border-color: #38BDF8;
+  }
+  #chChatFeed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ch-msg-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+  .ch-msg-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .ch-msg-author { font-weight: 700; color: #38BDF8; }
+  .ch-tag-bull { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid #059669; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .ch-tag-bear { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid #DC2626; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .ch-tag-ticker { display: inline-block; background: rgba(255, 215, 0, 0.15); color: #FFD700; border: 1px solid rgba(255, 215, 0, 0.4); border-radius: 4px; padding: 1px 6px; font-size: 10.5px; font-weight: 700; margin-bottom: 4px; }
+  .ch-msg-quote { border-left: 2px solid #38BDF8; padding-left: 7px; font-size: 11px; color: #94A3B8; margin-bottom: 4px; font-style: italic; }
+  .ch-chat-tools {
+    padding: 6px 10px;
+    background: #1E293B;
+    border-top: 1px solid #334155;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  .ch-tool-btn {
+    background: #0F172A;
+    color: #CBD5E1;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .ch-tool-btn:hover { border-color: #38BDF8; color: #FFFFFF; }
+  .ch-emoji-bar {
+    display: none;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 10px;
+    background: #0B1120;
+    border-top: 1px solid #334155;
+  }
+  .ch-emoji-bar.show { display: flex; }
+  .ch-emoji-item { font-size: 16px; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+  .ch-emoji-item:hover { background: #1E293B; }
+  .ch-chat-compose {
+    padding: 8px 10px;
+    background: #0F172A;
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+  }
+  #chChatInput {
+    flex: 1;
+    background: #1E293B;
+    color: #F8FAFC;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 12.5px;
+    resize: none;
+    min-height: 38px;
+    max-height: 95px;
+    font-family: inherit;
+  }
+  body.theme-clair #chChatDrawer, body.light-mode #chChatDrawer { background: #F8FAFC; color: #0F172A; border-left-color: #CBD5E1; }
+  body.theme-clair .ch-chat-hdr, body.light-mode .ch-chat-hdr,
+  body.theme-clair .ch-chat-tools, body.light-mode .ch-chat-tools { background: #F1F5F9; border-color: #CBD5E1; }
+  body.theme-clair .ch-msg-card, body.light-mode .ch-msg-card { background: #FFFFFF; border-color: #E2E8F0; color: #0F172A; }
+  body.theme-clair #chChatInput, body.light-mode #chChatInput { background: #FFFFFF; color: #0F172A; border-color: #CBD5E1; }
+</style>
+
+<div id="chChatDrawer" aria-hidden="true">
+  <div class="ch-chat-hdr">
+    <strong style="font-size:13px; color:#FFD700;">💬 Salon Communautaire — CH-WaveCandle</strong>
+    <button id="btnCloseChat" type="button" class="btn-action" style="padding:2px 8px; font-size:11px;">✕ Fermer</button>
+  </div>
+  <div class="ch-chat-tabs">
+    <button type="button" class="ch-chat-tab active" data-salon="GENERAL">🌐 Général BVMT</button>
+    <button type="button" class="ch-chat-tab" data-salon="ANALYSE">📊 Graphiques</button>
+    <button type="button" class="ch-chat-tab" data-salon="SIGNAUX">⚡ Gros Blocs</button>
+  </div>
+  <div id="chChatFeed"></div>
+  <div id="chChatReplyPreview" style="display:none; padding:4px 10px; background:#1E293B; font-size:11px; color:#38BDF8; justify-content:space-between; align-items:center;">
+    <span id="chChatReplyText"></span>
+    <button type="button" id="btnCancelReply" style="background:none;border:none;color:#F87171;cursor:pointer;font-weight:bold;">✕</button>
+  </div>
+  <div id="chEmojiBar" class="ch-emoji-bar"></div>
+  <div class="ch-chat-tools">
+    <button type="button" id="btnChatEmoji" class="ch-tool-btn" title="Émoticônes">😊</button>
+    <button type="button" id="btnChatBold" class="ch-tool-btn" title="Texte en gras"><b>B</b></button>
+    <button type="button" id="btnChatItalic" class="ch-tool-btn" title="Texte en italique"><i>I</i></button>
+    <button type="button" id="btnChatCiteTicker" class="ch-tool-btn" style="color:#FFD700; border-color:rgba(255,215,0,0.45);" title="Joindre la valeur et le cours affichés">📌 Citer valeur</button>
+    <select id="selChatSentiment" style="padding:2px 5px; font-size:11px; min-height:24px;">
+      <option value="NEUTRE">🟡 Neutre</option>
+      <option value="HAUSSIER">🟢 Haussier</option>
+      <option value="BAISSIER">🔴 Baissier</option>
+    </select>
+  </div>
+  <div class="ch-chat-compose">
+    <textarea id="chChatInput" rows="2" placeholder="Partagez votre analyse ou point de vue..."></textarea>
+    <button type="button" id="btnChatSend" class="btn-action" style="padding:8px 12px; background:#0284C7; color:#FFF; border-color:#38BDF8;">Envoyer</button>
+  </div>
+</div>
+<!-- CH_CHAT_HTML_END -->
+<!-- CH_CHAT_JS_START -->
+<script>
+(function() {
+  const EMOJIS_TRADING = new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉");
+  let salonActif = "GENERAL";
+  let citationActuelle = "";
+  let tagValeurActuel = "";
+  let timerPollChat = null;
+
+  function formaterTexteChat(txt) {
+    const safe = txt.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return safe
+      .replace(/\*\*(.+?)\*\*/g, "<b></body></b>")
+      .replace(/\*(.+?)\*/g, "<i></body></i>")
+      .replace(/\n/g, "<br/>");
+  }
+
+  async function appelRpcChat(payload) {
+    const r = await fetch("/bvmt_api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    return r.json();
+  }
+
+  async function chargerMessagesSalon() {
+    const feed = document.getElementById("chChatFeed");
+    if (!feed) return;
+    try {
+      const res = await appelRpcChat({ cmd: "chat_list", salon: salonActif });
+      if (!res || res.status !== 200) return;
+      const msgs = res.messages || new Array();
+      if (!msgs.length) {
+        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
+        return;
+      }
+      feed.innerHTML = msgs.map(m => {
+        const badgeSent = m.sentiment === "HAUSSIER"
+          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
+          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
+        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
+        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
+        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
+        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(/\n/g," ");
+        return `<div class="ch-msg-card">
+          <div class="ch-msg-meta">
+            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
+            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
+          </div>
+          ${badgeTk}${blocQuote}
+          <div>${formaterTexteChat(m.text)}</div>
+        </div>`;
+      }).join("");
+      feed.scrollTop = feed.scrollHeight;
+    } catch (_) {}
+  }
+
+  window.__repondreChat = (auteur, extrait) => {
+    citationActuelle = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + citationActuelle; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          chargerMessagesSalon();
+          if (!timerPollChat) timerPollChat = setInterval(() => {
+            if (drw.classList.contains("open")) chargerMessagesSalon();
+          }, 8000);
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = EMOJIS_TRADING.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    document.getElementById("btnCloseChat").onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+    document.getElementById("btnChatEmoji").onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    document.getElementById("btnChatBold").onclick = () => wrapSelection("**");
+    document.getElementById("btnChatItalic").onclick = () => wrapSelection("*");
+
+    document.getElementById("btnChatCiteTicker").onclick = () => {
+      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+      const cours = document.getElementById("kDernier")?.innerText || "";
+      tagValeurActuel = `${tk}${cours ? " • " + cours : ""}`;
+      const prev = document.getElementById("chChatReplyPreview");
+      const txt = document.getElementById("chChatReplyText");
+      if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + tagValeurActuel; prev.style.display = "flex"; }
+    };
+
+    document.getElementById("btnCancelReply").onclick = () => {
+      citationActuelle = "";
+      tagValeurActuel = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+    };
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        salonActif = tab.dataset.salon || "GENERAL";
+        chargerMessagesSalon();
+      };
+    });
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await appelRpcChat({
+        cmd: "chat_post",
+        salon: salonActif,
+        sentiment,
+        quote: citationActuelle,
+        ticker_tag: tagValeurActuel,
+        text: txt
+      });
+      citationActuelle = "";
+      tagValeurActuel = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) chargerMessagesSalon();
+    };
+
+    document.getElementById("btnChatSend").onclick = envoyerMessage;
+    document.getElementById("chChatInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_JS_END -->
 </body>
 </html>
