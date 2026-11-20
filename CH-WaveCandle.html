@@ -1008,7 +1008,7 @@ body.theme-clair .statusbar {
   <input type="file" id="inpFichiersLive" multiple accept=".csv,.txt" style="display:none;" />
   <button id="btnDossierLive" class="btn-action" style="display:none; border-color:#00FF66; color:#00FF66;" title="Choisir le dossier contenant les fichiers temps réel (.csv / DonneesSource.txt)">&#128193; Dossier Live</button>
   <button id="btnFichiersLive" class="btn-action" style="display:none; border-color:#00E5FF; color:#00E5FF;" title="Sélectionner directement les fichiers dans AppData/Temp/Bourse_MACSA_Cache">&#128196; Fichiers Live (Temp)</button>
-  <select id="selDateReplay" style="display:none; border-color:#FFD700; color:#FFD700;" title="Choisir la séance historique à rejouer en Replay"></select><button id="btnSimulerLive" class="btn-action" style="display:none; border-color:#FFD700; color:#FFD700;" title="Rejouer la séance sélectionnée tick par tick">🎬 Replay Séance</button><select id="selVitesseReplay" style="display:none; border-color:#FFD700; color:#FFD700;" title="Vitesse de défilement du Replay de séance"><option value="1000" selected>Vitesse : x1 (1s)</option><option value="500">Vitesse : x2 (0,5s)</option><option value="200">Vitesse : x5 (0,2s)</option><option value="100">Vitesse : x10 (0,1s)</option><option value="40">Vitesse : x25 (40ms)</option><option value="15">Vitesse : Max (15ms)</option></select>
+  <select id="selDateReplay" style="display:none; border-color:#FFD700; color:#FFD700;" title="Choisir la séance historique à rejouer en Replay"></select><button id="btnSimulerLive" class="btn-action" style="display:none; border-color:#FFD700; color:#FFD700;" title="Rejouer la séance sélectionnée tick par tick">🎬 Replay Séance</button><select id="selVitesseReplay" style="display:none; border-color:#FFD700; color:#FFD700;" title="Vitesse de défilement du Replay de séance"><option value="1000" selected>Vitesse : x1 (1s)</option><option value="500">Vitesse : x2 (0,5s)</option><option value="200">Vitesse : x5 (0,2s)</option><option value="100">Vitesse : x10 (0,1s)</option><option value="40">Vitesse : x25 (40ms)</option><option value="15">Vitesse : Max (15ms)</option></select><button id="btnTouteSeance" class="btn-action" style="display:none; border-color:#00FF66; color:#00FF66;" title="Arrêter le replay et afficher toute la séance complète">📊 Toute la séance</button>
   <select id="selSourceLive" style="display:none;">
     <option value="AUTO" selected>Flux : Auto (Dernier actif)</option>
     <option value="SIMULATION">Flux : Simulateur</option>
@@ -3522,5 +3522,40 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_INSTANT_BOOT_END -->
+<!-- CH_BTN_TOUTE_SEANCE_START -->
+<script>
+(function() {
+  function initBtnTouteSeance() {
+    const btn = document.getElementById("btnTouteSeance");
+    const selVitesse = document.getElementById("selVitesseReplay");
+    if (!btn) return;
+
+    // Synchroniser automatiquement sa visibilité avec celle du sélecteur de vitesse Replay
+    if (selVitesse) {
+      const syncVis = () => { btn.style.display = selVitesse.style.display; };
+      syncVis();
+      new MutationObserver(syncVis).observe(selVitesse, { attributes: true, attributeFilter: ["style"] });
+    }
+
+    btn.onclick = () => {
+      if (typeof arreterSimulationLive === "function") arreterSimulationLive();
+      const selDateRep = document.getElementById("selDateReplay");
+      const inpDate = document.getElementById("txtDateSeance");
+      const dateCible = (selDateRep && selDateRep.value) ? selDateRep.value : (inpDate ? inpDate.value : "");
+      const tickerCible = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+      if (typeof chargerDonnees === "function") {
+        chargerDonnees(dateCible, tickerCible, false);
+      }
+    };
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initBtnTouteSeance);
+  } else {
+    initBtnTouteSeance();
+  }
+})();
+</script>
+<!-- CH_BTN_TOUTE_SEANCE_END -->
 </body>
 </html>
