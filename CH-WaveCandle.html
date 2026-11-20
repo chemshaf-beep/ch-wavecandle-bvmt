@@ -452,7 +452,7 @@ body.theme-clair .statusbar {
 <style id="ch-mobile-pro-css">
   #chMobControls, #chMobBackdrop { display: none; }
 
-  @media screen and (max-width: 920px) and (pointer: coarse), screen and (max-width: 768px) {
+  @media screen and (max-width: 960px) and (pointer: coarse), screen and (max-width: 768px) {
     html, body {
       width: 100% !important;
       height: 100dvh !important;
@@ -462,10 +462,10 @@ body.theme-clair .statusbar {
       background: #020617 !important;
     }
 
-    /* Barre flottante ultra-discrète (Menu + Plein écran) */
+    /* Boutons flottants ultra-compacts en haut à gauche */
     #chMobControls {
       display: flex !important;
-      gap: 6px !important;
+      gap: 5px !important;
       position: fixed !important;
       top: calc(4px + env(safe-area-inset-top)) !important;
       left: calc(6px + env(safe-area-inset-left)) !important;
@@ -473,33 +473,34 @@ body.theme-clair .statusbar {
     }
 
     #chMobControls button {
-      background: rgba(15, 23, 42, 0.72) !important;
+      background: rgba(15, 23, 42, 0.78) !important;
       backdrop-filter: blur(4px);
       color: #38bdf8 !important;
-      border: 1px solid rgba(56, 189, 248, 0.45) !important;
-      border-radius: 6px !important;
-      padding: 3px 8px !important;
+      border: 1px solid rgba(56, 189, 248, 0.5) !important;
+      border-radius: 5px !important;
+      padding: 2px 7px !important;
       font-size: 11px !important;
       font-weight: 600 !important;
-      min-height: 26px !important;
+      min-height: 24px !important;
+      line-height: 1.2 !important;
       cursor: pointer;
     }
 
     #chMobBackdrop {
       position: fixed !important;
       inset: 0 !important;
-      background: rgba(0, 0, 0, 0.55) !important;
+      background: rgba(0, 0, 0, 0.6) !important;
       z-index: 100000 !important;
     }
     body.ch-drawer-open #chMobBackdrop { display: block !important; }
 
-    /* Tiroir coulissant pour tous les sélecteurs et boutons */
+    /* Tiroir coulissant latéral pour tous les contrôles */
     header, .top-bar, #topBar, div:has(> #selTicker) {
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
       bottom: 0 !important;
-      width: min(300px, 82vw) !important;
+      width: min(295px, 82vw) !important;
       height: 100dvh !important;
       z-index: 100001 !important;
       background: #0f172a !important;
@@ -507,8 +508,8 @@ body.theme-clair .statusbar {
       display: flex !important;
       flex-direction: column !important;
       align-items: stretch !important;
-      gap: 7px !important;
-      padding: calc(38px + env(safe-area-inset-top)) 10px 14px 10px !important;
+      gap: 6px !important;
+      padding: calc(36px + env(safe-area-inset-top)) 10px 14px 10px !important;
       overflow-y: auto !important;
       transform: translateX(-105%) !important;
       transition: transform 0.22s ease !important;
@@ -531,30 +532,46 @@ body.theme-clair .statusbar {
 
     footer, #chCacheBadge, div:has(> #diagBadge) { display: none !important; }
 
+    /* === MODE PORTRAIT : MINI-RUBAN KPI COMPACT + GRAPHIQUE SUR 90% DE L'ECRAN === */
     @media screen and (orientation: portrait) {
-      div:has(> #kDernier), .kpi-bar, #kpiBar {
+      .ch-kpi-strip {
         display: flex !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
         overflow-x: auto !important;
-        padding: 4px 6px 4px 148px !important;
-        height: 34px !important;
-        font-size: 10px !important;
+        padding: 4px 6px 4px 145px !important;
+        height: 44px !important;
+        max-height: 44px !important;
         gap: 6px !important;
+        scrollbar-width: none;
+      }
+      .ch-kpi-strip::-webkit-scrollbar { display: none; }
+      .ch-kpi-strip > div {
+        padding: 2px 6px !important;
+        min-width: auto !important;
+        flex-shrink: 0 !important;
+      }
+      .ch-kpi-strip * {
+        font-size: 10px !important;
+        line-height: 1.15 !important;
       }
       canvas {
         display: block !important;
-        width: 100% !important;
-        height: calc(100dvh - 34px) !important;
+        width: 100vw !important;
+        height: calc(100dvh - 44px) !important;
         touch-action: pan-x pan-y pinch-zoom !important;
       }
     }
 
+    /* === MODE PAYSAGE (HORIZONTAL) : 100% GRAPHIQUE PLEIN ECRAN === */
     @media screen and (orientation: landscape) {
-      div:has(> #kDernier), .kpi-bar, #kpiBar { display: none !important; }
+      .ch-kpi-strip {
+        display: none !important;
+      }
       canvas {
-        display: block !important;
-        width: 100% !important;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
         height: 100dvh !important;
         touch-action: pan-x pan-y pinch-zoom !important;
       }
@@ -2762,10 +2779,25 @@ window.addEventListener('load', () => {
 <script>
 (function() {
   function estEcranMobile() {
-    return window.innerWidth <= 920 && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 768);
+    return window.innerWidth <= 960 && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 768);
   }
 
-  // 1. Réduction proportionnelle des polices sur le canvas mobile pour éviter les chevauchements
+  // Repérer et marquer le conteneur parent des cartes KPI pour le masquer en paysage
+  function marquerBandeKpi() {
+    const kpiEl = document.getElementById("kDernier") || document.getElementById("kCmp") || document.getElementById("kVolume");
+    if (kpiEl) {
+      let p = kpiEl.parentElement;
+      while (p && p !== document.body) {
+        if (p.children.length >= 4) {
+          p.classList.add("ch-kpi-strip");
+          break;
+        }
+        p = p.parentElement;
+      }
+    }
+  }
+
+  // Adaptation proportionnelle des polices sur le canvas (paysage & portrait sans débordement)
   const protoCtx = CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
   if (protoCtx) {
     const descFont = Object.getOwnPropertyDescriptor(protoCtx, "font");
@@ -2774,7 +2806,10 @@ window.addEventListener('load', () => {
         get: descFont.get,
         set: function(val) {
           if (estEcranMobile() && typeof val === "string") {
-            const ratio = Math.max(0.58, Math.min(0.76, window.innerHeight / 620));
+            const isPortrait = window.innerHeight > window.innerWidth;
+            const ratio = isPortrait
+              ? Math.max(0.52, Math.min(0.68, window.innerWidth / 580))
+              : Math.max(0.60, Math.min(0.76, window.innerHeight / 540));
             val = val.replace(/(\d+(?:\.\d+)?)px/g, (_, px) => Math.max(8, Math.round(parseFloat(px) * ratio)) + "px");
           }
           return descFont.set.call(this, val);
@@ -2783,8 +2818,8 @@ window.addEventListener('load', () => {
     }
   }
 
-  // 2. Synchronisation stricte des dimensions internes du canvas pour garder un camembert parfaitement rond
   function synchroniserCanvas() {
+    marquerBandeKpi();
     document.querySelectorAll("canvas").forEach(cv => {
       const rect = cv.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
@@ -2803,7 +2838,8 @@ window.addEventListener('load', () => {
     }
   }
 
-  function initMobileV2() {
+  function initMobileV3() {
+    marquerBandeKpi();
     if (document.getElementById("chMobControls")) return;
 
     const backdrop = document.createElement("div");
@@ -2832,11 +2868,10 @@ window.addEventListener('load', () => {
     btnMenu.onclick = () => toggleDrawer();
     backdrop.onclick = () => toggleDrawer(false);
 
-    // Activation du plein écran natif (masque la barre d'adresse Chrome/Android) + verrouillage paysage
     btnFull.onclick = async () => {
       try {
         const el = document.documentElement;
-        if (!document.fullscreenElement) {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
           if (el.requestFullscreen) await el.requestFullscreen();
           else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
           if (screen.orientation && screen.orientation.lock) {
@@ -2845,9 +2880,15 @@ window.addEventListener('load', () => {
           btnFull.textContent = "🗗 Quitter";
         } else {
           if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
           btnFull.textContent = "⛶ Plein écran";
         }
-      } catch (_) {}
+      } catch (errFs) {
+        // Si bloqué par iframe HF, ouvrir directement l'URL directe de l'application en plein écran
+        if (window.self !== window.top) {
+          window.open(window.location.href, "_blank");
+        }
+      }
       setTimeout(synchroniserCanvas, 300);
     };
 
@@ -2861,7 +2902,6 @@ window.addEventListener('load', () => {
     document.body.appendChild(backdrop);
     document.body.appendChild(bar);
 
-    // Fermeture automatique du tiroir après choix d'une valeur ou clic sur un bouton
     const tickerEl = document.getElementById("selTicker");
     if (tickerEl && tickerEl.parentElement) {
       tickerEl.parentElement.addEventListener("change", (e) => {
@@ -2881,9 +2921,9 @@ window.addEventListener('load', () => {
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initMobileV2);
+    document.addEventListener("DOMContentLoaded", initMobileV3);
   } else {
-    initMobileV2();
+    initMobileV3();
   }
 })();
 </script>
