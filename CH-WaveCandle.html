@@ -3140,7 +3140,6 @@ window.addEventListener('load', () => {
 <!-- CH_MOBILE_ZOOM_START -->
 <script>
 (function() {
-  // 1. Bloquer totalement le menu contextuel "Copier / Sélectionner" sur le graphique mobile
   document.addEventListener("contextmenu", function(e) {
     if (e.target && (e.target.tagName === "CANVAS" || e.target.closest("#chart, #mainChart"))) {
       e.preventDefault();
@@ -3162,23 +3161,11 @@ window.addEventListener('load', () => {
     if (!domChart || domChart.dataset.mobZoomReady) return;
     domChart.dataset.mobZoomReady = "1";
 
-    // 2. Activer le pincement natif ECharts sur zoomX_inside
-    try {
-      chart.setOption({
-        dataZoom: [
-          { id: "zoomX_inside", zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false, preventDefaultMouseMove: true },
-          { id: "zoomY_inside", zoomOnMouseWheel: "shift", moveOnMouseMove: "shift", preventDefaultMouseMove: true }
-        ]
-      });
-    } catch (_) {}
-
-    // 3. Support Pincement à 2 doigts (Pinch-to-Zoom) + Sélection d'intervalle de temps au doigt
     let pinchStartDist = 0;
     let pinchStartSpan =;
     let rangeSelectMode = false;
     let rangeStartPct = null;
 
-    // Bandeau visuel de sélection d'intervalle
     const selBox = document.createElement("div");
     selBox.style.cssText = "display:none;position:fixed;top:0;bottom:0;background:rgba(56,189,248,0.22);border-left:2px solid #38bdf8;border-right:2px solid #38bdf8;pointer-events:none;z-index:99998;";
     document.body.appendChild(selBox);
@@ -3186,7 +3173,8 @@ window.addEventListener('load', () => {
     function getZoomRange() {
       const opt = chart.getOption();
       if (opt && opt.dataZoom && opt.dataZoom.length > 0) {
-        return [opt.dataZoom.start ?? 0, opt.dataZoom.end ?? 100];
+        const dz0 = opt.dataZoom[0];
+        return [dz0.start ?? 0, dz0.end ?? 100];
       }
       return;
     }
@@ -3199,16 +3187,14 @@ window.addEventListener('load', () => {
 
     domChart.addEventListener("touchstart", function(e) {
       if (e.touches.length === 2) {
-        // Début du pincement à deux doigts
-        pinchStartDist = Math.hypot(
-          e.touches.clientX - e.touches[1].clientX,
-          e.touches.clientY - e.touches[1].clientY
-        );
+        const t0 = e.touches[0], t1 = e.touches[1];
+        pinchStartDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
         pinchStartSpan = getZoomRange();
       } else if (rangeSelectMode && e.touches.length === 1) {
+        const t0 = e.touches[0];
         const rect = domChart.getBoundingClientRect();
-        rangeStartPct = Math.max(0, Math.min(100, ((e.touches.clientX - rect.left) / rect.width) * 100));
-        selBox.style.left = e.touches.clientX + "px";
+        rangeStartPct = Math.max(0, Math.min(100, ((t0.clientX - rect.left) / rect.width) * 100));
+        selBox.style.left = t0.clientX + "px";
         selBox.style.width = "2px";
         selBox.style.display = "block";
       }
@@ -3216,19 +3202,18 @@ window.addEventListener('load', () => {
 
     domChart.addEventListener("touchmove", function(e) {
       if (e.touches.length === 2 && pinchStartDist > 10) {
-        const curDist = Math.hypot(
-          e.touches.clientX - e.touches[1].clientX,
-          e.touches.clientY - e.touches[1].clientY
-        );
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const curDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
         const scale = pinchStartDist / Math.max(curDist, 10);
-        const curWidth = pinchStartSpan[1] - pinchStartSpan;
+        const curWidth = pinchStartSpan[1] - pinchStartSpan[0];
         const newWidth = Math.max(3, Math.min(100, curWidth * scale));
-        const center = (pinchStartSpan + pinchStartSpan[1]) / 2;
+        const center = (pinchStartSpan[0] + pinchStartSpan[1]) / 2;
         applyZoomX(center - newWidth / 2, center + newWidth / 2);
       } else if (rangeSelectMode && rangeStartPct !== null && e.touches.length === 1) {
+        const t0 = e.touches[0];
         const rect = domChart.getBoundingClientRect();
         const x1 = rect.left + (rangeStartPct / 100) * rect.width;
-        const x2 = Math.max(rect.left, Math.min(rect.right, e.touches.clientX));
+        const x2 = Math.max(rect.left, Math.min(rect.right, t0.clientX));
         selBox.style.left = Math.min(x1, x2) + "px";
         selBox.style.width = Math.abs(x2 - x1) + "px";
       }
@@ -3237,8 +3222,9 @@ window.addEventListener('load', () => {
     domChart.addEventListener("touchend", function(e) {
       if (e.touches.length < 2) pinchStartDist = 0;
       if (rangeSelectMode && rangeStartPct !== null && e.changedTouches && e.changedTouches.length === 1) {
+        const t0 = e.changedTouches[0];
         const rect = domChart.getBoundingClientRect();
-        const endPct = Math.max(0, Math.min(100, ((e.changedTouches.clientX - rect.left) / rect.width) * 100));
+        const endPct = Math.max(0, Math.min(100, ((t0.clientX - rect.left) / rect.width) * 100));
         selBox.style.display = "none";
         const [curS, curE] = getZoomRange();
         const pMin = Math.min(rangeStartPct, endPct) / 100;
@@ -3257,7 +3243,6 @@ window.addEventListener('load', () => {
       }
     }, { passive: true });
 
-    // 4. Mini-barre tactile de zoom rapide en bas à droite sur smartphone uniquement
     if (window.innerWidth <= 960 && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 768)) {
       const zBar = document.createElement("div");
       zBar.id = "chMobZoomPad";
