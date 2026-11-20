@@ -1746,6 +1746,10 @@ def boucle_synchro_github():
         time.sleep(60)
         try: sync_github_cloud()
         except Exception: pass
+    while True:
+        time.sleep(60)
+        try: sync_github_cloud()
+        except Exception: pass
 
 class HandlerStationCloud(BaseHTTPRequestHandler):
     def log_message(self, *args): pass
