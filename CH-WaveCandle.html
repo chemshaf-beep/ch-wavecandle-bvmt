@@ -1268,11 +1268,8 @@ function placerLabelAgressivite(posPct, st) {
   if (elPie && chart) {
     chart.setOption({
       title: [{ show: false }, { show: false }],
-      graphic: [
-        { id: 'lblAgressivitePie', $action: 'remove' },
-        elPie
-      ]
-    });
+      graphic: [elPie]
+    }, { replaceMerge: ['graphic'] });
   }
 }
 function _old_placer(posPct, st) {
