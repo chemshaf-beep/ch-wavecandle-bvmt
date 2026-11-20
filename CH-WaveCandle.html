@@ -3394,6 +3394,30 @@ window.addEventListener('load', () => {
 <!-- CH_INSTANT_BOOT_START -->
 <script>
 (function() {
+  function reinitialiserControlesInitiaux() {
+    // Remettre chaque menu déroulant sur son option par défaut (selected par défaut HTML ou index 0)
+    document.querySelectorAll("select").forEach(sel => {
+      if (sel.id === "selTicker" || sel.id === "chMobTickerSel") return;
+      const optDef = Array.from(sel.options).find(o => o.defaultSelected);
+      if (optDef) sel.value = optDef.value;
+      else if (sel.options.length > 0) sel.selectedIndex = 0;
+    });
+
+    // Décocher toutes les cases à cocher (ex: Radar Dernière Op.)
+    document.querySelectorAll("input[type='checkbox']").forEach(chk => {
+      chk.checked = chk.defaultChecked || false;
+    });
+
+    // Réinitialiser la valeur choisie sur la valeur par défaut (DELICE HOLDING ou 1ère valeur)
+    const selTk = document.getElementById("selTicker");
+    if (selTk && selTk.options.length > 0) {
+      const hasDelice = Array.from(selTk.options).some(o => o.value === "DELICE HOLDING");
+      selTk.value = hasDelice ? "DELICE HOLDING" : selTk.options.item(0).value;
+    }
+    const selMobTk = document.getElementById("chMobTickerSel");
+    if (selMobTk && selTk) selMobTk.value = selTk.value;
+  }
+
   function idbBoot(mode, key, val) {
     return new Promise((resolve) => {
       try {
@@ -3416,82 +3440,75 @@ window.addEventListener('load', () => {
     });
   }
 
-  // 1. Dès que ECharts ('chart') existe dans le DOM, restaurer immédiatement le dernier graphique local (< 15 ms)
+  // 1. Au chargement / actualisation : remettre les sélecteurs à l'état initial et afficher la vue initiale locale
   async function amorcerAffichageLocalImmediat() {
-    if (typeof chart === "undefined" || !chart || typeof dessinerGraphique !== "function" || typeof dessinerChandeliersMulti !== "function") {
+    if (typeof chart === "undefined" || !chart || typeof dessinerGraphique !== "function") {
       setTimeout(amorcerAffichageLocalImmediat, 30);
       return;
     }
     if (window.__chInstantBootDone) return;
     window.__chInstantBootDone = true;
 
-    const snap = await idbBoot("get", "last_view");
-    if (!snap || !snap.data) return;
-
-    try {
-      // Restaurer la liste des valeurs et sélecteurs immédiatement
+    const snap = await idbBoot("get", "default_seance_view");
+    if (snap && Array.isArray(snap.tickers) && snap.tickers.length > 0) {
       const selTk = document.getElementById("selTicker");
-      if (selTk && Array.isArray(snap.tickers) && snap.tickers.length > 0 && selTk.options.length <= 1) {
+      if (selTk && selTk.options.length <= 1) {
         selTk.innerHTML = snap.tickers.map(t => `<option value="${t}">${t}</option>`).join("");
       }
-      if (selTk && snap.ticker) selTk.value = snap.ticker;
+    }
 
-      const selH = document.getElementById("selHorizon");
-      if (selH && snap.horizon && snap.horizon !== "LIVE") selH.value = snap.horizon;
+    reinitialiserControlesInitiaux();
 
+    if (!snap || !snap.data || !snap.data.vagues) return;
+    try {
       const inpD = document.getElementById("txtDateSeance");
       if (inpD && snap.date_fr) inpD.value = snap.date_fr;
 
       globalData = snap.data;
-      if (snap.horizon === "MULTI" && globalData.bougies) {
-        appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
-        dessinerChandeliersMulti(globalData);
-      } else if (globalData.vagues) {
-        appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
-        dessinerGraphique(globalData);
-      }
+      appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
+      dessinerGraphique(globalData);
       const stEl = document.getElementById("statusText");
-      if (stEl) stEl.innerText = (snap.status || "Données locales affichées") + " • Vérification serveur en arrière-plan...";
+      if (stEl) stEl.innerText = (snap.status || "Séance locale chargée") + " • Vérification serveur...";
     } catch (_) {}
   }
 
-  // 2. Capturer silencieusement chaque rendu réussi pour le prochain démarrage instantané
-  function brancherCaptureRendu() {
-    if (typeof dessinerGraphique !== "function" || typeof dessinerChandeliersMulti !== "function") {
-      setTimeout(brancherCaptureRendu, 100);
+  // 2. Mémoriser uniquement la vue initiale (Séance Unique par défaut) pour un prochain F5 instantané
+  function brancherCaptureRenduInitial() {
+    if (typeof dessinerGraphique !== "function") {
+      setTimeout(brancherCaptureRenduInitial, 100);
       return;
     }
-    const saveSnap = (horizon, data) => {
-      if (!data) return;
-      const selTk = document.getElementById("selTicker");
-      const tickers = selTk ? Array.from(selTk.options).map(o => o.value).filter(Boolean) : [];
-      idbBoot("set", "last_view", {
-        horizon,
-        ticker: data.ticker || selTk?.value || "DELICE HOLDING",
-        date_fr: data.date_fr || document.getElementById("txtDateSeance")?.value || "",
-        tickers,
-        status: document.getElementById("statusText")?.innerText || "",
-        data
-      });
-    };
-
     const origDessiner = window.dessinerGraphique;
     window.dessinerGraphique = function(data) {
       const r = origDessiner.apply(this, arguments);
-      saveSnap(document.getElementById("selHorizon")?.value || "SEANCE", data);
-      return r;
-    };
-
-    const origMultiDraw = window.dessinerChandeliersMulti;
-    window.dessinerChandeliersMulti = function(data) {
-      const r = origMultiDraw.apply(this, arguments);
-      saveSnap("MULTI", data);
+      if (data && data.vagues) {
+        const hVal = document.getElementById("selHorizon")?.value || "";
+        const mVal = document.getElementById("selModeRendu")?.value || "VAGUES";
+        const bVal = document.getElementById("selFiltreBlocs")?.value || "TOUS";
+        const selTk = document.getElementById("selTicker");
+        const tkVal = data.ticker || selTk?.value || "DELICE HOLDING";
+        const tickers = selTk ? Array.from(selTk.options).map(o => o.value).filter(Boolean) : [];
+        if (hVal !== "MULTI" && hVal !== "LIVE" && mVal === "VAGUES" && bVal === "TOUS" && tkVal === "DELICE HOLDING") {
+          idbBoot("set", "default_seance_view", {
+            ticker: tkVal,
+            date_fr: data.date_fr || document.getElementById("txtDateSeance")?.value || "",
+            tickers,
+            status: document.getElementById("statusText")?.innerText || "",
+            data
+          });
+        }
+      }
       return r;
     };
   }
 
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", reinitialiserControlesInitiaux);
+  } else {
+    reinitialiserControlesInitiaux();
+  }
   amorcerAffichageLocalImmediat();
-  brancherCaptureRendu();
+  brancherCaptureRenduInitial();
 })();
 </script>
 <!-- CH_INSTANT_BOOT_END -->
