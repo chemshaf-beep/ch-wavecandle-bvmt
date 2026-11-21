@@ -3553,84 +3553,6 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_MOBILE_ZOOM_END -->
-<!-- CH_FAST_MULTI_START -->
-<script>
-(function() {
-  // Mini-coffre IndexedDB ultra-rapide pour les résultats déjà calculés (Multi-Séances & Séance Unique)
-  function idbFast(mode, key, val) {
-    return new Promise((resolve) => {
-      try {
-        const req = indexedDB.open("CH_Fast_Render_Cache", 1);
-        req.onupgradeneeded = (e) => {
-          if (!e.target.result.objectStoreNames.contains("views")) {
-            e.target.result.createObjectStore("views");
-          }
-        };
-        req.onsuccess = (e) => {
-          const db = e.target.result;
-          const tx = db.transaction("views", mode === "set" ? "readwrite" : "readonly");
-          const st = tx.objectStore("views");
-          const r = mode === "set" ? st.put(val, key) : st.get(key);
-          r.onsuccess = () => resolve(r.result || null);
-          r.onerror = () => resolve(null);
-        };
-        req.onerror = () => resolve(null);
-      } catch (_) { resolve(null); }
-    });
-  }
-
-  function hookFastRender() {
-    if (typeof window.chargerMultiSeances !== "function") {
-      setTimeout(hookFastRender, 150);
-      return;
-    }
-    const origMulti = window.chargerMultiSeances;
-    window.chargerMultiSeances = async function(forcerRecalcul = false) {
-      const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-      const gran = document.getElementById("selGranularite")?.value || "JOUR";
-      const bloc = document.getElementById("selFiltreBlocs")?.value || "TOUS";
-      const sigSeances = (typeof seancesLocales !== "undefined" && seancesLocales.length)
-        ? (seancesLocales.length + "_" + seancesLocales.at(0).date_iso)
-        : "init";
-      const cacheKey = `MULTI_${tk}_${gran}_${bloc}`;
-
-      // 1. Afficher INSTANTANEMENT la vue en cache (< 20 ms) si disponible
-      if (!forcerRecalcul) {
-        const cached = await idbFast("get", cacheKey);
-        if (cached && cached.data && cached.data.bougies && cached.data.bougies.length > 0) {
-          globalData = cached.data; const _l = document.getElementById("lblTicker"); if (_l && globalData.ticker) _l.innerText = globalData.ticker;
-          chart.clear();
-          appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
-          dessinerChandeliersMulti(globalData);
-          const stEl = document.getElementById("statusText");
-          if (stEl) stEl.innerText = `Multi-Séances (${globalData.date_deb_fr} → ${globalData.date_fin_fr}) — ${globalData.bougies.length} chandeliers [Cache instantané]`;
-
-          // Si le nombre de séances ou la dernière date est identique, on s'arrête là (0 recalcul)
-          if (cached.sig === sigSeances && sigSeances !== "init") {
-            return;
-          }
-        }
-      }
-
-      // 2. Calcul complet (uniquement au premier passage ou si une nouvelle séance est détectée)
-      await origMulti.apply(this, arguments);
-      if (typeof globalData !== "undefined" && globalData && globalData.bougies && globalData.bougies.length > 0) {
-        const finalSig = (typeof seancesLocales !== "undefined" && seancesLocales.length)
-          ? (seancesLocales.length + "_" + seancesLocales.at(0).date_iso)
-          : sigSeances;
-        idbFast("set", cacheKey, { sig: finalSig, data: globalData });
-      }
-    };
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", hookFastRender);
-  } else {
-    hookFastRender();
-  }
-})();
-</script>
-<!-- CH_FAST_MULTI_END -->
 <!-- CH_INSTANT_BOOT_START -->
 <script>
 (function() {
@@ -4667,5 +4589,71 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_LIVE_FALLBACK_END -->
+<!-- CH_EXACT_FAST_CACHE_START -->
+<script>
+(function() {
+  // Purge unique de l'ancien cache IndexedDB qui contenait l'entrée figée DELICE HOLDING
+  if (!localStorage.getItem("ch_purge_fast_v5")) {
+    try { indexedDB.deleteDatabase("CH_Fast_Render_Cache"); localStorage.setItem("ch_purge_fast_v5", "1"); } catch (_) {}
+  }
+
+  const _MEM_MULTI_CACHE = new Map();
+
+  function patchMultiExact() {
+    if (typeof window.chargerMultiSeances !== "function") {
+      setTimeout(patchMultiExact, 100);
+      return;
+    }
+    const origMulti = window.chargerMultiSeances;
+    window.chargerMultiSeances = async function() {
+      const tk = (document.getElementById("selTicker")?.value || "DELICE HOLDING").trim().toUpperCase();
+      const gran = document.getElementById("selGranularite")?.value || "JOUR";
+      const bloc = document.getElementById("selFiltreBlocs")?.value || "TOUS";
+      const nbS = (typeof seancesLocales !== "undefined") ? seancesLocales.length : 0;
+      const lastD = (nbS > 0 && seancesLocales.at(0)) ? seancesLocales.at(0).date_iso : "none";
+      const key = `${tk}|${gran}|${bloc}|${nbS}|${lastD}`;
+
+      const lbl = document.getElementById("lblTicker");
+      if (lbl) lbl.innerText = tk;
+
+      if (_MEM_MULTI_CACHE.has(key)) {
+        const snap = _MEM_MULTI_CACHE.get(key);
+        globalData = snap;
+        chart.clear();
+        appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
+        dessinerChandeliersMulti(globalData);
+        const stEl = document.getElementById("statusText");
+        if (stEl) stEl.innerText = `Multi-Séances (${globalData.date_deb_fr} → ${globalData.date_fin_fr}) — ${globalData.bougies.length} chandeliers [Mémoire rapide]`;
+        return;
+      }
+
+      await origMulti.apply(this, arguments);
+      if (typeof globalData !== "undefined" && globalData && globalData.bougies && globalData.bougies.length > 0) {
+        if (_MEM_MULTI_CACHE.size > 40) _MEM_MULTI_CACHE.clear();
+        _MEM_MULTI_CACHE.set(key, globalData);
+      }
+    };
+
+    // Garantir que le changement de valeur (#selTicker) déclenche toujours le bon mode immédiatement
+    const selTk = document.getElementById("selTicker");
+    if (selTk && !selTk.dataset.chExactBound) {
+      selTk.dataset.chExactBound = "1";
+      selTk.addEventListener("change", function() {
+        const val = selTk.value;
+        const lbl = document.getElementById("lblTicker");
+        if (lbl) lbl.innerText = val;
+        const hVal = document.getElementById("selHorizon")?.value || "";
+        if (hVal.includes("MULTI")) {
+          window.chargerMultiSeances();
+        }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", patchMultiExact);
+  else patchMultiExact();
+})();
+</script>
+<!-- CH_EXACT_FAST_CACHE_END -->
 </body>
 </html>
