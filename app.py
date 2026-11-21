@@ -2394,6 +2394,25 @@ def _rpc_data(payload_json: str):
             salon = str(b.get("salon", "GENERAL")).strip().upper()
             msgs = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
             return json.dumps({"status": 200, "messages": msgs[-120:]})
+                if cmd == "chat_set_pseudo":
+            nouv_pseudo = re.sub(r"[^a-zA-Z0-9_\-\.]", "", str(b.get("pseudo", "")).strip())[:24]
+            if len(nouv_pseudo) < 3:
+                return json.dumps({"status": 400, "err": "Pseudo trop court (3 à 24 caractères)"})
+            user_info = _TOKENS_ACTIFS.get(tk)
+            email_u = user_info.get("email", "") if isinstance(user_info, dict) else (user_info if isinstance(user_info, str) else "")
+            if isinstance(user_info, dict):
+                user_info["pseudo"] = nouv_pseudo
+                user_info["nom"] = nouv_pseudo
+            if email_u and "_charger_users_db" in globals() and "_sauver_users_db" in globals():
+                try:
+                    db_u = _charger_users_db()
+                    if email_u in db_u and isinstance(db_u[email_u], dict):
+                        db_u[email_u]["pseudo"] = nouv_pseudo
+                        _sauver_users_db(db_u)
+                except Exception:
+                    pass
+            return json.dumps({"status": 200, "pseudo": nouv_pseudo})
+
         if cmd == "chat_post":
             texte = str(b.get("text", "")).strip()
             if not texte or len(texte) > 1000:
@@ -2403,11 +2422,22 @@ def _rpc_data(payload_json: str):
             quote = str(b.get("quote", "")).strip()[:160]
             ticker_tag = str(b.get("ticker_tag", "")).strip()[:80]
             user_info = _TOKENS_ACTIFS.get(tk)
-            auteur = "Membre"
+            auteur = str(b.get("pseudo_client", "")).strip()[:24]
+            email_u = ""
             if isinstance(user_info, dict):
-                auteur = str(user_info.get("nom") or user_info.get("email") or "Membre").split("@")[0][0]
-            elif isinstance(user_info, str) and "@" in user_info:
-                auteur = user_info.split("@")[0][0]
+                email_u = str(user_info.get("email") or "").strip()
+                auteur = str(user_info.get("pseudo") or user_info.get("nom") or user_info.get("username") or auteur).strip()
+            elif isinstance(user_info, str):
+                email_u = user_info.strip()
+            if not auteur and email_u and "_charger_users_db" in globals():
+                try:
+                    db_u = _charger_users_db()
+                    rec = db_u.get(email_u) or {}
+                    auteur = str(rec.get("pseudo") or rec.get("nom") or "").strip()
+                except Exception:
+                    pass
+            if not auteur or len(auteur) < 2:
+                auteur = email_u.partition("@")[0] if "@" in email_u else (email_u or "Membre")
             with _CHAT_LOCK:
                 msgs = _charger_messages_chat()
                 nouv = {

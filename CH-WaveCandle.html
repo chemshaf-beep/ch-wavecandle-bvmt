@@ -4152,6 +4152,10 @@ window.addEventListener('load', () => {
     <strong style="font-size:13px; color:#FFD700;">💬 Salon Communautaire — CH-WaveCandle</strong>
     <button id="btnCloseChat" type="button" class="btn-action" style="padding:2px 8px; font-size:11px;">✕ Fermer</button>
   </div>
+    <div id="chChatUserBar" style="padding:5px 12px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
+    <span>👤 Pseudo forum : <strong id="lblChatPseudo" style="color:#38BDF8;">...</strong></span>
+    <button type="button" id="btnEditChatPseudo" class="ch-tool-btn" style="font-size:10.5px;padding:2px 7px;">✏️ Modifier</button>
+  </div>
   <div class="ch-chat-tabs">
     <button type="button" class="ch-chat-tab active" data-salon="GENERAL">🌐 Général BVMT</button>
     <button type="button" class="ch-chat-tab" data-salon="ANALYSE">📊 Graphiques</button>
@@ -4350,14 +4354,32 @@ window.addEventListener('load', () => {
         salon: salonActif,
         sentiment,
         quote: citationActuelle,
-        ticker_tag: tagValeurActuel,
+        ticker_tag: tagValeurActuel, pseudo_client: localStorage.getItem("ch_forum_pseudo") || "",
         text: txt
       });
       citationActuelle = "";
       tagValeurActuel = "";
       document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) chargerMessagesSalon();
+      if (res && res.status === 200) { if (res.message && res.message.auteur) { localStorage.setItem("ch_forum_pseudo", res.message.auteur); const lp = document.getElementById("lblChatPseudo"); if (lp) lp.textContent = res.message.auteur; } chargerMessagesSalon(); }
     };
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await appelRpcChat({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
 
     document.getElementById("btnChatSend").onclick = envoyerMessage;
     document.getElementById("chChatInput").addEventListener("keydown", (e) => {
