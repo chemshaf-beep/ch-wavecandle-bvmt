@@ -4196,8 +4196,796 @@ window.addEventListener('load', () => {
   function formaterTexteChat(txt) {
     const safe = txt.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     return safe
-      .replace(/\*\*(.+?)\*\*/g, "<b></body></b>")
-      .replace(/\*(.+?)\*/g, "<i></body></i>")
+      .replace(/\*\*(.+?)\*\*/g, "<b><!-- CH_TECH_INDICATORS_START -->
+<style id="ch-ind-css">
+  #chIndPopover {
+    display: none;
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(370px, 94vw);
+    background: #0F172A;
+    border: 1px solid #38BDF8;
+    border-radius: 8px;
+    padding: 12px 14px;
+    z-index: 100015;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    color: #E2E8F0;
+  }
+  #chIndPopover.open { display: block; }
+  .ch-ind-sec { font-size: 10.5px; font-weight: 800; color: #FFD700; text-transform: uppercase; letter-spacing: 0.05em; margin: 6px 0 6px 0; border-bottom: 1px solid #1E293B; padding-bottom: 3px; }
+  .ch-ind-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 0; }
+  .ch-ind-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+  .ch-ind-num { width: 46px; background: #1E293B; color: #FFD700; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; text-align: center; font-size: 11px; font-weight: 700; }
+  .ch-ind-type { background: #1E293B; color: #38BDF8; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: 700; }
+  body.theme-clair #chIndPopover, body.light-mode #chIndPopover { background: #FFFFFF; color: #0F172A; border-color: #0284C7; box-shadow: 0 10px 28px rgba(15,23,42,0.18); }
+  body.theme-clair .ch-ind-sec, body.light-mode .ch-ind-sec { color: #92400E; border-bottom-color: #E2E8F0; }
+  body.theme-clair .ch-ind-num, body.light-mode .ch-ind-num,
+  body.theme-clair .ch-ind-type, body.light-mode .ch-ind-type { background: #F1F5F9; color: #0F172A; border-color: #CBD5E1; }
+</style>
+
+<div id="chIndPopover">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <strong style="color:#38BDF8;font-size:13px;">📐 Indicateurs Techniques & Flux</strong>
+    <button type="button" id="btnCloseInd" class="btn-action" style="padding:2px 7px;font-size:11px;">✕</button>
+  </div>
+
+  <div class="ch-ind-sec">Superpositions sur le Prix</div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndMA1"> <span style="color:#38BDF8;">●</span> Moyenne 1</label>
+    <span><select id="selIndMA1Type" class="ch-ind-type"><option value="EMA" selected>EMA</option><option value="SMA">SMA</option></select> <input type="number" id="inpIndMA1P" class="ch-ind-num" value="20" min="2" max="250"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndMA2"> <span style="color:#F59E0B;">●</span> Moyenne 2</label>
+    <span><select id="selIndMA2Type" class="ch-ind-type"><option value="SMA" selected>SMA</option><option value="EMA">EMA</option></select> <input type="number" id="inpIndMA2P" class="ch-ind-num" value="50" min="2" max="300"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndVWAP"> <span style="color:#A855F7;">●</span> VWAP / CMP Dynamique</label>
+    <span style="font-size:10.5px;color:#94A3B8;">Pondéré Vol.</span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndBB"> <span style="color:#10B981;">●</span> Bandes de Bollinger</label>
+    <span>P:<input type="number" id="inpIndBBP" class="ch-ind-num" value="20" min="5" max="150"> σ:<input type="number" id="inpIndBBK" class="ch-ind-num" value="2" step="0.5" min="1" max="4" style="width:38px;"></span>
+  </div>
+
+  <div class="ch-ind-sec" style="margin-top:10px;">Oscillateur Inférieur (Sous-graphique)</div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="NONE" checked> Aucun (100% Prix)</label>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="RSI"> RSI (Surachat 70 / Survente 30)</label>
+    <span>P:<input type="number" id="inpIndRSIP" class="ch-ind-num" value="14" min="2" max="100"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="MACD"> MACD (Momentum)</label>
+    <span style="font-size:10.5px;color:#94A3B8;">12, 26, 9</span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="CVD"> CVD (Delta Achat - Vente)</label>
+    <span style="font-size:10.5px;color:#10B981;">Flux Cumulé</span>
+  </div>
+
+  <div style="margin-top:10px;display:flex;justify-content:space-between;gap:6px;">
+    <button type="button" id="btnResetInd" class="btn-action" style="flex:1;font-size:11px;border-color:#64748B;color:#94A3B8;">Tout décocher</button>
+    <button type="button" id="btnApplyInd" class="btn-action" style="flex:1;font-size:11px;background:#0284C7;color:#FFF;border-color:#38BDF8;">Appliquer</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  window.CH_MathInd = {
+    sma: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      let sum = 0, cnt = 0;
+      const win = new Array();
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        win.push(v); sum += v;
+        if (win.length > p) sum -= win.shift();
+        if (win.length === p) out.splice(i, 1, +(sum / p).toFixed(3));
+      }
+      return out;
+    },
+    ema: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      const k = 2 / (p + 1);
+      let prev = null, seedSum = 0, seedCnt = 0;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        if (prev === null) {
+          seedSum += v; seedCnt++;
+          if (seedCnt === p) { prev = seedSum / p; out.splice(i, 1, +prev.toFixed(3)); }
+        } else {
+          prev = v * k + prev * (1 - k);
+          out.splice(i, 1, +prev.toFixed(3));
+        }
+      }
+      return out;
+    },
+    bollinger: function(vals, p, mult) {
+      const mid = this.sma(vals, p);
+      const up = new Array(vals.length).fill(null);
+      const lo = new Array(vals.length).fill(null);
+      const win = new Array();
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        win.push(v);
+        if (win.length > p) win.shift();
+        if (win.length === p && mid.at(i) !== null) {
+          const m = mid.at(i);
+          const variance = win.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / p;
+          const sd = Math.sqrt(variance);
+          up.splice(i, 1, +(m + mult * sd).toFixed(3));
+          lo.splice(i, 1, +(m - mult * sd).toFixed(3));
+        }
+      }
+      return { mid, up, lo };
+    },
+    rsi: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      let avgGain = 0, avgLoss = 0, prevV = null, step = 0;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        if (prevV === null) { prevV = v; continue; }
+        const diff = v - prevV; prevV = v;
+        const g = diff > 0 ? diff : 0;
+        const l = diff < 0 ? -diff : 0;
+        step++;
+        if (step <= p) {
+          avgGain += g; avgLoss += l;
+          if (step === p) {
+            avgGain /= p; avgLoss /= p;
+            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
+          }
+        } else {
+          avgGain = (avgGain * (p - 1) + g) / p;
+          avgLoss = (avgLoss * (p - 1) + l) / p;
+          const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+          out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
+        }
+      }
+      return out;
+    },
+    macd: function(vals, fast = 12, slow = 26, sig = 9) {
+      const eFast = this.ema(vals, fast);
+      const eSlow = this.ema(vals, slow);
+      const line = vals.map((_, i) => (eFast.at(i) !== null && eSlow.at(i) !== null) ? +(eFast.at(i) - eSlow.at(i)).toFixed(3) : null);
+      const signal = this.ema(line, sig);
+      const hist = vals.map((_, i) => (line.at(i) !== null && signal.at(i) !== null) ? +(line.at(i) - signal.at(i)).toFixed(3) : null);
+      return { line, signal, hist };
+    }
+  };
+})();
+</script>
+<!-- CH_TECH_INDICATORS_END -->
+<!-- CH_TECH_RENDER_START -->
+<script>
+window.__chLireConfigIndicateurs = function() {
+  return {
+    ma1: !!document.getElementById("chkIndMA1")?.checked,
+    ma1Type: document.getElementById("selIndMA1Type")?.value || "EMA",
+    ma1P: Math.max(2, parseInt(document.getElementById("inpIndMA1P")?.value || "20", 10)),
+    ma2: !!document.getElementById("chkIndMA2")?.checked,
+    ma2Type: document.getElementById("selIndMA2Type")?.value || "SMA",
+    ma2P: Math.max(2, parseInt(document.getElementById("inpIndMA2P")?.value || "50", 10)),
+    vwap: !!document.getElementById("chkIndVWAP")?.checked,
+    bb: !!document.getElementById("chkIndBB")?.checked,
+    bbP: Math.max(5, parseInt(document.getElementById("inpIndBBP")?.value || "20", 10)),
+    bbK: Math.max(1, parseFloat(document.getElementById("inpIndBBK")?.value || "2")),
+    osc: document.querySelector("input[name='radOsc']:checked")?.value || "NONE",
+    rsiP: Math.max(2, parseInt(document.getElementById("inpIndRSIP")?.value || "14", 10))
+  };
+};
+
+window.__chInjecterIndicateurs = function() {
+  if (typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
+  const cfg = window.__chLireConfigIndicateurs();
+  const aUnIndicateur = cfg.ma1 || cfg.ma2 || cfg.vwap || cfg.bb || cfg.osc !== "NONE";
+  if (!aUnIndicateur) return;
+
+  const opt = chart.getOption();
+  if (!opt || !opt.series || !opt.xAxis) return;
+
+  const isMulti = Array.isArray(globalData.bougies) && globalData.bougies.length > 0 &&
+                  (document.getElementById("selHorizon")?.value === "MULTI" ||
+                   document.getElementById("selModeRendu")?.value === "CHANDELIERS" ||
+                   document.getElementById("selModeRendu")?.value === "JAPON");
+
+  let xVals = new Array();
+  let closes = new Array();
+  let vwapArr = new Array();
+  let cvdArr = new Array();
+
+  if (isMulti) {
+    let cumM = 0, cumV = 0, cumDelta = 0;
+    globalData.bougies.forEach((b, idx) => {
+      xVals.push(idx);
+      const c = (b && !b.vide && b.close !== null) ? b.close : null;
+      closes.push(c);
+      if (b && !b.vide && b.vol_tot > 0) {
+        cumM += (b.montant_tot || (c * b.vol_tot));
+        cumV += b.vol_tot;
+        cumDelta += ((b.qte_ach || 0) - (b.qte_ven || 0));
+      }
+      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
+      cvdArr.push(cumDelta);
+    });
+  } else if (Array.isArray(globalData.vagues) && globalData.vagues.length > 0) {
+    let cumM = 0, cumV = 0, cumDelta = 0;
+    globalData.vagues.forEach(v => {
+      const midT = Math.round((secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2);
+      xVals.push(midT);
+      closes.push(v.prix_fin);
+      cumM += (v.cmp * v.cumul);
+      cumV += v.cumul;
+      cumDelta += (v.sens === "ACHAT" ? v.cumul : (v.sens === "VENTE" ? -v.cumul : 0));
+      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
+      cvdArr.push(cumDelta);
+    });
+  } else {
+    return;
+  }
+
+  const pairData = (arr) => arr.map((y, i) => y === null ? null : new Array(xVals.at(i), y));
+  const extraSeries = new Array();
+
+  if (cfg.ma1) {
+    const m1 = cfg.ma1Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma1P) : CH_MathInd.sma(closes, cfg.ma1P);
+    extraSeries.push({ id: "ind_ma1", name: `${cfg.ma1Type}${cfg.ma1P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#38BDF8" }, data: pairData(m1), z: 40 });
+  }
+  if (cfg.ma2) {
+    const m2 = cfg.ma2Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma2P) : CH_MathInd.sma(closes, cfg.ma2P);
+    extraSeries.push({ id: "ind_ma2", name: `${cfg.ma2Type}${cfg.ma2P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#F59E0B" }, data: pairData(m2), z: 40 });
+  }
+  if (cfg.vwap) {
+    extraSeries.push({ id: "ind_vwap", name: "VWAP", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2, type: "dashed", color: "#A855F7" }, data: pairData(vwapArr), z: 41 });
+  }
+  if (cfg.bb) {
+    const bb = CH_MathInd.bollinger(closes, cfg.bbP, cfg.bbK);
+    extraSeries.push({ id: "ind_bb_up", name: "BB Sup", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.up), z: 38 });
+    extraSeries.push({ id: "ind_bb_lo", name: "BB Inf", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.lo), z: 38 });
+  }
+
+  const baseSeries = (opt.series || new Array()).filter(s => !String(s.id || "").startsWith("ind_"));
+  const isClair = (typeof estThemeClair === "function" && estThemeClair()) || document.body.classList.contains("theme-clair");
+  const axisCol = isClair ? "#475569" : "#94A3B8";
+  const splitCol = isClair ? "#E2E8F0" : "#1E293B";
+
+  if (cfg.osc === "NONE") {
+    chart.setOption({
+      grid: new Array({ left: 45, right: 92, top: 35, bottom: 62 }),
+      series: baseSeries.concat(extraSeries)
+    }, { replaceMerge: new Array("series") });
+    return;
+  }
+
+  const xBase = Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : opt.xAxis;
+  const xOsc = { ...xBase, gridIndex: 1, axisLabel: { show: false } };
+  let yOsc = { gridIndex: 1, position: "right", axisLabel: { color: axisCol, fontSize: 10 }, splitLine: { lineStyle: { color: splitCol } } };
+
+  if (cfg.osc === "RSI") {
+    const rVals = CH_MathInd.rsi(closes, cfg.rsiP);
+    yOsc = { ...yOsc, min: 0, max: 100, interval: 30 };
+    extraSeries.push({
+      id: "ind_osc_rsi", name: `RSI(${cfg.rsiP})`, type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
+      lineStyle: { width: 1.8, color: "#38BDF8" },
+      markLine: { silent: true, symbol: "none", lineStyle: { type: "dashed", width: 1 }, data: new Array({ yAxis: 70, lineStyle: { color: "#EF4444" } }, { yAxis: 30, lineStyle: { color: "#10B981" } }) },
+      data: pairData(rVals)
+    });
+  } else if (cfg.osc === "MACD") {
+    const mObj = CH_MathInd.macd(closes, 12, 26, 9);
+    extraSeries.push({
+      id: "ind_osc_macd_h", name: "Hist", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
+      itemStyle: { color: (p) => (p.value && p.value.at(1) >= 0) ? "rgba(16,185,129,0.65)" : "rgba(239,68,68,0.65)" },
+      data: pairData(mObj.hist)
+    });
+    extraSeries.push({ id: "ind_osc_macd_l", name: "MACD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#38BDF8" }, data: pairData(mObj.line) });
+    extraSeries.push({ id: "ind_osc_macd_s", name: "Signal", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#F59E0B" }, data: pairData(mObj.signal) });
+  } else if (cfg.osc === "CVD") {
+    extraSeries.push({
+      id: "ind_osc_cvd", name: "CVD (Achat-Vente)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
+      lineStyle: { width: 1.8, color: "#10B981" }, areaStyle: { color: "rgba(16,185,129,0.15)" },
+      data: pairData(cvdArr)
+    });
+  }
+
+  const yBase = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : opt.yAxis;
+  chart.setOption({
+    axisPointer: { link: new Array({ xAxisIndex: "all" }) },
+    grid: new Array(
+      { left: 45, right: 92, top: 32, height: "60%" },
+      { left: 45, right: 92, top: "71%", height: "19%" }
+    ),
+    xAxis: new Array({ ...xBase, gridIndex: 0 }, xOsc),
+    yAxis: new Array({ ...yBase, gridIndex: 0 }, yOsc),
+    dataZoom: new Array(
+      { id: "zoomX_inside", xAxisIndex: new Array(0, 1) },
+      { id: "zoomY_inside", yAxisIndex: new Array(0) },
+      { id: "zoomX_slider", xAxisIndex: new Array(0, 1) }
+    ),
+    series: baseSeries.concat(extraSeries)
+  }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
+};
+</script>
+<!-- CH_TECH_RENDER_END -->
+<!-- CH_TECH_UI_START -->
+<script>
+(function() {
+  function initBoutonIndicateurs() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenIndicators")) {
+      const btn = document.createElement("button");
+      btn.id = "btnOpenIndicators";
+      btn.type = "button";
+      btn.className = "btn-action";
+      btn.style.cssText = "border-color:#A855F7; color:#C084FC; font-weight:bold;";
+      btn.innerHTML = "📐 Indicateurs";
+      btn.onclick = () => document.getElementById("chIndPopover")?.classList.toggle("open");
+      const btnChat = document.getElementById("btnOpenChat");
+      if (btnChat) topbar.insertBefore(btn, btnChat);
+      else topbar.appendChild(btn);
+    }
+
+    const btnClose = document.getElementById("btnCloseInd");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chIndPopover")?.classList.remove("open");
+
+    const btnApply = document.getElementById("btnApplyInd");
+    if (btnApply) {
+      btnApply.onclick = () => {
+        document.getElementById("chIndPopover")?.classList.remove("open");
+        if (typeof globalData !== "undefined" && globalData) {
+          if (document.getElementById("selHorizon")?.value === "MULTI" || document.getElementById("selModeRendu")?.value === "CHANDELIERS" || document.getElementById("selModeRendu")?.value === "JAPON") {
+            dessinerChandeliersMulti(globalData);
+          } else {
+            dessinerGraphique(globalData);
+          }
+        }
+      };
+    }
+
+    const btnReset = document.getElementById("btnResetInd");
+    if (btnReset) {
+      btnReset.onclick = () => {
+        document.querySelectorAll("#chIndPopover input[type='checkbox']").forEach(c => c.checked = false);
+        const radNone = document.querySelector("input[name='radOsc'][value='NONE']");
+        if (radNone) radNone.checked = true;
+        if (btnApply) btnApply.click();
+      };
+    }
+
+    const hookRender = () => {
+      if (typeof window.dessinerGraphique !== "function" || typeof window.dessinerChandeliersMulti !== "function") {
+        setTimeout(hookRender, 150);
+        return;
+      }
+      const orig1 = window.dessinerGraphique;
+      window.dessinerGraphique = function(data) {
+        const r = orig1.apply(this, arguments);
+        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
+        return r;
+      };
+      const orig2 = window.dessinerChandeliersMulti;
+      window.dessinerChandeliersMulti = function(data) {
+        const r = orig2.apply(this, arguments);
+        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
+        return r;
+      };
+    };
+    hookRender();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initBoutonIndicateurs);
+  } else {
+    initBoutonIndicateurs();
+  }
+})();
+</script>
+<!-- CH_TECH_UI_END -->
+</body></b>")
+      .replace(/\*(.+?)\*/g, "<i><!-- CH_TECH_INDICATORS_START -->
+<style id="ch-ind-css">
+  #chIndPopover {
+    display: none;
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(370px, 94vw);
+    background: #0F172A;
+    border: 1px solid #38BDF8;
+    border-radius: 8px;
+    padding: 12px 14px;
+    z-index: 100015;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    color: #E2E8F0;
+  }
+  #chIndPopover.open { display: block; }
+  .ch-ind-sec { font-size: 10.5px; font-weight: 800; color: #FFD700; text-transform: uppercase; letter-spacing: 0.05em; margin: 6px 0 6px 0; border-bottom: 1px solid #1E293B; padding-bottom: 3px; }
+  .ch-ind-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 0; }
+  .ch-ind-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+  .ch-ind-num { width: 46px; background: #1E293B; color: #FFD700; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; text-align: center; font-size: 11px; font-weight: 700; }
+  .ch-ind-type { background: #1E293B; color: #38BDF8; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: 700; }
+  body.theme-clair #chIndPopover, body.light-mode #chIndPopover { background: #FFFFFF; color: #0F172A; border-color: #0284C7; box-shadow: 0 10px 28px rgba(15,23,42,0.18); }
+  body.theme-clair .ch-ind-sec, body.light-mode .ch-ind-sec { color: #92400E; border-bottom-color: #E2E8F0; }
+  body.theme-clair .ch-ind-num, body.light-mode .ch-ind-num,
+  body.theme-clair .ch-ind-type, body.light-mode .ch-ind-type { background: #F1F5F9; color: #0F172A; border-color: #CBD5E1; }
+</style>
+
+<div id="chIndPopover">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <strong style="color:#38BDF8;font-size:13px;">📐 Indicateurs Techniques & Flux</strong>
+    <button type="button" id="btnCloseInd" class="btn-action" style="padding:2px 7px;font-size:11px;">✕</button>
+  </div>
+
+  <div class="ch-ind-sec">Superpositions sur le Prix</div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndMA1"> <span style="color:#38BDF8;">●</span> Moyenne 1</label>
+    <span><select id="selIndMA1Type" class="ch-ind-type"><option value="EMA" selected>EMA</option><option value="SMA">SMA</option></select> <input type="number" id="inpIndMA1P" class="ch-ind-num" value="20" min="2" max="250"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndMA2"> <span style="color:#F59E0B;">●</span> Moyenne 2</label>
+    <span><select id="selIndMA2Type" class="ch-ind-type"><option value="SMA" selected>SMA</option><option value="EMA">EMA</option></select> <input type="number" id="inpIndMA2P" class="ch-ind-num" value="50" min="2" max="300"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndVWAP"> <span style="color:#A855F7;">●</span> VWAP / CMP Dynamique</label>
+    <span style="font-size:10.5px;color:#94A3B8;">Pondéré Vol.</span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndBB"> <span style="color:#10B981;">●</span> Bandes de Bollinger</label>
+    <span>P:<input type="number" id="inpIndBBP" class="ch-ind-num" value="20" min="5" max="150"> σ:<input type="number" id="inpIndBBK" class="ch-ind-num" value="2" step="0.5" min="1" max="4" style="width:38px;"></span>
+  </div>
+
+  <div class="ch-ind-sec" style="margin-top:10px;">Oscillateur Inférieur (Sous-graphique)</div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="NONE" checked> Aucun (100% Prix)</label>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="RSI"> RSI (Surachat 70 / Survente 30)</label>
+    <span>P:<input type="number" id="inpIndRSIP" class="ch-ind-num" value="14" min="2" max="100"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="MACD"> MACD (Momentum)</label>
+    <span style="font-size:10.5px;color:#94A3B8;">12, 26, 9</span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="CVD"> CVD (Delta Achat - Vente)</label>
+    <span style="font-size:10.5px;color:#10B981;">Flux Cumulé</span>
+  </div>
+
+  <div style="margin-top:10px;display:flex;justify-content:space-between;gap:6px;">
+    <button type="button" id="btnResetInd" class="btn-action" style="flex:1;font-size:11px;border-color:#64748B;color:#94A3B8;">Tout décocher</button>
+    <button type="button" id="btnApplyInd" class="btn-action" style="flex:1;font-size:11px;background:#0284C7;color:#FFF;border-color:#38BDF8;">Appliquer</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  window.CH_MathInd = {
+    sma: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      let sum = 0, cnt = 0;
+      const win = new Array();
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        win.push(v); sum += v;
+        if (win.length > p) sum -= win.shift();
+        if (win.length === p) out.splice(i, 1, +(sum / p).toFixed(3));
+      }
+      return out;
+    },
+    ema: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      const k = 2 / (p + 1);
+      let prev = null, seedSum = 0, seedCnt = 0;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        if (prev === null) {
+          seedSum += v; seedCnt++;
+          if (seedCnt === p) { prev = seedSum / p; out.splice(i, 1, +prev.toFixed(3)); }
+        } else {
+          prev = v * k + prev * (1 - k);
+          out.splice(i, 1, +prev.toFixed(3));
+        }
+      }
+      return out;
+    },
+    bollinger: function(vals, p, mult) {
+      const mid = this.sma(vals, p);
+      const up = new Array(vals.length).fill(null);
+      const lo = new Array(vals.length).fill(null);
+      const win = new Array();
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        win.push(v);
+        if (win.length > p) win.shift();
+        if (win.length === p && mid.at(i) !== null) {
+          const m = mid.at(i);
+          const variance = win.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / p;
+          const sd = Math.sqrt(variance);
+          up.splice(i, 1, +(m + mult * sd).toFixed(3));
+          lo.splice(i, 1, +(m - mult * sd).toFixed(3));
+        }
+      }
+      return { mid, up, lo };
+    },
+    rsi: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      let avgGain = 0, avgLoss = 0, prevV = null, step = 0;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        if (prevV === null) { prevV = v; continue; }
+        const diff = v - prevV; prevV = v;
+        const g = diff > 0 ? diff : 0;
+        const l = diff < 0 ? -diff : 0;
+        step++;
+        if (step <= p) {
+          avgGain += g; avgLoss += l;
+          if (step === p) {
+            avgGain /= p; avgLoss /= p;
+            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
+          }
+        } else {
+          avgGain = (avgGain * (p - 1) + g) / p;
+          avgLoss = (avgLoss * (p - 1) + l) / p;
+          const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+          out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
+        }
+      }
+      return out;
+    },
+    macd: function(vals, fast = 12, slow = 26, sig = 9) {
+      const eFast = this.ema(vals, fast);
+      const eSlow = this.ema(vals, slow);
+      const line = vals.map((_, i) => (eFast.at(i) !== null && eSlow.at(i) !== null) ? +(eFast.at(i) - eSlow.at(i)).toFixed(3) : null);
+      const signal = this.ema(line, sig);
+      const hist = vals.map((_, i) => (line.at(i) !== null && signal.at(i) !== null) ? +(line.at(i) - signal.at(i)).toFixed(3) : null);
+      return { line, signal, hist };
+    }
+  };
+})();
+</script>
+<!-- CH_TECH_INDICATORS_END -->
+<!-- CH_TECH_RENDER_START -->
+<script>
+window.__chLireConfigIndicateurs = function() {
+  return {
+    ma1: !!document.getElementById("chkIndMA1")?.checked,
+    ma1Type: document.getElementById("selIndMA1Type")?.value || "EMA",
+    ma1P: Math.max(2, parseInt(document.getElementById("inpIndMA1P")?.value || "20", 10)),
+    ma2: !!document.getElementById("chkIndMA2")?.checked,
+    ma2Type: document.getElementById("selIndMA2Type")?.value || "SMA",
+    ma2P: Math.max(2, parseInt(document.getElementById("inpIndMA2P")?.value || "50", 10)),
+    vwap: !!document.getElementById("chkIndVWAP")?.checked,
+    bb: !!document.getElementById("chkIndBB")?.checked,
+    bbP: Math.max(5, parseInt(document.getElementById("inpIndBBP")?.value || "20", 10)),
+    bbK: Math.max(1, parseFloat(document.getElementById("inpIndBBK")?.value || "2")),
+    osc: document.querySelector("input[name='radOsc']:checked")?.value || "NONE",
+    rsiP: Math.max(2, parseInt(document.getElementById("inpIndRSIP")?.value || "14", 10))
+  };
+};
+
+window.__chInjecterIndicateurs = function() {
+  if (typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
+  const cfg = window.__chLireConfigIndicateurs();
+  const aUnIndicateur = cfg.ma1 || cfg.ma2 || cfg.vwap || cfg.bb || cfg.osc !== "NONE";
+  if (!aUnIndicateur) return;
+
+  const opt = chart.getOption();
+  if (!opt || !opt.series || !opt.xAxis) return;
+
+  const isMulti = Array.isArray(globalData.bougies) && globalData.bougies.length > 0 &&
+                  (document.getElementById("selHorizon")?.value === "MULTI" ||
+                   document.getElementById("selModeRendu")?.value === "CHANDELIERS" ||
+                   document.getElementById("selModeRendu")?.value === "JAPON");
+
+  let xVals = new Array();
+  let closes = new Array();
+  let vwapArr = new Array();
+  let cvdArr = new Array();
+
+  if (isMulti) {
+    let cumM = 0, cumV = 0, cumDelta = 0;
+    globalData.bougies.forEach((b, idx) => {
+      xVals.push(idx);
+      const c = (b && !b.vide && b.close !== null) ? b.close : null;
+      closes.push(c);
+      if (b && !b.vide && b.vol_tot > 0) {
+        cumM += (b.montant_tot || (c * b.vol_tot));
+        cumV += b.vol_tot;
+        cumDelta += ((b.qte_ach || 0) - (b.qte_ven || 0));
+      }
+      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
+      cvdArr.push(cumDelta);
+    });
+  } else if (Array.isArray(globalData.vagues) && globalData.vagues.length > 0) {
+    let cumM = 0, cumV = 0, cumDelta = 0;
+    globalData.vagues.forEach(v => {
+      const midT = Math.round((secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2);
+      xVals.push(midT);
+      closes.push(v.prix_fin);
+      cumM += (v.cmp * v.cumul);
+      cumV += v.cumul;
+      cumDelta += (v.sens === "ACHAT" ? v.cumul : (v.sens === "VENTE" ? -v.cumul : 0));
+      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
+      cvdArr.push(cumDelta);
+    });
+  } else {
+    return;
+  }
+
+  const pairData = (arr) => arr.map((y, i) => y === null ? null : new Array(xVals.at(i), y));
+  const extraSeries = new Array();
+
+  if (cfg.ma1) {
+    const m1 = cfg.ma1Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma1P) : CH_MathInd.sma(closes, cfg.ma1P);
+    extraSeries.push({ id: "ind_ma1", name: `${cfg.ma1Type}${cfg.ma1P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#38BDF8" }, data: pairData(m1), z: 40 });
+  }
+  if (cfg.ma2) {
+    const m2 = cfg.ma2Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma2P) : CH_MathInd.sma(closes, cfg.ma2P);
+    extraSeries.push({ id: "ind_ma2", name: `${cfg.ma2Type}${cfg.ma2P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#F59E0B" }, data: pairData(m2), z: 40 });
+  }
+  if (cfg.vwap) {
+    extraSeries.push({ id: "ind_vwap", name: "VWAP", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2, type: "dashed", color: "#A855F7" }, data: pairData(vwapArr), z: 41 });
+  }
+  if (cfg.bb) {
+    const bb = CH_MathInd.bollinger(closes, cfg.bbP, cfg.bbK);
+    extraSeries.push({ id: "ind_bb_up", name: "BB Sup", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.up), z: 38 });
+    extraSeries.push({ id: "ind_bb_lo", name: "BB Inf", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.lo), z: 38 });
+  }
+
+  const baseSeries = (opt.series || new Array()).filter(s => !String(s.id || "").startsWith("ind_"));
+  const isClair = (typeof estThemeClair === "function" && estThemeClair()) || document.body.classList.contains("theme-clair");
+  const axisCol = isClair ? "#475569" : "#94A3B8";
+  const splitCol = isClair ? "#E2E8F0" : "#1E293B";
+
+  if (cfg.osc === "NONE") {
+    chart.setOption({
+      grid: new Array({ left: 45, right: 92, top: 35, bottom: 62 }),
+      series: baseSeries.concat(extraSeries)
+    }, { replaceMerge: new Array("series") });
+    return;
+  }
+
+  const xBase = Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : opt.xAxis;
+  const xOsc = { ...xBase, gridIndex: 1, axisLabel: { show: false } };
+  let yOsc = { gridIndex: 1, position: "right", axisLabel: { color: axisCol, fontSize: 10 }, splitLine: { lineStyle: { color: splitCol } } };
+
+  if (cfg.osc === "RSI") {
+    const rVals = CH_MathInd.rsi(closes, cfg.rsiP);
+    yOsc = { ...yOsc, min: 0, max: 100, interval: 30 };
+    extraSeries.push({
+      id: "ind_osc_rsi", name: `RSI(${cfg.rsiP})`, type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
+      lineStyle: { width: 1.8, color: "#38BDF8" },
+      markLine: { silent: true, symbol: "none", lineStyle: { type: "dashed", width: 1 }, data: new Array({ yAxis: 70, lineStyle: { color: "#EF4444" } }, { yAxis: 30, lineStyle: { color: "#10B981" } }) },
+      data: pairData(rVals)
+    });
+  } else if (cfg.osc === "MACD") {
+    const mObj = CH_MathInd.macd(closes, 12, 26, 9);
+    extraSeries.push({
+      id: "ind_osc_macd_h", name: "Hist", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
+      itemStyle: { color: (p) => (p.value && p.value.at(1) >= 0) ? "rgba(16,185,129,0.65)" : "rgba(239,68,68,0.65)" },
+      data: pairData(mObj.hist)
+    });
+    extraSeries.push({ id: "ind_osc_macd_l", name: "MACD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#38BDF8" }, data: pairData(mObj.line) });
+    extraSeries.push({ id: "ind_osc_macd_s", name: "Signal", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#F59E0B" }, data: pairData(mObj.signal) });
+  } else if (cfg.osc === "CVD") {
+    extraSeries.push({
+      id: "ind_osc_cvd", name: "CVD (Achat-Vente)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
+      lineStyle: { width: 1.8, color: "#10B981" }, areaStyle: { color: "rgba(16,185,129,0.15)" },
+      data: pairData(cvdArr)
+    });
+  }
+
+  const yBase = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : opt.yAxis;
+  chart.setOption({
+    axisPointer: { link: new Array({ xAxisIndex: "all" }) },
+    grid: new Array(
+      { left: 45, right: 92, top: 32, height: "60%" },
+      { left: 45, right: 92, top: "71%", height: "19%" }
+    ),
+    xAxis: new Array({ ...xBase, gridIndex: 0 }, xOsc),
+    yAxis: new Array({ ...yBase, gridIndex: 0 }, yOsc),
+    dataZoom: new Array(
+      { id: "zoomX_inside", xAxisIndex: new Array(0, 1) },
+      { id: "zoomY_inside", yAxisIndex: new Array(0) },
+      { id: "zoomX_slider", xAxisIndex: new Array(0, 1) }
+    ),
+    series: baseSeries.concat(extraSeries)
+  }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
+};
+</script>
+<!-- CH_TECH_RENDER_END -->
+<!-- CH_TECH_UI_START -->
+<script>
+(function() {
+  function initBoutonIndicateurs() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenIndicators")) {
+      const btn = document.createElement("button");
+      btn.id = "btnOpenIndicators";
+      btn.type = "button";
+      btn.className = "btn-action";
+      btn.style.cssText = "border-color:#A855F7; color:#C084FC; font-weight:bold;";
+      btn.innerHTML = "📐 Indicateurs";
+      btn.onclick = () => document.getElementById("chIndPopover")?.classList.toggle("open");
+      const btnChat = document.getElementById("btnOpenChat");
+      if (btnChat) topbar.insertBefore(btn, btnChat);
+      else topbar.appendChild(btn);
+    }
+
+    const btnClose = document.getElementById("btnCloseInd");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chIndPopover")?.classList.remove("open");
+
+    const btnApply = document.getElementById("btnApplyInd");
+    if (btnApply) {
+      btnApply.onclick = () => {
+        document.getElementById("chIndPopover")?.classList.remove("open");
+        if (typeof globalData !== "undefined" && globalData) {
+          if (document.getElementById("selHorizon")?.value === "MULTI" || document.getElementById("selModeRendu")?.value === "CHANDELIERS" || document.getElementById("selModeRendu")?.value === "JAPON") {
+            dessinerChandeliersMulti(globalData);
+          } else {
+            dessinerGraphique(globalData);
+          }
+        }
+      };
+    }
+
+    const btnReset = document.getElementById("btnResetInd");
+    if (btnReset) {
+      btnReset.onclick = () => {
+        document.querySelectorAll("#chIndPopover input[type='checkbox']").forEach(c => c.checked = false);
+        const radNone = document.querySelector("input[name='radOsc'][value='NONE']");
+        if (radNone) radNone.checked = true;
+        if (btnApply) btnApply.click();
+      };
+    }
+
+    const hookRender = () => {
+      if (typeof window.dessinerGraphique !== "function" || typeof window.dessinerChandeliersMulti !== "function") {
+        setTimeout(hookRender, 150);
+        return;
+      }
+      const orig1 = window.dessinerGraphique;
+      window.dessinerGraphique = function(data) {
+        const r = orig1.apply(this, arguments);
+        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
+        return r;
+      };
+      const orig2 = window.dessinerChandeliersMulti;
+      window.dessinerChandeliersMulti = function(data) {
+        const r = orig2.apply(this, arguments);
+        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
+        return r;
+      };
+    };
+    hookRender();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initBoutonIndicateurs);
+  } else {
+    initBoutonIndicateurs();
+  }
+})();
+</script>
+<!-- CH_TECH_UI_END -->
+</body></i>")
       .replace(/\n/g, "<br/>");
   }
 
@@ -4395,5 +5183,399 @@ window.addEventListener('load', () => {
 })();
 </script>
 <!-- CH_CHAT_JS_END -->
+<!-- CH_TECH_INDICATORS_START -->
+<style id="ch-ind-css">
+  #chIndPopover {
+    display: none;
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(370px, 94vw);
+    background: #0F172A;
+    border: 1px solid #38BDF8;
+    border-radius: 8px;
+    padding: 12px 14px;
+    z-index: 100015;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    color: #E2E8F0;
+  }
+  #chIndPopover.open { display: block; }
+  .ch-ind-sec { font-size: 10.5px; font-weight: 800; color: #FFD700; text-transform: uppercase; letter-spacing: 0.05em; margin: 6px 0 6px 0; border-bottom: 1px solid #1E293B; padding-bottom: 3px; }
+  .ch-ind-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 0; }
+  .ch-ind-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+  .ch-ind-num { width: 46px; background: #1E293B; color: #FFD700; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; text-align: center; font-size: 11px; font-weight: 700; }
+  .ch-ind-type { background: #1E293B; color: #38BDF8; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: 700; }
+  body.theme-clair #chIndPopover, body.light-mode #chIndPopover { background: #FFFFFF; color: #0F172A; border-color: #0284C7; box-shadow: 0 10px 28px rgba(15,23,42,0.18); }
+  body.theme-clair .ch-ind-sec, body.light-mode .ch-ind-sec { color: #92400E; border-bottom-color: #E2E8F0; }
+  body.theme-clair .ch-ind-num, body.light-mode .ch-ind-num,
+  body.theme-clair .ch-ind-type, body.light-mode .ch-ind-type { background: #F1F5F9; color: #0F172A; border-color: #CBD5E1; }
+</style>
+
+<div id="chIndPopover">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <strong style="color:#38BDF8;font-size:13px;">📐 Indicateurs Techniques & Flux</strong>
+    <button type="button" id="btnCloseInd" class="btn-action" style="padding:2px 7px;font-size:11px;">✕</button>
+  </div>
+
+  <div class="ch-ind-sec">Superpositions sur le Prix</div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndMA1"> <span style="color:#38BDF8;">●</span> Moyenne 1</label>
+    <span><select id="selIndMA1Type" class="ch-ind-type"><option value="EMA" selected>EMA</option><option value="SMA">SMA</option></select> <input type="number" id="inpIndMA1P" class="ch-ind-num" value="20" min="2" max="250"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndMA2"> <span style="color:#F59E0B;">●</span> Moyenne 2</label>
+    <span><select id="selIndMA2Type" class="ch-ind-type"><option value="SMA" selected>SMA</option><option value="EMA">EMA</option></select> <input type="number" id="inpIndMA2P" class="ch-ind-num" value="50" min="2" max="300"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndVWAP"> <span style="color:#A855F7;">●</span> VWAP / CMP Dynamique</label>
+    <span style="font-size:10.5px;color:#94A3B8;">Pondéré Vol.</span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="checkbox" id="chkIndBB"> <span style="color:#10B981;">●</span> Bandes de Bollinger</label>
+    <span>P:<input type="number" id="inpIndBBP" class="ch-ind-num" value="20" min="5" max="150"> σ:<input type="number" id="inpIndBBK" class="ch-ind-num" value="2" step="0.5" min="1" max="4" style="width:38px;"></span>
+  </div>
+
+  <div class="ch-ind-sec" style="margin-top:10px;">Oscillateur Inférieur (Sous-graphique)</div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="NONE" checked> Aucun (100% Prix)</label>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="RSI"> RSI (Surachat 70 / Survente 30)</label>
+    <span>P:<input type="number" id="inpIndRSIP" class="ch-ind-num" value="14" min="2" max="100"></span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="MACD"> MACD (Momentum)</label>
+    <span style="font-size:10.5px;color:#94A3B8;">12, 26, 9</span>
+  </div>
+  <div class="ch-ind-row">
+    <label><input type="radio" name="radOsc" value="CVD"> CVD (Delta Achat - Vente)</label>
+    <span style="font-size:10.5px;color:#10B981;">Flux Cumulé</span>
+  </div>
+
+  <div style="margin-top:10px;display:flex;justify-content:space-between;gap:6px;">
+    <button type="button" id="btnResetInd" class="btn-action" style="flex:1;font-size:11px;border-color:#64748B;color:#94A3B8;">Tout décocher</button>
+    <button type="button" id="btnApplyInd" class="btn-action" style="flex:1;font-size:11px;background:#0284C7;color:#FFF;border-color:#38BDF8;">Appliquer</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  window.CH_MathInd = {
+    sma: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      let sum = 0, cnt = 0;
+      const win = new Array();
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        win.push(v); sum += v;
+        if (win.length > p) sum -= win.shift();
+        if (win.length === p) out.splice(i, 1, +(sum / p).toFixed(3));
+      }
+      return out;
+    },
+    ema: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      const k = 2 / (p + 1);
+      let prev = null, seedSum = 0, seedCnt = 0;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        if (prev === null) {
+          seedSum += v; seedCnt++;
+          if (seedCnt === p) { prev = seedSum / p; out.splice(i, 1, +prev.toFixed(3)); }
+        } else {
+          prev = v * k + prev * (1 - k);
+          out.splice(i, 1, +prev.toFixed(3));
+        }
+      }
+      return out;
+    },
+    bollinger: function(vals, p, mult) {
+      const mid = this.sma(vals, p);
+      const up = new Array(vals.length).fill(null);
+      const lo = new Array(vals.length).fill(null);
+      const win = new Array();
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        win.push(v);
+        if (win.length > p) win.shift();
+        if (win.length === p && mid.at(i) !== null) {
+          const m = mid.at(i);
+          const variance = win.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / p;
+          const sd = Math.sqrt(variance);
+          up.splice(i, 1, +(m + mult * sd).toFixed(3));
+          lo.splice(i, 1, +(m - mult * sd).toFixed(3));
+        }
+      }
+      return { mid, up, lo };
+    },
+    rsi: function(vals, p) {
+      const out = new Array(vals.length).fill(null);
+      let avgGain = 0, avgLoss = 0, prevV = null, step = 0;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals.at(i);
+        if (v === null || isNaN(v)) continue;
+        if (prevV === null) { prevV = v; continue; }
+        const diff = v - prevV; prevV = v;
+        const g = diff > 0 ? diff : 0;
+        const l = diff < 0 ? -diff : 0;
+        step++;
+        if (step <= p) {
+          avgGain += g; avgLoss += l;
+          if (step === p) {
+            avgGain /= p; avgLoss /= p;
+            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
+          }
+        } else {
+          avgGain = (avgGain * (p - 1) + g) / p;
+          avgLoss = (avgLoss * (p - 1) + l) / p;
+          const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+          out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
+        }
+      }
+      return out;
+    },
+    macd: function(vals, fast = 12, slow = 26, sig = 9) {
+      const eFast = this.ema(vals, fast);
+      const eSlow = this.ema(vals, slow);
+      const line = vals.map((_, i) => (eFast.at(i) !== null && eSlow.at(i) !== null) ? +(eFast.at(i) - eSlow.at(i)).toFixed(3) : null);
+      const signal = this.ema(line, sig);
+      const hist = vals.map((_, i) => (line.at(i) !== null && signal.at(i) !== null) ? +(line.at(i) - signal.at(i)).toFixed(3) : null);
+      return { line, signal, hist };
+    }
+  };
+})();
+</script>
+<!-- CH_TECH_INDICATORS_END -->
+<!-- CH_TECH_RENDER_START -->
+<script>
+window.__chLireConfigIndicateurs = function() {
+  return {
+    ma1: !!document.getElementById("chkIndMA1")?.checked,
+    ma1Type: document.getElementById("selIndMA1Type")?.value || "EMA",
+    ma1P: Math.max(2, parseInt(document.getElementById("inpIndMA1P")?.value || "20", 10)),
+    ma2: !!document.getElementById("chkIndMA2")?.checked,
+    ma2Type: document.getElementById("selIndMA2Type")?.value || "SMA",
+    ma2P: Math.max(2, parseInt(document.getElementById("inpIndMA2P")?.value || "50", 10)),
+    vwap: !!document.getElementById("chkIndVWAP")?.checked,
+    bb: !!document.getElementById("chkIndBB")?.checked,
+    bbP: Math.max(5, parseInt(document.getElementById("inpIndBBP")?.value || "20", 10)),
+    bbK: Math.max(1, parseFloat(document.getElementById("inpIndBBK")?.value || "2")),
+    osc: document.querySelector("input[name='radOsc']:checked")?.value || "NONE",
+    rsiP: Math.max(2, parseInt(document.getElementById("inpIndRSIP")?.value || "14", 10))
+  };
+};
+
+window.__chInjecterIndicateurs = function() {
+  if (typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
+  const cfg = window.__chLireConfigIndicateurs();
+  const aUnIndicateur = cfg.ma1 || cfg.ma2 || cfg.vwap || cfg.bb || cfg.osc !== "NONE";
+  if (!aUnIndicateur) return;
+
+  const opt = chart.getOption();
+  if (!opt || !opt.series || !opt.xAxis) return;
+
+  const isMulti = Array.isArray(globalData.bougies) && globalData.bougies.length > 0 &&
+                  (document.getElementById("selHorizon")?.value === "MULTI" ||
+                   document.getElementById("selModeRendu")?.value === "CHANDELIERS" ||
+                   document.getElementById("selModeRendu")?.value === "JAPON");
+
+  let xVals = new Array();
+  let closes = new Array();
+  let vwapArr = new Array();
+  let cvdArr = new Array();
+
+  if (isMulti) {
+    let cumM = 0, cumV = 0, cumDelta = 0;
+    globalData.bougies.forEach((b, idx) => {
+      xVals.push(idx);
+      const c = (b && !b.vide && b.close !== null) ? b.close : null;
+      closes.push(c);
+      if (b && !b.vide && b.vol_tot > 0) {
+        cumM += (b.montant_tot || (c * b.vol_tot));
+        cumV += b.vol_tot;
+        cumDelta += ((b.qte_ach || 0) - (b.qte_ven || 0));
+      }
+      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
+      cvdArr.push(cumDelta);
+    });
+  } else if (Array.isArray(globalData.vagues) && globalData.vagues.length > 0) {
+    let cumM = 0, cumV = 0, cumDelta = 0;
+    globalData.vagues.forEach(v => {
+      const midT = Math.round((secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2);
+      xVals.push(midT);
+      closes.push(v.prix_fin);
+      cumM += (v.cmp * v.cumul);
+      cumV += v.cumul;
+      cumDelta += (v.sens === "ACHAT" ? v.cumul : (v.sens === "VENTE" ? -v.cumul : 0));
+      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
+      cvdArr.push(cumDelta);
+    });
+  } else {
+    return;
+  }
+
+  const pairData = (arr) => arr.map((y, i) => y === null ? null : new Array(xVals.at(i), y));
+  const extraSeries = new Array();
+
+  if (cfg.ma1) {
+    const m1 = cfg.ma1Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma1P) : CH_MathInd.sma(closes, cfg.ma1P);
+    extraSeries.push({ id: "ind_ma1", name: `${cfg.ma1Type}${cfg.ma1P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#38BDF8" }, data: pairData(m1), z: 40 });
+  }
+  if (cfg.ma2) {
+    const m2 = cfg.ma2Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma2P) : CH_MathInd.sma(closes, cfg.ma2P);
+    extraSeries.push({ id: "ind_ma2", name: `${cfg.ma2Type}${cfg.ma2P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#F59E0B" }, data: pairData(m2), z: 40 });
+  }
+  if (cfg.vwap) {
+    extraSeries.push({ id: "ind_vwap", name: "VWAP", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2, type: "dashed", color: "#A855F7" }, data: pairData(vwapArr), z: 41 });
+  }
+  if (cfg.bb) {
+    const bb = CH_MathInd.bollinger(closes, cfg.bbP, cfg.bbK);
+    extraSeries.push({ id: "ind_bb_up", name: "BB Sup", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.up), z: 38 });
+    extraSeries.push({ id: "ind_bb_lo", name: "BB Inf", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.lo), z: 38 });
+  }
+
+  const baseSeries = (opt.series || new Array()).filter(s => !String(s.id || "").startsWith("ind_"));
+  const isClair = (typeof estThemeClair === "function" && estThemeClair()) || document.body.classList.contains("theme-clair");
+  const axisCol = isClair ? "#475569" : "#94A3B8";
+  const splitCol = isClair ? "#E2E8F0" : "#1E293B";
+
+  if (cfg.osc === "NONE") {
+    chart.setOption({
+      grid: new Array({ left: 45, right: 92, top: 35, bottom: 62 }),
+      series: baseSeries.concat(extraSeries)
+    }, { replaceMerge: new Array("series") });
+    return;
+  }
+
+  const xBase = Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : opt.xAxis;
+  const xOsc = { ...xBase, gridIndex: 1, axisLabel: { show: false } };
+  let yOsc = { gridIndex: 1, position: "right", axisLabel: { color: axisCol, fontSize: 10 }, splitLine: { lineStyle: { color: splitCol } } };
+
+  if (cfg.osc === "RSI") {
+    const rVals = CH_MathInd.rsi(closes, cfg.rsiP);
+    yOsc = { ...yOsc, min: 0, max: 100, interval: 30 };
+    extraSeries.push({
+      id: "ind_osc_rsi", name: `RSI(${cfg.rsiP})`, type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
+      lineStyle: { width: 1.8, color: "#38BDF8" },
+      markLine: { silent: true, symbol: "none", lineStyle: { type: "dashed", width: 1 }, data: new Array({ yAxis: 70, lineStyle: { color: "#EF4444" } }, { yAxis: 30, lineStyle: { color: "#10B981" } }) },
+      data: pairData(rVals)
+    });
+  } else if (cfg.osc === "MACD") {
+    const mObj = CH_MathInd.macd(closes, 12, 26, 9);
+    extraSeries.push({
+      id: "ind_osc_macd_h", name: "Hist", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
+      itemStyle: { color: (p) => (p.value && p.value.at(1) >= 0) ? "rgba(16,185,129,0.65)" : "rgba(239,68,68,0.65)" },
+      data: pairData(mObj.hist)
+    });
+    extraSeries.push({ id: "ind_osc_macd_l", name: "MACD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#38BDF8" }, data: pairData(mObj.line) });
+    extraSeries.push({ id: "ind_osc_macd_s", name: "Signal", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#F59E0B" }, data: pairData(mObj.signal) });
+  } else if (cfg.osc === "CVD") {
+    extraSeries.push({
+      id: "ind_osc_cvd", name: "CVD (Achat-Vente)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
+      lineStyle: { width: 1.8, color: "#10B981" }, areaStyle: { color: "rgba(16,185,129,0.15)" },
+      data: pairData(cvdArr)
+    });
+  }
+
+  const yBase = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : opt.yAxis;
+  chart.setOption({
+    axisPointer: { link: new Array({ xAxisIndex: "all" }) },
+    grid: new Array(
+      { left: 45, right: 92, top: 32, height: "60%" },
+      { left: 45, right: 92, top: "71%", height: "19%" }
+    ),
+    xAxis: new Array({ ...xBase, gridIndex: 0 }, xOsc),
+    yAxis: new Array({ ...yBase, gridIndex: 0 }, yOsc),
+    dataZoom: new Array(
+      { id: "zoomX_inside", xAxisIndex: new Array(0, 1) },
+      { id: "zoomY_inside", yAxisIndex: new Array(0) },
+      { id: "zoomX_slider", xAxisIndex: new Array(0, 1) }
+    ),
+    series: baseSeries.concat(extraSeries)
+  }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
+};
+</script>
+<!-- CH_TECH_RENDER_END -->
+<!-- CH_TECH_UI_START -->
+<script>
+(function() {
+  function initBoutonIndicateurs() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenIndicators")) {
+      const btn = document.createElement("button");
+      btn.id = "btnOpenIndicators";
+      btn.type = "button";
+      btn.className = "btn-action";
+      btn.style.cssText = "border-color:#A855F7; color:#C084FC; font-weight:bold;";
+      btn.innerHTML = "📐 Indicateurs";
+      btn.onclick = () => document.getElementById("chIndPopover")?.classList.toggle("open");
+      const btnChat = document.getElementById("btnOpenChat");
+      if (btnChat) topbar.insertBefore(btn, btnChat);
+      else topbar.appendChild(btn);
+    }
+
+    const btnClose = document.getElementById("btnCloseInd");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chIndPopover")?.classList.remove("open");
+
+    const btnApply = document.getElementById("btnApplyInd");
+    if (btnApply) {
+      btnApply.onclick = () => {
+        document.getElementById("chIndPopover")?.classList.remove("open");
+        if (typeof globalData !== "undefined" && globalData) {
+          if (document.getElementById("selHorizon")?.value === "MULTI" || document.getElementById("selModeRendu")?.value === "CHANDELIERS" || document.getElementById("selModeRendu")?.value === "JAPON") {
+            dessinerChandeliersMulti(globalData);
+          } else {
+            dessinerGraphique(globalData);
+          }
+        }
+      };
+    }
+
+    const btnReset = document.getElementById("btnResetInd");
+    if (btnReset) {
+      btnReset.onclick = () => {
+        document.querySelectorAll("#chIndPopover input[type='checkbox']").forEach(c => c.checked = false);
+        const radNone = document.querySelector("input[name='radOsc'][value='NONE']");
+        if (radNone) radNone.checked = true;
+        if (btnApply) btnApply.click();
+      };
+    }
+
+    const hookRender = () => {
+      if (typeof window.dessinerGraphique !== "function" || typeof window.dessinerChandeliersMulti !== "function") {
+        setTimeout(hookRender, 150);
+        return;
+      }
+      const orig1 = window.dessinerGraphique;
+      window.dessinerGraphique = function(data) {
+        const r = orig1.apply(this, arguments);
+        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
+        return r;
+      };
+      const orig2 = window.dessinerChandeliersMulti;
+      window.dessinerChandeliersMulti = function(data) {
+        const r = orig2.apply(this, arguments);
+        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
+        return r;
+      };
+    };
+    hookRender();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initBoutonIndicateurs);
+  } else {
+    initBoutonIndicateurs();
+  }
+})();
+</script>
+<!-- CH_TECH_UI_END -->
 </body>
 </html>
