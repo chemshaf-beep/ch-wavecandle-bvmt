@@ -1734,7 +1734,6 @@ def sync_github_cloud():
                 payload = {"message": f"Auto-save BVMT {rel}", "content": b64}
                 if sha: payload["sha"] = sha
                 urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
-            print(f"[OK] Chat sauvegardé sur GitHub ({repo}/{rel_gh_path})")
                 print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
             except Exception as ex_gh:
                 print(f"[⚠️ GITHUB-SYNC-ERR] ({api_url}) : {ex_gh}", flush=True)
@@ -2398,7 +2397,6 @@ def _push_fichier_gh(rel_gh_path: str, local_fp: str, commit_msg: str):
             if sha:
                 payload["sha"] = sha
             urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
-            print(f"[OK] Chat sauvegardé sur GitHub ({repo}/{rel_gh_path})")
         except Exception:
             pass
     threading.Thread(target=_worker, daemon=True).start()
