@@ -2396,7 +2396,7 @@ async function chargerDonnees(dateIso = "", ticker = "", strict = false) {
   document.getElementById('statusText').innerText = `Séance du ${data.date_fr} — ${data.vagues.length} vagues${infoB}`;
 }
 
-async function chargerMultiSeances() {
+async function chargerMultiSeances() { const _tkM = document.getElementById("selTicker")?.value || "DELICE HOLDING"; const _lblM = document.getElementById("lblTicker"); if (_lblM) _lblM.innerText = _tkM;
   if (!seancesLocales.length) return;
   const ticker = document.getElementById('selTicker').value || "DELICE HOLDING", gran = document.getElementById('selGranularite').value || "JOUR";
   const asc = [...seancesLocales].reverse(), buckets = {}, ordre = [];
@@ -4630,5 +4630,40 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_TECH_UI_END -->
+<!-- CH_TICKER_FIX_START -->
+<script>
+(function() {
+  function bindTickerChange() {
+    const sel = document.getElementById("selTicker");
+    if (!sel || sel.dataset.chTickerBound) return;
+    sel.dataset.chTickerBound = "1";
+
+    sel.addEventListener("change", function() {
+      const val = sel.value;
+      if (!val) return;
+      const lbl = document.getElementById("lblTicker");
+      if (lbl) lbl.innerText = val;
+      const mobSel = document.getElementById("chMobTickerSel");
+      if (mobSel && mobSel.value !== val) mobSel.value = val;
+
+      const h = document.getElementById("selHorizon")?.value || "UNIQUE";
+      if (h === "MULTI") {
+        if (typeof chargerMultiSeances === "function") chargerMultiSeances();
+      } else if (h === "LIVE") {
+        if (typeof rafraichirFluxLive === "function") rafraichirFluxLive(true);
+      } else if (typeof chargerDonnees === "function") {
+        const dIso = (typeof globalData !== "undefined" && globalData && globalData.date_iso)
+          ? globalData.date_iso
+          : (typeof seancesLocales !== "undefined" && seancesLocales.length ? seancesLocales.at(0).date_iso : "");
+        chargerDonnees(dIso, val, false);
+      }
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindTickerChange);
+  else bindTickerChange();
+})();
+</script>
+<!-- CH_TICKER_FIX_END -->
 </body>
 </html>
