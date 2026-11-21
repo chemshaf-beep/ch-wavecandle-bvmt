@@ -2590,7 +2590,7 @@ document.getElementById('btnDossierRacine').onclick = async () => {
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
       document.getElementById('selHorizon').value = 'UNIQUE';
-      chargerDonnees(seancesLocales[0].date_iso, "", false);
+      chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -3089,7 +3089,7 @@ async function demarrageAutomatiqueHttp() {
       },
       getFileHandle: async (nomFichier) => creerHandleHttp('Cache_Live/' + nomFichier, nomFichier)
     };
-    if (renduInitialFait) return;
+    if (renduInitialFait && typeof globalData !== "undefined" && globalData && Array.isArray(globalData.vagues) && globalData.vagues.length > 0) return;
     seancesLocales.sort((a, b) => b.date_iso.localeCompare(a.date_iso));
 
     dirHandleLive = {
@@ -3106,7 +3106,7 @@ async function demarrageAutomatiqueHttp() {
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
       document.getElementById('selHorizon').value = 'UNIQUE';
-      chargerDonnees(seancesLocales[0].date_iso, "", false);
+      chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (e) { document.getElementById('statusText').style.color = '#FF3B3B'; document.getElementById('statusText').innerText = 'ERREUR AUTO : ' + e.message; }
 }
@@ -3683,7 +3683,7 @@ window.addEventListener('load', () => {
 
     reinitialiserControlesInitiaux();
 
-    if (!snap || !snap.data || !snap.data.vagues) return;
+    if (!snap || !snap.data || !Array.isArray(snap.data.vagues) || snap.data.vagues.length === 0) return;
     try {
       const inpD = document.getElementById("txtDateSeance");
       if (inpD && snap.date_fr) inpD.value = snap.date_fr;
@@ -3705,7 +3705,7 @@ window.addEventListener('load', () => {
     const origDessiner = window.dessinerGraphique;
     window.dessinerGraphique = function(data) {
       const r = origDessiner.apply(this, arguments);
-      if (data && data.vagues) {
+      if (data && Array.isArray(data.vagues) && data.vagues.length > 0) {
         const hVal = document.getElementById("selHorizon")?.value || "";
         const mVal = document.getElementById("selModeRendu")?.value || "VAGUES";
         const bVal = document.getElementById("selFiltreBlocs")?.value || "TOUS";
