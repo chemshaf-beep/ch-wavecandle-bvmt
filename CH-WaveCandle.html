@@ -4197,7 +4197,7 @@ window.__CH_CHAT_CORE = {
         if (drw) {
           drw.classList.add("open");
           core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
+          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open") && !document.hidden && navigator.onLine) core.charger(); }, 8000);
         }
       };
       topbar.appendChild(btn);
@@ -4809,7 +4809,7 @@ window.__chInjecterIndicateurs = function() {
   const _MEDIA_CACHE = new Map();
   let pendingDataUrl = "";
 
-  function compresserImageDataUrl(rawUrl, maxW = 1280, quality = 0.84) {
+  function compresserImageLegere(rawUrl, maxW = 860, quality = 0.68) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -4818,6 +4818,8 @@ window.__chInjecterIndicateurs = function() {
         const cv = document.createElement("canvas");
         cv.width = w; cv.height = h;
         const ctx = cv.getContext("2d");
+        ctx.fillStyle = "#0F172A";
+        ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
         resolve(cv.toDataURL("image/jpeg", quality));
       };
@@ -4826,61 +4828,61 @@ window.__chInjecterIndicateurs = function() {
     });
   }
 
-  function initChatProFeatures() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) { setTimeout(initChatProFeatures, 150); return; }
+  // Délégation d'événements globale (fonctionne immédiatement, quel que soit l'ordre de chargement)
+  document.addEventListener("click", async function(e) {
+    const target = e.target instanceof Element ? e.target.closest("button") : null;
+    if (!target) return;
 
-    // 1. Bouton Pleine Page
-    const btnFull = document.getElementById("btnFullChat");
-    if (btnFull && !btnFull.dataset.bound) {
-      btnFull.dataset.bound = "1";
-      btnFull.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (!drw) return;
+    if (target.id === "btnFullChat") {
+      e.preventDefault();
+      const drw = document.getElementById("chChatDrawer");
+      if (drw) {
         const isFull = drw.classList.toggle("fullpage");
-        btnFull.textContent = isFull ? "🗗 Réduire" : "⛶ Pleine page";
-      };
+        target.textContent = isFull ? "🗗 Réduire" : "⛶ Pleine page";
+      }
+    } else if (target.id === "btnChatSnapChart") {
+      e.preventDefault();
+      if (typeof chart === "undefined" || !chart) return;
+      const isClair = document.body.classList.contains("theme-clair") || document.body.classList.contains("light-mode");
+      const raw = chart.getDataURL({ type: "png", pixelRatio: 1.2, backgroundColor: isClair ? "#F8FAFC" : "#0A0A0A" });
+      pendingDataUrl = await compresserImageLegere(raw, 880, 0.70);
+      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+      if (window.__CH_CHAT_CORE) window.__CH_CHAT_CORE.tickerTag = window.__CH_CHAT_CORE.tickerTag || tk;
+      const prev = document.getElementById("chChatReplyPreview");
+      const rtxt = document.getElementById("chChatReplyText");
+      if (prev && rtxt) { rtxt.textContent = "📸 Capture graphique prête (" + tk + ")"; prev.style.display = "flex"; }
+      document.getElementById("chChatInput")?.focus();
+    } else if (target.id === "btnChatPickImg") {
+      e.preventDefault();
+      document.getElementById("inpChatFile")?.click();
     }
+  });
 
-    // 2. Bouton Capture directe du graphique ECharts
-    const btnSnap = document.getElementById("btnChatSnapChart");
-    if (btnSnap && !btnSnap.dataset.bound) {
-      btnSnap.dataset.bound = "1";
-      btnSnap.onclick = async () => {
-        if (typeof chart === "undefined" || !chart) return;
-        const raw = chart.getDataURL({ type: "png", pixelRatio: 1.5, backgroundColor: document.body.classList.contains("theme-clair") ? "#F8FAFC" : "#0A0A0A" });
-        pendingDataUrl = await compresserImageDataUrl(raw, 1360, 0.86);
-        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-        core.tickerTag = core.tickerTag || tk;
+  document.addEventListener("change", function(e) {
+    if (e.target && e.target.id === "inpChatFile") {
+      const f = e.target.files && e.target.files.item(0);
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        pendingDataUrl = await compresserImageLegere(ev.target.result, 860, 0.68);
         const prev = document.getElementById("chChatReplyPreview");
         const rtxt = document.getElementById("chChatReplyText");
-        if (prev && rtxt) { rtxt.textContent = "📸 Capture graphique prête à envoyer (" + tk + ")"; prev.style.display = "flex"; }
+        if (prev && rtxt) { rtxt.textContent = "🖼️ Image jointe : " + f.name; prev.style.display = "flex"; }
+        e.target.value = "";
         document.getElementById("chChatInput")?.focus();
       };
+      reader.readAsDataURL(f);
     }
+  });
 
-    // 3. Bouton Upload Image / Document depuis l'appareil
-    const btnPick = document.getElementById("btnChatPickImg");
-    const inpFile = document.getElementById("inpChatFile");
-    if (btnPick && inpFile && !btnPick.dataset.bound) {
-      btnPick.dataset.bound = "1";
-      btnPick.onclick = () => inpFile.click();
-      inpFile.onchange = () => {
-        const f = inpFile.files && inpFile.files.item(0);
-        if (!f) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          pendingDataUrl = await compresserImageDataUrl(ev.target.result, 1280, 0.84);
-          const prev = document.getElementById("chChatReplyPreview");
-          const rtxt = document.getElementById("chChatReplyText");
-          if (prev && rtxt) { rtxt.textContent = "🖼️ Image jointe : " + f.name; prev.style.display = "flex"; }
-          inpFile.value = "";
-        };
-        reader.readAsDataURL(f);
-      };
+  function hookChatCorePro() {
+    const core = window.__CH_CHAT_CORE;
+    if (!core || core.__proMediaHooked) {
+      if (!core) setTimeout(hookChatCorePro, 100);
+      return;
     }
+    core.__proMediaHooked = true;
 
-    // 4. Enrichir renderCard pour afficher les images/graphiques + bouton Modifier après envoi
     const origRender = core.renderCard.bind(core);
     core.renderCard = function(m) {
       const card = origRender(m);
@@ -4894,7 +4896,6 @@ window.__chInjecterIndicateurs = function() {
         card.appendChild(edBadge);
       }
 
-      // Bouton Modifier pour l'auteur du message
       if (monPseudo && auteurMsg === monPseudo) {
         const metaRight = card.querySelector(".ch-msg-meta span:last-child");
         if (metaRight) {
@@ -4913,7 +4914,6 @@ window.__chInjecterIndicateurs = function() {
         }
       }
 
-      // Affichage direct de l'image ou capture graphique jointe
       if (m.media_id) {
         const imgEl = document.createElement("img");
         imgEl.className = "ch-msg-img";
@@ -4940,12 +4940,12 @@ window.__chInjecterIndicateurs = function() {
       return card;
     };
 
-    // 5. Intercepter l'envoi pour uploader d'abord le média joint si présent
     const origRpc = core.rpc.bind(core);
     core.rpc = async function(payload) {
       if (payload && payload.cmd === "chat_post" && pendingDataUrl) {
-        const upRes = await origRpc({ cmd: "chat_upload_media", data_url: pendingDataUrl });
+        const dataToSend = pendingDataUrl;
         pendingDataUrl = "";
+        const upRes = await origRpc({ cmd: "chat_upload_media", data_url: dataToSend });
         if (upRes && upRes.status === 200 && upRes.media_id) {
           payload.media_id = upRes.media_id;
         }
@@ -4954,8 +4954,7 @@ window.__chInjecterIndicateurs = function() {
     };
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatProFeatures);
-  else initChatProFeatures();
+  hookChatCorePro();
 })();
 </script>
 <!-- CH_CHAT_MEDIA_EDIT_END -->
