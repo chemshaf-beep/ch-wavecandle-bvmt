@@ -3683,7 +3683,7 @@ window.addEventListener('load', () => {
 
     reinitialiserControlesInitiaux();
 
-    if (!snap || !snap.data || !Array.isArray(snap.data.vagues) || snap.data.vagues.length === 0) return;
+    if (!snap || !snap.data || !Array.isArray(snap.data.vagues) || snap.data.vagues.length === 0 || (snap.ticker && snap.ticker.length > 24)) return;
     try {
       const inpD = document.getElementById("txtDateSeance");
       if (inpD && snap.date_fr) inpD.value = snap.date_fr;
