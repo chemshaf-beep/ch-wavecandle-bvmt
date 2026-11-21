@@ -2423,6 +2423,25 @@ def _sauver_messages_chat(msgs):
         pass
     _push_fichier_gh("chat_messages.json", _CHAT_FILE, "Sauvegarde forum communautaire")
 
+def _enregistrer_media_direct(raw_url):
+    try:
+        s = str(raw_url or "").strip()
+        if not s or len(s) > 2_500_000:
+            return ""
+        b64_part = s.partition(",")[2] if "," in s else s
+        if not b64_part:
+            return ""
+        ext = "jpg" if ("jpeg" in s[:40].lower() or "jpg" in s[:40].lower()) else "png"
+        mid = f"media_{int(time.time() * 1000)}_{secrets.token_hex(3)}.{ext}"
+        fp = os.path.join(_CHAT_MEDIA_DIR, mid)
+        with open(fp, "wb") as f:
+            f.write(base64.b64decode(b64_part))
+        _push_fichier_gh(f"chat_media/{mid}", fp, f"Media forum {mid}")
+        return mid
+    except Exception as e:
+        print("[!] Erreur enregistrement media chat:", e)
+        return ""
+
 def _rpc_data(payload_json: str):
     try:
         b = json.loads(payload_json)
@@ -2546,7 +2565,8 @@ def _rpc_data(payload_json: str):
                     "salon": salon,
                     "sentiment": sentiment,
                     "quote": quote,
-                    "ticker_tag": ticker_tag, "media_id": str(b.get("media_id", "")).strip()[:80],
+                    "ticker_tag": ticker_tag,
+                    "media_id": _enregistrer_media_direct(b.get("media_data_url", "")) or str(b.get("media_id", "")).strip()[:80],
                     "text": texte,
                     "heure": datetime.datetime.now().strftime("%d/%m %H:%M")
                 }
