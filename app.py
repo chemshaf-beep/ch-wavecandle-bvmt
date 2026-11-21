@@ -2394,7 +2394,7 @@ def _rpc_data(payload_json: str):
             salon = str(b.get("salon", "GENERAL")).strip().upper()
             msgs = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
             return json.dumps({"status": 200, "messages": msgs[-120:]})
-                if cmd == "chat_set_pseudo":
+        if cmd == "chat_set_pseudo":
             nouv_pseudo = re.sub(r"[^a-zA-Z0-9_\-\.]", "", str(b.get("pseudo", "")).strip())[:24]
             if len(nouv_pseudo) < 3:
                 return json.dumps({"status": 400, "err": "Pseudo trop court (3 à 24 caractères)"})
