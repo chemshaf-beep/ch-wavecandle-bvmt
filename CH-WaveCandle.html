@@ -4275,7 +4275,8 @@ window.__CH_CHAT_CORE = {
 
     const envoyer = async () => {
       const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
+      let txt = (inp ? inp.value : "").trim();
+      if (!txt && window.__chHasPendingMedia) txt = "📊 Graphique / Image partagée";
       if (!txt) return;
       const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
       inp.value = "";
@@ -4807,7 +4808,7 @@ window.__chInjecterIndicateurs = function() {
 <script>
 (function() {
   const _MEDIA_CACHE = new Map();
-  let pendingDataUrl = "";
+  let pendingDataUrl = ""; window.__chHasPendingMedia = false;
 
   function compresserImageLegere(rawUrl, maxW = 860, quality = 0.68) {
     return new Promise((resolve) => {
@@ -4838,6 +4839,17 @@ window.__chInjecterIndicateurs = function() {
       const drw = document.getElementById("chChatDrawer");
       if (drw) {
         const isFull = drw.classList.toggle("fullpage");
+        if (isFull) {
+          drw.style.setProperty("left", "0px", "important");
+          drw.style.setProperty("right", "0px", "important");
+          drw.style.setProperty("width", "100vw", "important");
+          drw.style.setProperty("max-width", "100vw", "important");
+          drw.style.setProperty("z-index", "100045", "important");
+        } else {
+          drw.style.removeProperty("left");
+          drw.style.removeProperty("width");
+          drw.style.removeProperty("max-width");
+        }
         target.textContent = isFull ? "🗗 Réduire" : "⛶ Pleine page";
       }
     } else if (target.id === "btnChatSnapChart") {
@@ -4845,7 +4857,7 @@ window.__chInjecterIndicateurs = function() {
       if (typeof chart === "undefined" || !chart) return;
       const isClair = document.body.classList.contains("theme-clair") || document.body.classList.contains("light-mode");
       const raw = chart.getDataURL({ type: "png", pixelRatio: 1.2, backgroundColor: isClair ? "#F8FAFC" : "#0A0A0A" });
-      pendingDataUrl = await compresserImageLegere(raw, 880, 0.70);
+      window.__chHasPendingMedia = true; pendingDataUrl = await compresserImageLegere(raw, 880, 0.70);
       const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
       if (window.__CH_CHAT_CORE) window.__CH_CHAT_CORE.tickerTag = window.__CH_CHAT_CORE.tickerTag || tk;
       const prev = document.getElementById("chChatReplyPreview");
@@ -4864,7 +4876,7 @@ window.__chInjecterIndicateurs = function() {
       if (!f) return;
       const reader = new FileReader();
       reader.onload = async (ev) => {
-        pendingDataUrl = await compresserImageLegere(ev.target.result, 860, 0.68);
+        window.__chHasPendingMedia = true; pendingDataUrl = await compresserImageLegere(ev.target.result, 860, 0.68);
         const prev = document.getElementById("chChatReplyPreview");
         const rtxt = document.getElementById("chChatReplyText");
         if (prev && rtxt) { rtxt.textContent = "🖼️ Image jointe : " + f.name; prev.style.display = "flex"; }
@@ -4944,7 +4956,7 @@ window.__chInjecterIndicateurs = function() {
     core.rpc = async function(payload) {
       if (payload && payload.cmd === "chat_post" && pendingDataUrl) {
         const dataToSend = pendingDataUrl;
-        pendingDataUrl = "";
+        pendingDataUrl = ""; window.__chHasPendingMedia = false;
         const upRes = await origRpc({ cmd: "chat_upload_media", data_url: dataToSend });
         if (upRes && upRes.status === 200 && upRes.media_id) {
           payload.media_id = upRes.media_id;

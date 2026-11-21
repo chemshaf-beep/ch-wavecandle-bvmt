@@ -1734,6 +1734,7 @@ def sync_github_cloud():
                 payload = {"message": f"Auto-save BVMT {rel}", "content": b64}
                 if sha: payload["sha"] = sha
                 urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
+            print(f"[OK] Chat sauvegardé sur GitHub ({repo}/{rel_gh_path})")
                 print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
             except Exception as ex_gh:
                 print(f"[⚠️ GITHUB-SYNC-ERR] ({api_url}) : {ex_gh}", flush=True)
@@ -2355,6 +2356,7 @@ def _sync_chat_depuis_github():
     _CHAT_BOOT_SYNCED = True
     tk, repo = _gh_chat_cfg()
     if not tk or not repo:
+        print("[!] Chat GitHub Sync désactivé : GH_TOKEN ou GH_DATA_REPO/GH_REPO manquant.")
         return
     try:
         api_url = f"https://github.com{repo}/contents/chat_messages.json"
@@ -2396,6 +2398,7 @@ def _push_fichier_gh(rel_gh_path: str, local_fp: str, commit_msg: str):
             if sha:
                 payload["sha"] = sha
             urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
+            print(f"[OK] Chat sauvegardé sur GitHub ({repo}/{rel_gh_path})")
         except Exception:
             pass
     threading.Thread(target=_worker, daemon=True).start()
@@ -2436,7 +2439,7 @@ def _rpc_data(payload_json: str):
             if not b64_data or len(b64_data) > 2_800_000:
                 return json.dumps({"status": 400, "err": "Image trop volumineuse (max 2 Mo)"})
             if "," in b64_data:
-                b64_data = b64_data.split(",", 1)[1]
+                b64_data = b64_data.partition(",")[2]
             ext = "jpg" if "jpeg" in str(b.get("data_url", "")).lower() or "jpg" in str(b.get("data_url", "")).lower() else "png"
             media_id = f"media_{int(time.time() * 1000)}_{secrets.token_hex(3)}.{ext}"
             fp_m = os.path.join(_CHAT_MEDIA_DIR, media_id)
