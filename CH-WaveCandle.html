@@ -4125,6 +4125,12 @@ window.addEventListener('load', () => {
   body.theme-clair .ch-chat-tools, body.light-mode .ch-chat-tools { background: #F1F5F9; border-color: #CBD5E1; }
   body.theme-clair .ch-msg-card, body.light-mode .ch-msg-card { background: #FFFFFF; border-color: #E2E8F0; color: #0F172A; }
   body.theme-clair #chChatInput, body.light-mode #chChatInput { background: #FFFFFF; color: #0F172A; border-color: #CBD5E1; }
+  body.theme-clair .ch-chat-hdr strong, body.light-mode .ch-chat-hdr strong { color: #92400E !important; }
+  body.theme-clair .ch-chat-tabs, body.light-mode .ch-chat-tabs { background: #E2E8F0 !important; border-bottom-color: #CBD5E1 !important; }
+  body.theme-clair .ch-chat-tab, body.light-mode .ch-chat-tab { background: #FFFFFF !important; color: #334155 !important; border-color: #CBD5E1 !important; }
+  body.theme-clair .ch-chat-tab.active, body.light-mode .ch-chat-tab.active { background: #0284C7 !important; color: #FFFFFF !important; }
+  body.theme-clair .ch-tool-btn, body.light-mode .ch-tool-btn { background: #FFFFFF !important; color: #0F172A !important; border-color: #CBD5E1 !important; }
+  body.theme-clair .ch-chat-compose, body.light-mode .ch-chat-compose { background: #F1F5F9 !important; }
 </style>
 
 <div id="chChatDrawer" aria-hidden="true">
@@ -4178,12 +4184,33 @@ window.addEventListener('load', () => {
   }
 
   async function appelRpcChat(payload) {
-    const r = await fetch("/bvmt_api/chat", {
+    const tk = localStorage.getItem("CH_AUTH_TOKEN") || sessionStorage.getItem("CH_AUTH_TOKEN") || window.__CH_SESSION_TOKEN || "";
+    const bodyObj = { ...payload, token: tk };
+    if (typeof window.__chGradioRpc === "function") {
+      return await window.__chGradioRpc(bodyObj);
+    }
+    // Appel direct au endpoint Gradio rpc_data (SSE)
+    const callRes = await fetch("/gradio_api/call/rpc_data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
     });
-    return r.json();
+    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
+    const callJson = await callRes.json();
+    const eventId = callJson.event_id;
+    if (!eventId) return { status: 500, err: "event_id manquant" };
+    const sseRes = await fetch("/gradio_api/call/rpc_data/" + eventId);
+    const sseTxt = await sseRes.text();
+    const lines = sseTxt.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines.at(i);
+      if (ln && ln.startsWith("data:")) {
+        const parsed = JSON.parse(ln.slice(5).trim());
+        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
+        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
+      }
+    }
+    return { status: 500, err: "Réponse SSE vide" };
   }
 
   async function chargerMessagesSalon() {
