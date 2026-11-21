@@ -2397,8 +2397,10 @@ def _push_fichier_gh(rel_gh_path: str, local_fp: str, commit_msg: str):
             if sha:
                 payload["sha"] = sha
             urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
-        except Exception:
-            pass
+        except Exception as ex_gh:
+            global _LAST_GH_SYNC_STATUS
+            _LAST_GH_SYNC_STATUS = f"ERR: {ex_gh}"
+            print(f"[!] Erreur Sync GitHub ({rel_gh_path}):", ex_gh)
     threading.Thread(target=_worker, daemon=True).start()
 
 def _charger_messages_chat():
@@ -2423,12 +2425,14 @@ def _sauver_messages_chat(msgs):
         pass
     _push_fichier_gh("chat_messages.json", _CHAT_FILE, "Sauvegarde forum communautaire")
 
+_LAST_GH_SYNC_STATUS = "En attente"
+
 def _enregistrer_media_direct(raw_url):
     try:
         s = str(raw_url or "").strip()
         if not s or len(s) > 2_500_000:
             return ""
-        b64_part = s.partition(",")[2] if "," in s else s
+        b64_part = s.split(",", 1).pop() if "," in s else s
         if not b64_part:
             return ""
         ext = "jpg" if ("jpeg" in s[:40].lower() or "jpg" in s[:40].lower()) else "png"
@@ -2456,7 +2460,7 @@ def _rpc_data(payload_json: str):
             if not b64_data or len(b64_data) > 2_800_000:
                 return json.dumps({"status": 400, "err": "Image trop volumineuse (max 2 Mo)"})
             if "," in b64_data:
-                b64_data = b64_data.partition(",")[2]
+                b64_data = b64_data.split(",", 1).pop()[2]
             ext = "jpg" if "jpeg" in str(b.get("data_url", "")).lower() or "jpg" in str(b.get("data_url", "")).lower() else "png"
             media_id = f"media_{int(time.time() * 1000)}_{secrets.token_hex(3)}.{ext}"
             fp_m = os.path.join(_CHAT_MEDIA_DIR, media_id)
@@ -2512,7 +2516,7 @@ def _rpc_data(payload_json: str):
         if cmd == "chat_list":
             salon = str(b.get("salon", "GENERAL")).strip().upper()
             msgs = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
-            return json.dumps({"status": 200, "messages": msgs[-120:]})
+            tk_s, repo_s = _gh_chat_cfg(); return json.dumps({"status": 200, "messages": msgs[-120:], "sync_info": f"{repo_s or 'NON_CONFIG'} ({_LAST_GH_SYNC_STATUS})"})
         if cmd == "chat_set_pseudo":
             nouv_pseudo = re.sub(r"[^a-zA-Z0-9_\-\.]", "", str(b.get("pseudo", "")).strip())[:24]
             if len(nouv_pseudo) < 3:
