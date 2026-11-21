@@ -895,6 +895,62 @@ body.theme-clair .statusbar {
   }
 </style>
 <!-- CH_ZBAR_FS_CSS_END -->
+<!-- CH_UNIVERSAL_FS_CSS_START -->
+<style id="ch-universal-fullscreen-css">
+  /* Plein écran hybride universel (Android, iPhone Safari, Chrome, Samsung Internet) */
+  html.ch-fs-lock, body.ch-is-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    z-index: 99990 !important;
+  }
+
+  body.ch-is-fullscreen #chart,
+  body.ch-is-fullscreen #mainChart {
+    position: fixed !important;
+    top: calc(34px + env(safe-area-inset-top)) !important;
+    left: env(safe-area-inset-left) !important;
+    right: env(safe-area-inset-right) !important;
+    bottom: env(safe-area-inset-bottom) !important;
+    width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    height: calc(100dvh - 34px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Barre supérieure compacte sur 1 seule ligne en plein écran mobile */
+  body.ch-is-fullscreen #chMobControls {
+    top: calc(3px + env(safe-area-inset-top)) !important;
+    left: calc(6px + env(safe-area-inset-left)) !important;
+    max-width: calc(100vw - 185px - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  body.ch-is-fullscreen #chMobControls::-webkit-scrollbar { display: none !important; }
+
+  body.ch-is-fullscreen #chMobZoomPad {
+    display: flex !important;
+    top: calc(3px + env(safe-area-inset-top)) !important;
+    right: calc(82px + env(safe-area-inset-right)) !important;
+    gap: 3px !important;
+  }
+
+  @media screen and (max-width: 640px) {
+    body.ch-is-fullscreen #chMobControls button,
+    body.ch-is-fullscreen #chMobControls select,
+    body.ch-is-fullscreen #chMobZoomPad button {
+      padding: 2px 6px !important;
+      font-size: 11px !important;
+      min-height: 25px !important;
+    }
+  }
+</style>
+<!-- CH_UNIVERSAL_FS_CSS_END -->
 </head>
 <body>
 <style>
@@ -4655,5 +4711,93 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_EXACT_FAST_CACHE_END -->
+<!-- CH_UNIVERSAL_FS_JS_START -->
+<script>
+(function() {
+  function appliquerEtatPleinEcran(actif) {
+    document.documentElement.classList.toggle("ch-fs-lock", actif);
+    document.body.classList.toggle("ch-is-fullscreen", actif);
+
+    const btnFull = Array.from(document.querySelectorAll("#chMobControls button")).find(b => b.textContent.includes("Plein") || b.textContent.includes("Quitter"));
+    if (btnFull) btnFull.textContent = actif ? "🗗 Quitter" : "⛶ Plein écran";
+
+    const zPad = document.getElementById("chMobZoomPad");
+    if (zPad) zPad.style.display = actif ? "flex" : "none";
+
+    // Masquer les éléments parasites éventuels (Google Translate / barres Gradio)
+    const gt = document.getElementById("google_translate_element");
+    if (gt) gt.style.display = actif ? "none" : "";
+
+    // Recalculer la taille du graphique ECharts après transition de fenêtre
+    [60, 220, 450].forEach(delay => {
+      setTimeout(() => {
+        if (typeof chart !== "undefined" && chart) {
+          chart.resize();
+          if (typeof _dernierPiePos !== "undefined" && typeof _dernierPieSt !== "undefined" && typeof placerLabelAgressivite === "function") {
+            placerLabelAgressivite(_dernierPiePos, _dernierPieSt);
+          }
+        }
+      }, delay);
+    });
+  }
+
+  window.__chToggleUniversalFullscreen = async function() {
+    const estActif = document.body.classList.contains("ch-is-fullscreen") || !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const cible = !estActif;
+
+    if (cible) {
+      try {
+        const el = document.documentElement;
+        if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" });
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } catch (_) {}
+      try {
+        if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
+      } catch (_) {}
+      window.scrollTo(0, 1);
+      appliquerEtatPleinEcran(true);
+    } else {
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+      } catch (_) {}
+      try {
+        if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+      } catch (_) {}
+      appliquerEtatPleinEcran(false);
+    }
+  };
+
+  function brancherPleinEcranUniversel() {
+    const btns = Array.from(document.querySelectorAll("#chMobControls button"));
+    const btnFull = btns.find(b => b.textContent.includes("Plein") || b.textContent.includes("Quitter"));
+    if (btnFull && !btnFull.dataset.univFsBound) {
+      btnFull.dataset.univFsBound = "1";
+      btnFull.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.__chToggleUniversalFullscreen();
+      };
+    } else if (!btnFull) {
+      setTimeout(brancherPleinEcranUniversel, 250);
+    }
+  }
+
+  document.addEventListener("fullscreenchange", () => {
+    const natif = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (!natif && document.body.classList.contains("ch-is-fullscreen")) {
+      appliquerEtatPleinEcran(false);
+    }
+  });
+
+  window.addEventListener("orientationchange", () => {
+    setTimeout(() => { if (typeof chart !== "undefined" && chart) chart.resize(); }, 250);
+  });
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", brancherPleinEcranUniversel);
+  else brancherPleinEcranUniversel();
+})();
+</script>
+<!-- CH_UNIVERSAL_FS_JS_END -->
 </body>
 </html>
