@@ -4,12 +4,12 @@
 <!-- CH_CACHE_PURGE_V2_START -->
 <script>
 (function() {
-  if (!localStorage.getItem("ch_cache_purged_v2")) {
+  if (!localStorage.getItem("ch_cache_purged_v3")) {
     try {
       indexedDB.deleteDatabase("CH_Instant_Boot_DB");
       indexedDB.deleteDatabase("CH_Fast_Render_Cache");
       indexedDB.deleteDatabase("CH_Mobile_CSV_Vault");
-      localStorage.setItem("ch_cache_purged_v2", "1");
+      localStorage.setItem("ch_cache_purged_v3", "1");
     } catch (_) {}
   }
 })();
@@ -2300,7 +2300,7 @@ function _parserLignesCsvImpl(texte) {
   for (let i = 0; i < lignes.length; i++) {
     const c = lignes[i].split(';');
     if (c.length < 6) continue;
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
+    const tk = c.at(0).trim().replace(/"/g, '').toUpperCase();
     if (!tk || tk === 'TICKER' || tk.length > 26 || /^[0-9A-F]{16,}$/.test(tk) || tk.includes('{') || tk.includes(':')) continue;
     const heure = c[2].trim().replace(/"/g, ''), sens = c[3].trim().replace(/"/g, '').toUpperCase();
     const qte = parseInt(c[4].trim().replace(/"/g, '').replace(/\s/g, ''), 10);
