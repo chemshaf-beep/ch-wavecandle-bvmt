@@ -2400,7 +2400,7 @@ async function chargerMultiSeances() {
   if (!seancesLocales.length) return;
   const ticker = (document.getElementById('selTicker')?.value || "DELICE HOLDING").trim();
   const lblEl = document.getElementById('lblTicker');
-  if (lblEl) lblEl.innerText = ticker;, gran = document.getElementById('selGranularite').value || "JOUR";
+  if (lblEl) lblEl.innerText = ticker; const gran = document.getElementById('selGranularite').value || "JOUR";
   const asc = [...seancesLocales].reverse(), buckets = {}, ordre = [];
   const moisFr = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
   let qA = 0, vA = 0, qV = 0, vV = 0, qN = 0, vN = 0;
