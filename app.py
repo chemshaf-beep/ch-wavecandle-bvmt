@@ -2405,9 +2405,9 @@ def _rpc_data(payload_json: str):
             user_info = _TOKENS_ACTIFS.get(tk)
             auteur = "Membre"
             if isinstance(user_info, dict):
-                auteur = str(user_info.get("nom") or user_info.get("email") or "Membre").partition("@")[0]
+                auteur = str(user_info.get("nom") or user_info.get("email") or "Membre").partition("@")[0][0]
             elif isinstance(user_info, str) and "@" in user_info:
-                auteur = user_info.partition("@")[0]
+                auteur = user_info.partition("@")[0][0]
             with _CHAT_LOCK:
                 msgs = _charger_messages_chat()
                 nouv = {
