@@ -1692,13 +1692,13 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import unquote, urlparse
 
 GH_TOKEN = os.environ.get("GH_TOKEN", "").strip()
-GH_REPO = os.environ.get("GH_REPO", "").strip()
+GH_REPO = (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip()
 _LAST_GH_SYNC = 0.0
 
 def sync_github_cloud():
     global _LAST_GH_SYNC
     tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
-    repo = os.environ.get("GH_REPO", "").strip() or globals().get("GH_REPO", "").strip()
+    repo = (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip() or globals().get("GH_REPO", "").strip()
     # Nettoyer GH_REPO au cas où il contiendrait une URL complète
     repo = repo.replace("https://github.com", "").replace("http://github.com", "").strip("/")
     if not tk or not repo:
@@ -2338,15 +2338,76 @@ def _calculer_multi_rapide(ticker_cible: str):
     return bougies
 
 _CHAT_FILE = os.path.join(_BASE_DIR, "chat_messages.json")
+_CHAT_MEDIA_DIR = os.path.join(_BASE_DIR, "chat_media")
+os.makedirs(_CHAT_MEDIA_DIR, exist_ok=True)
 _CHAT_LOCK = threading.Lock()
+_CHAT_BOOT_SYNCED = False
+
+def _gh_chat_cfg():
+    tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
+    repo = (os.environ.get("GH_DATA_REPO", "").strip() or (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip() or globals().get("GH_REPO", "").strip()).replace("https://github.com", "").strip("/")
+    return tk, repo
+
+def _sync_chat_depuis_github():
+    global _CHAT_BOOT_SYNCED
+    if _CHAT_BOOT_SYNCED:
+        return
+    _CHAT_BOOT_SYNCED = True
+    tk, repo = _gh_chat_cfg()
+    if not tk or not repo:
+        return
+    try:
+        api_url = f"https://github.com{repo}/contents/chat_messages.json"
+        headers = {"Authorization": f"Bearer {tk}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT"}
+        with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=8) as r:
+            res = json.loads(r.read().decode("utf-8"))
+            raw = base64.b64decode(res.get("content", "")).decode("utf-8")
+            rem_msgs = json.loads(raw)
+            if isinstance(rem_msgs, list):
+                loc_msgs = []
+                if os.path.isfile(_CHAT_FILE):
+                    with open(_CHAT_FILE, "r", encoding="utf-8") as lf:
+                        loc_msgs = json.load(lf) or []
+                fusion = {str(m.get("id")): m for m in (rem_msgs + loc_msgs) if isinstance(m, dict) and m.get("id")}
+                merged = sorted(fusion.values(), key=lambda x: str(x.get("id", "")))[-500:]
+                with open(_CHAT_FILE, "w", encoding="utf-8") as wf:
+                    json.dump(merged, wf, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def _push_fichier_gh(rel_gh_path: str, local_fp: str, commit_msg: str):
+    def _worker():
+        try:
+            tk, repo = _gh_chat_cfg()
+            if not tk or not repo or not os.path.isfile(local_fp):
+                return
+            api_url = f"https://github.com{repo}/contents/{rel_gh_path}"
+            headers = {"Authorization": f"Bearer {tk}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT", "Content-Type": "application/json"}
+            sha = None
+            try:
+                with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=8) as r:
+                    sha = json.loads(r.read().decode("utf-8")).get("sha")
+            except urllib.error.HTTPError as he:
+                if he.code != 404:
+                    return
+            with open(local_fp, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            payload = {"message": commit_msg, "content": b64}
+            if sha:
+                payload["sha"] = sha
+            urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
+        except Exception:
+            pass
+    threading.Thread(target=_worker, daemon=True).start()
 
 def _charger_messages_chat():
+    _sync_chat_depuis_github()
     try:
         if os.path.isfile(_CHAT_FILE):
             with open(_CHAT_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
-                    return data[-300:]
+                    return data[-500:]
     except Exception:
         pass
     return []
@@ -2355,31 +2416,11 @@ def _sauver_messages_chat(msgs):
     try:
         tmp = _CHAT_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(msgs[-300:], f, ensure_ascii=False, indent=2)
+            json.dump(msgs[-500:], f, ensure_ascii=False, indent=2)
         os.replace(tmp, _CHAT_FILE)
     except Exception:
         pass
-    def _push_chat_gh():
-        try:
-            tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
-            repo = (os.environ.get("GH_REPO", "").strip() or globals().get("GH_REPO", "").strip()).replace("https://github.com", "").strip("/")
-            if not tk or not repo or not os.path.isfile(_CHAT_FILE): return
-            api_url = f"https://github.com{repo}/contents/chat_messages.json"
-            headers = {"Authorization": f"Bearer {tk}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT", "Content-Type": "application/json"}
-            sha = None
-            try:
-                with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=8) as r:
-                    sha = json.loads(r.read().decode("utf-8")).get("sha")
-            except urllib.error.HTTPError as he:
-                if he.code != 404: return
-            with open(_CHAT_FILE, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("ascii")
-            payload = {"message": "Sync chat communautaire", "content": b64}
-            if sha: payload["sha"] = sha
-            urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=12).read()
-        except Exception:
-            pass
-    threading.Thread(target=_push_chat_gh, daemon=True).start()
+    _push_fichier_gh("chat_messages.json", _CHAT_FILE, "Sauvegarde forum communautaire")
 
 def _rpc_data(payload_json: str):
     try:
@@ -2390,6 +2431,64 @@ def _rpc_data(payload_json: str):
         cmd = str(b.get("cmd", ""))
         if cmd == "multi_agg":
             return json.dumps({"status": 200, "bougies": _calculer_multi_rapide(str(b.get("ticker", "")))})
+        if cmd == "chat_upload_media":
+            b64_data = str(b.get("data_url", "")).strip()
+            if not b64_data or len(b64_data) > 2_800_000:
+                return json.dumps({"status": 400, "err": "Image trop volumineuse (max 2 Mo)"})
+            if "," in b64_data:
+                b64_data = b64_data.split(",", 1)[1]
+            ext = "jpg" if "jpeg" in str(b.get("data_url", "")).lower() or "jpg" in str(b.get("data_url", "")).lower() else "png"
+            media_id = f"media_{int(time.time() * 1000)}_{secrets.token_hex(3)}.{ext}"
+            fp_m = os.path.join(_CHAT_MEDIA_DIR, media_id)
+            with open(fp_m, "wb") as fm:
+                fm.write(base64.b64decode(b64_data))
+            _push_fichier_gh(f"chat_media/{media_id}", fp_m, f"Media forum {media_id}")
+            return json.dumps({"status": 200, "media_id": media_id})
+
+        if cmd == "chat_get_media":
+            mid = os.path.basename(str(b.get("media_id", "")).strip())
+            fp_m = os.path.join(_CHAT_MEDIA_DIR, mid)
+            if not os.path.isfile(fp_m):
+                tk_g, repo_g = _gh_chat_cfg()
+                if tk_g and repo_g and mid:
+                    try:
+                        api_m = f"https://github.com{repo_g}/contents/chat_media/{mid}"
+                        hdr_m = {"Authorization": f"Bearer {tk_g}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT"}
+                        with urllib.request.urlopen(urllib.request.Request(api_m, headers=hdr_m), timeout=10) as rm:
+                            jm = json.loads(rm.read().decode("utf-8"))
+                            with open(fp_m, "wb") as wf:
+                                wf.write(base64.b64decode(jm.get("content", "")))
+                    except Exception:
+                        pass
+            if os.path.isfile(fp_m):
+                mime = "image/jpeg" if mid.endswith(".jpg") else "image/png"
+                with open(fp_m, "rb") as rf:
+                    b64_out = base64.b64encode(rf.read()).decode("ascii")
+                return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}"})
+            return json.dumps({"status": 404, "err": "Média introuvable"})
+
+        if cmd == "chat_edit":
+            msg_id = str(b.get("id", "")).strip()
+            nouv_txt = str(b.get("text", "")).strip()
+            nouv_sent = str(b.get("sentiment", "")).strip().upper()
+            if not msg_id or not nouv_txt or len(nouv_txt) > 1500:
+                return json.dumps({"status": 400, "err": "Texte invalide"})
+            with _CHAT_LOCK:
+                msgs = _charger_messages_chat()
+                trouve = False
+                for m in msgs:
+                    if str(m.get("id")) == msg_id:
+                        m["text"] = nouv_txt
+                        if nouv_sent in ("HAUSSIER", "BAISSIER", "NEUTRE"):
+                            m["sentiment"] = nouv_sent
+                        m["edited"] = datetime.datetime.now().strftime("%d/%m %H:%M")
+                        trouve = True
+                        break
+                if not trouve:
+                    return json.dumps({"status": 404, "err": "Message introuvable"})
+                _sauver_messages_chat(msgs)
+            return json.dumps({"status": 200})
+
         if cmd == "chat_list":
             salon = str(b.get("salon", "GENERAL")).strip().upper()
             msgs = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
@@ -2446,7 +2545,7 @@ def _rpc_data(payload_json: str):
                     "salon": salon,
                     "sentiment": sentiment,
                     "quote": quote,
-                    "ticker_tag": ticker_tag,
+                    "ticker_tag": ticker_tag, "media_id": str(b.get("media_id", "")).strip()[:80],
                     "text": texte,
                     "heure": datetime.datetime.now().strftime("%d/%m %H:%M")
                 }

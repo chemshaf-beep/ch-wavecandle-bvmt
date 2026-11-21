@@ -4023,7 +4023,7 @@ window.addEventListener('load', () => {
 <div id="chChatDrawer" aria-hidden="true">
   <div class="ch-chat-hdr">
     <strong style="font-size:13px; color:#FFD700;">💬 Salon Communautaire — CH-WaveCandle</strong>
-    <button id="btnCloseChat" type="button" class="btn-action" style="padding:2px 8px; font-size:11px;">✕ Fermer</button>
+    <div style="display:flex;gap:6px;align-items:center;"><button id="btnFullChat" type="button" class="btn-action" style="padding:2px 8px; font-size:11px; border-color:#38BDF8; color:#38BDF8;">⛶ Pleine page</button><button id="btnCloseChat" type="button" class="btn-action" style="padding:2px 8px; font-size:11px;">✕ Fermer</button></div>
   </div>
   <div id="chChatUserBar" style="padding:5px 12px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
     <span>👤 Pseudo forum : <strong id="lblChatPseudo" style="color:#38BDF8;">...</strong></span>
@@ -4045,6 +4045,9 @@ window.addEventListener('load', () => {
     <button type="button" id="btnChatBold" class="ch-tool-btn" title="Gras"><b>B</b></button>
     <button type="button" id="btnChatItalic" class="ch-tool-btn" title="Italique"><i>I</i></button>
     <button type="button" id="btnChatCiteTicker" class="ch-tool-btn" style="color:#FFD700; border-color:rgba(255,215,0,0.45);">📌 Citer valeur</button>
+    <button type="button" id="btnChatSnapChart" class="ch-tool-btn" style="color:#34D399; border-color:rgba(16,185,129,0.5);" title="Capturer et joindre le graphique actuel">📸 Graphique</button>
+    <button type="button" id="btnChatPickImg" class="ch-tool-btn" style="color:#38BDF8; border-color:rgba(56,189,248,0.5);" title="Joindre une image depuis votre appareil">🖼️ Image</button>
+    <input type="file" id="inpChatFile" accept="image/*" style="display:none;">
     <select id="selChatSentiment" style="padding:2px 5px; font-size:11px; min-height:24px;">
       <option value="NEUTRE">🟡 Neutre</option>
       <option value="HAUSSIER">🟢 Haussier</option>
@@ -4056,6 +4059,7 @@ window.addEventListener('load', () => {
     <button type="button" id="btnChatSend" class="btn-action" style="padding:8px 12px; background:#0284C7; color:#FFF; border-color:#38BDF8;">Envoyer</button>
   </div>
 </div>
+<div id="chChatLightbox" onclick="this.classList.remove('open')"><img id="chChatLightboxImg" src="" alt="Aperçu"></div>
 <!-- CH_CHAT_HTML_END -->
 <!-- CH_CHAT_JS_START -->
 <script>
@@ -4799,5 +4803,161 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_UNIVERSAL_FS_JS_END -->
+<!-- CH_CHAT_MEDIA_EDIT_START -->
+<script>
+(function() {
+  const _MEDIA_CACHE = new Map();
+  let pendingDataUrl = "";
+
+  function compresserImageDataUrl(rawUrl, maxW = 1280, quality = 0.84) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * (maxW / w)); w = maxW; }
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(rawUrl);
+      img.src = rawUrl;
+    });
+  }
+
+  function initChatProFeatures() {
+    const core = window.__CH_CHAT_CORE;
+    if (!core) { setTimeout(initChatProFeatures, 150); return; }
+
+    // 1. Bouton Pleine Page
+    const btnFull = document.getElementById("btnFullChat");
+    if (btnFull && !btnFull.dataset.bound) {
+      btnFull.dataset.bound = "1";
+      btnFull.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (!drw) return;
+        const isFull = drw.classList.toggle("fullpage");
+        btnFull.textContent = isFull ? "🗗 Réduire" : "⛶ Pleine page";
+      };
+    }
+
+    // 2. Bouton Capture directe du graphique ECharts
+    const btnSnap = document.getElementById("btnChatSnapChart");
+    if (btnSnap && !btnSnap.dataset.bound) {
+      btnSnap.dataset.bound = "1";
+      btnSnap.onclick = async () => {
+        if (typeof chart === "undefined" || !chart) return;
+        const raw = chart.getDataURL({ type: "png", pixelRatio: 1.5, backgroundColor: document.body.classList.contains("theme-clair") ? "#F8FAFC" : "#0A0A0A" });
+        pendingDataUrl = await compresserImageDataUrl(raw, 1360, 0.86);
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        core.tickerTag = core.tickerTag || tk;
+        const prev = document.getElementById("chChatReplyPreview");
+        const rtxt = document.getElementById("chChatReplyText");
+        if (prev && rtxt) { rtxt.textContent = "📸 Capture graphique prête à envoyer (" + tk + ")"; prev.style.display = "flex"; }
+        document.getElementById("chChatInput")?.focus();
+      };
+    }
+
+    // 3. Bouton Upload Image / Document depuis l'appareil
+    const btnPick = document.getElementById("btnChatPickImg");
+    const inpFile = document.getElementById("inpChatFile");
+    if (btnPick && inpFile && !btnPick.dataset.bound) {
+      btnPick.dataset.bound = "1";
+      btnPick.onclick = () => inpFile.click();
+      inpFile.onchange = () => {
+        const f = inpFile.files && inpFile.files.item(0);
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          pendingDataUrl = await compresserImageDataUrl(ev.target.result, 1280, 0.84);
+          const prev = document.getElementById("chChatReplyPreview");
+          const rtxt = document.getElementById("chChatReplyText");
+          if (prev && rtxt) { rtxt.textContent = "🖼️ Image jointe : " + f.name; prev.style.display = "flex"; }
+          inpFile.value = "";
+        };
+        reader.readAsDataURL(f);
+      };
+    }
+
+    // 4. Enrichir renderCard pour afficher les images/graphiques + bouton Modifier après envoi
+    const origRender = core.renderCard.bind(core);
+    core.renderCard = function(m) {
+      const card = origRender(m);
+      const monPseudo = (localStorage.getItem("ch_forum_pseudo") || "").trim().toLowerCase();
+      const auteurMsg = String(m.auteur || "").trim().toLowerCase();
+
+      if (m.edited) {
+        const edBadge = document.createElement("div");
+        edBadge.style.cssText = "font-size:10px;color:#64748B;margin-top:3px;font-style:italic;";
+        edBadge.textContent = "(modifié le " + m.edited + ")";
+        card.appendChild(edBadge);
+      }
+
+      // Bouton Modifier pour l'auteur du message
+      if (monPseudo && auteurMsg === monPseudo) {
+        const metaRight = card.querySelector(".ch-msg-meta span:last-child");
+        if (metaRight) {
+          const btnEd = document.createElement("button");
+          btnEd.type = "button";
+          btnEd.textContent = "✏️";
+          btnEd.title = "Modifier mon message";
+          btnEd.style.cssText = "background:none;border:none;color:#F59E0B;cursor:pointer;font-size:11px;margin-left:4px;";
+          btnEd.onclick = async () => {
+            const nouveauTexte = prompt("Modifier votre message :", m.text || "");
+            if (!nouveauTexte || nouveauTexte.trim() === m.text) return;
+            const res = await core.rpc({ cmd: "chat_edit", id: m.id, text: nouveauTexte.trim() });
+            if (res && res.status === 200) core.charger();
+          };
+          metaRight.appendChild(btnEd);
+        }
+      }
+
+      // Affichage direct de l'image ou capture graphique jointe
+      if (m.media_id) {
+        const imgEl = document.createElement("img");
+        imgEl.className = "ch-msg-img";
+        imgEl.alt = "Graphique / Image partagée";
+        imgEl.onclick = () => {
+          if (!imgEl.src) return;
+          const lb = document.getElementById("chChatLightbox");
+          const lbImg = document.getElementById("chChatLightboxImg");
+          if (lb && lbImg) { lbImg.src = imgEl.src; lb.classList.add("open"); }
+        };
+        card.appendChild(imgEl);
+
+        if (_MEDIA_CACHE.has(m.media_id)) {
+          imgEl.src = _MEDIA_CACHE.get(m.media_id);
+        } else {
+          core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
+            if (r && r.status === 200 && r.data_url) {
+              _MEDIA_CACHE.set(m.media_id, r.data_url);
+              imgEl.src = r.data_url;
+            }
+          });
+        }
+      }
+      return card;
+    };
+
+    // 5. Intercepter l'envoi pour uploader d'abord le média joint si présent
+    const origRpc = core.rpc.bind(core);
+    core.rpc = async function(payload) {
+      if (payload && payload.cmd === "chat_post" && pendingDataUrl) {
+        const upRes = await origRpc({ cmd: "chat_upload_media", data_url: pendingDataUrl });
+        pendingDataUrl = "";
+        if (upRes && upRes.status === 200 && upRes.media_id) {
+          payload.media_id = upRes.media_id;
+        }
+      }
+      return origRpc(payload);
+    };
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatProFeatures);
+  else initChatProFeatures();
+})();
+</script>
+<!-- CH_CHAT_MEDIA_EDIT_END -->
 </body>
 </html>
