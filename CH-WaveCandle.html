@@ -4,12 +4,12 @@
 <!-- CH_CACHE_PURGE_V2_START -->
 <script>
 (function() {
-  if (!localStorage.getItem("ch_cache_purged_v3")) {
+  if (!localStorage.getItem("ch_cache_purged_v4")) {
     try {
       indexedDB.deleteDatabase("CH_Instant_Boot_DB");
       indexedDB.deleteDatabase("CH_Fast_Render_Cache");
       indexedDB.deleteDatabase("CH_Mobile_CSV_Vault");
-      localStorage.setItem("ch_cache_purged_v3", "1");
+      localStorage.setItem("ch_cache_purged_v4", "1");
     } catch (_) {}
   }
 })();
@@ -2396,9 +2396,11 @@ async function chargerDonnees(dateIso = "", ticker = "", strict = false) {
   document.getElementById('statusText').innerText = `Séance du ${data.date_fr} — ${data.vagues.length} vagues${infoB}`;
 }
 
-async function chargerMultiSeances() { const _tkM = document.getElementById("selTicker")?.value || "DELICE HOLDING"; const _lblM = document.getElementById("lblTicker"); if (_lblM) _lblM.innerText = _tkM;
+async function chargerMultiSeances() {
   if (!seancesLocales.length) return;
-  const ticker = document.getElementById('selTicker').value || "DELICE HOLDING", gran = document.getElementById('selGranularite').value || "JOUR";
+  const ticker = (document.getElementById('selTicker')?.value || "DELICE HOLDING").trim();
+  const lblEl = document.getElementById('lblTicker');
+  if (lblEl) lblEl.innerText = ticker;, gran = document.getElementById('selGranularite').value || "JOUR";
   const asc = [...seancesLocales].reverse(), buckets = {}, ordre = [];
   const moisFr = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
   let qA = 0, vA = 0, qV = 0, vV = 0, qN = 0, vN = 0;
@@ -3596,7 +3598,7 @@ window.addEventListener('load', () => {
       if (!forcerRecalcul) {
         const cached = await idbFast("get", cacheKey);
         if (cached && cached.data && cached.data.bougies && cached.data.bougies.length > 0) {
-          globalData = cached.data;
+          globalData = cached.data; const _l = document.getElementById("lblTicker"); if (_l && globalData.ticker) _l.innerText = globalData.ticker;
           chart.clear();
           appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
           dessinerChandeliersMulti(globalData);
@@ -4630,40 +4632,40 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_TECH_UI_END -->
-<!-- CH_TICKER_FIX_START -->
+<!-- CH_LIVE_FALLBACK_START -->
 <script>
 (function() {
-  function bindTickerChange() {
-    const sel = document.getElementById("selTicker");
-    if (!sel || sel.dataset.chTickerBound) return;
-    sel.dataset.chTickerBound = "1";
-
-    sel.addEventListener("change", function() {
-      const val = sel.value;
-      if (!val) return;
+  function patchLiveFallback() {
+    if (typeof window.rafraichirFluxLive !== "function") {
+      setTimeout(patchLiveFallback, 150);
+      return;
+    }
+    const origLive = window.rafraichirFluxLive;
+    window.rafraichirFluxLive = async function(forcer = false) {
+      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
       const lbl = document.getElementById("lblTicker");
-      if (lbl) lbl.innerText = val;
-      const mobSel = document.getElementById("chMobTickerSel");
-      if (mobSel && mobSel.value !== val) mobSel.value = val;
+      if (lbl) lbl.innerText = tk;
 
-      const h = document.getElementById("selHorizon")?.value || "UNIQUE";
-      if (h === "MULTI") {
-        if (typeof chargerMultiSeances === "function") chargerMultiSeances();
-      } else if (h === "LIVE") {
-        if (typeof rafraichirFluxLive === "function") rafraichirFluxLive(true);
-      } else if (typeof chargerDonnees === "function") {
-        const dIso = (typeof globalData !== "undefined" && globalData && globalData.date_iso)
-          ? globalData.date_iso
-          : (typeof seancesLocales !== "undefined" && seancesLocales.length ? seancesLocales.at(0).date_iso : "");
-        chargerDonnees(dIso, val, false);
+      await origLive.apply(this, arguments);
+
+      // Si le flux live temporaire est vide (ex: week-end ou avant 08h30), charger automatiquement la dernière séance disponible
+      const isEncoreMulti = globalData && Array.isArray(globalData.bougies) && !globalData.vagues;
+      const mauvValeur = globalData && globalData.ticker && globalData.ticker.toUpperCase() !== tk.toUpperCase();
+      if ((isEncoreMulti || mauvValeur || !globalData) && typeof seancesLocales !== "undefined" && seancesLocales.length > 0) {
+        const dern = seancesLocales.at(0);
+        if (typeof chargerDonnees === "function") {
+          await chargerDonnees(dern.date_iso, tk, false);
+          const st = document.getElementById("statusText");
+          if (st) st.innerText = `Live (Veille marché • Séance du ${dern.date_fr}) — ${tk}`;
+        }
       }
-    });
+    };
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindTickerChange);
-  else bindTickerChange();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", patchLiveFallback);
+  else patchLiveFallback();
 })();
 </script>
-<!-- CH_TICKER_FIX_END -->
+<!-- CH_LIVE_FALLBACK_END -->
 </body>
 </html>
