@@ -4954,8 +4954,8 @@ window.__chInjecterIndicateurs = function() {
 
     const origRpc = core.rpc.bind(core);
     core.rpc = async function(payload) {
-      if (payload && payload.cmd === "chat_post" && pendingDataUrl) {
-        const dataToSend = pendingDataUrl;
+      if (payload && payload.cmd === "chat_post" && window.__CH_PENDING_MEDIA_URL) {
+        const dataToSend = window.__CH_PENDING_MEDIA_URL;
         window.__CH_PENDING_MEDIA_URL = "";
         const upRes = await origRpc({ cmd: "chat_upload_media", data_url: dataToSend });
         if (upRes && upRes.status === 200 && upRes.media_id) {
