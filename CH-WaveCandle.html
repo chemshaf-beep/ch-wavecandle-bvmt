@@ -4006,155 +4006,46 @@ window.addEventListener('load', () => {
 <!-- CH_LOGO_JS_END -->
 <!-- CH_CHAT_HTML_START -->
 <style id="ch-chat-css">
-  #chChatDrawer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: min(410px, 95vw);
-    background: #0F172A;
-    border-left: 1px solid #334155;
-    z-index: 100010;
-    display: flex;
-    flex-direction: column;
-    transform: translateX(105%);
-    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: -8px 0 28px rgba(0, 0, 0, 0.65);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    color: #E2E8F0;
-  }
-  #chChatDrawer.open { transform: translateX(0); }
-  .ch-chat-hdr {
-    padding: 10px 14px;
-    background: #1E293B;
-    border-bottom: 1px solid #334155;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .ch-chat-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 6px 10px;
-    background: #0B1120;
-    border-bottom: 1px solid #1E293B;
-  }
-  .ch-chat-tab {
-    flex: 1;
-    padding: 5px 6px;
-    font-size: 11px;
-    font-weight: 700;
-    border-radius: 5px;
-    border: 1px solid #334155;
-    background: #1E293B;
-    color: #94A3B8;
-    cursor: pointer;
-    text-align: center;
-  }
-  .ch-chat-tab.active {
-    background: #0284C7;
-    color: #FFFFFF;
-    border-color: #38BDF8;
-  }
-  #chChatFeed {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .ch-msg-card {
-    background: #1E293B;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 12.5px;
-    line-height: 1.4;
-  }
-  .ch-msg-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 11px;
-    margin-bottom: 4px;
-  }
-  .ch-msg-author { font-weight: 700; color: #38BDF8; }
-  .ch-tag-bull { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid #059669; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
-  .ch-tag-bear { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid #DC2626; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
-  .ch-tag-ticker { display: inline-block; background: rgba(255, 215, 0, 0.15); color: #FFD700; border: 1px solid rgba(255, 215, 0, 0.4); border-radius: 4px; padding: 1px 6px; font-size: 10.5px; font-weight: 700; margin-bottom: 4px; }
-  .ch-msg-quote { border-left: 2px solid #38BDF8; padding-left: 7px; font-size: 11px; color: #94A3B8; margin-bottom: 4px; font-style: italic; }
-  .ch-chat-tools {
-    padding: 6px 10px;
-    background: #1E293B;
-    border-top: 1px solid #334155;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-  }
-  .ch-tool-btn {
-    background: #0F172A;
-    color: #CBD5E1;
-    border: 1px solid #334155;
-    border-radius: 4px;
-    padding: 3px 6px;
-    font-size: 11px;
-    cursor: pointer;
-  }
-  .ch-tool-btn:hover { border-color: #38BDF8; color: #FFFFFF; }
-  .ch-emoji-bar {
-    display: none;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 6px 10px;
-    background: #0B1120;
-    border-top: 1px solid #334155;
-  }
-  .ch-emoji-bar.show { display: flex; }
-  .ch-emoji-item { font-size: 16px; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
-  .ch-emoji-item:hover { background: #1E293B; }
-  .ch-chat-compose {
-    padding: 8px 10px;
-    background: #0F172A;
-    display: flex;
-    gap: 6px;
-    align-items: flex-end;
-  }
-  #chChatInput {
-    flex: 1;
-    background: #1E293B;
-    color: #F8FAFC;
-    border: 1px solid #475569;
-    border-radius: 6px;
-    padding: 7px 9px;
-    font-size: 12.5px;
-    resize: none;
-    min-height: 38px;
-    max-height: 95px;
-    font-family: inherit;
-  }
-  body.theme-clair #chChatDrawer, body.light-mode #chChatDrawer { background: #F8FAFC; color: #0F172A; border-left-color: #CBD5E1; }
-  body.theme-clair .ch-chat-hdr, body.light-mode .ch-chat-hdr,
-  body.theme-clair .ch-chat-tools, body.light-mode .ch-chat-tools { background: #F1F5F9; border-color: #CBD5E1; }
-  body.theme-clair .ch-msg-card, body.light-mode .ch-msg-card { background: #FFFFFF; border-color: #E2E8F0; color: #0F172A; }
-  body.theme-clair #chChatInput, body.light-mode #chChatInput { background: #FFFFFF; color: #0F172A; border-color: #CBD5E1; }
-  body.theme-clair #chChatUserBar, body.light-mode #chChatUserBar { background: #E2E8F0 !important; color: #0F172A !important; border-bottom-color: #CBD5E1 !important; }
-  body.theme-clair #lblChatPseudo, body.light-mode #lblChatPseudo { color: #0369A1 !important; }
-  body.theme-clair .ch-chat-hdr strong, body.light-mode .ch-chat-hdr strong { color: #92400E !important; }
-  body.theme-clair .ch-chat-tabs, body.light-mode .ch-chat-tabs { background: #E2E8F0 !important; border-bottom-color: #CBD5E1 !important; }
-  body.theme-clair .ch-chat-tab, body.light-mode .ch-chat-tab { background: #FFFFFF !important; color: #334155 !important; border-color: #CBD5E1 !important; }
-  body.theme-clair .ch-chat-tab.active, body.light-mode .ch-chat-tab.active { background: #0284C7 !important; color: #FFFFFF !important; }
-  body.theme-clair .ch-tool-btn, body.light-mode .ch-tool-btn { background: #FFFFFF !important; color: #0F172A !important; border-color: #CBD5E1 !important; }
-  body.theme-clair .ch-chat-compose, body.light-mode .ch-chat-compose { background: #F1F5F9 !important; }
+  #chChatDrawer { position:fixed; top:0; right:0; bottom:0; width:min(410px,95vw); background:#0F172A; border-left:1px solid #334155; z-index:100010; display:flex; flex-direction:column; transform:translateX(105%); transition:transform 0.25s ease; box-shadow:-8px 0 28px rgba(0,0,0,0.65); font-family:'Segoe UI',system-ui,sans-serif; color:#E2E8F0; }
+  #chChatDrawer.open { transform:translateX(0); }
+  .ch-chat-hdr { padding:10px 14px; background:#1E293B; border-bottom:1px solid #334155; display:flex; align-items:center; justify-content:space-between; }
+  .ch-chat-tabs { display:flex; gap:4px; padding:6px 10px; background:#0B1120; border-bottom:1px solid #1E293B; }
+  .ch-chat-tab { flex:1; padding:5px 6px; font-size:11px; font-weight:700; border-radius:5px; border:1px solid #334155; background:#1E293B; color:#94A3B8; cursor:pointer; text-align:center; }
+  .ch-chat-tab.active { background:#0284C7; color:#FFF; border-color:#38BDF8; }
+  #chChatFeed { flex:1; overflow-y:auto; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+  .ch-msg-card { background:#1E293B; border:1px solid #334155; border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.4; }
+  .ch-msg-meta { display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:4px; }
+  .ch-msg-author { font-weight:700; color:#38BDF8; }
+  .ch-tag-bull { background:rgba(16,185,129,0.2); color:#34D399; border:1px solid #059669; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700; }
+  .ch-tag-bear { background:rgba(239,68,68,0.2); color:#F87171; border:1px solid #DC2626; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700; }
+  .ch-tag-ticker { display:inline-block; background:rgba(255,215,0,0.15); color:#FFD700; border:1px solid rgba(255,215,0,0.4); border-radius:4px; padding:1px 6px; font-size:10.5px; font-weight:700; margin-bottom:4px; }
+  .ch-msg-quote { border-left:2px solid #38BDF8; padding-left:7px; font-size:11px; color:#94A3B8; margin-bottom:4px; font-style:italic; }
+  .ch-chat-tools { padding:6px 10px; background:#1E293B; border-top:1px solid #334155; display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+  .ch-tool-btn { background:#0F172A; color:#CBD5E1; border:1px solid #334155; border-radius:4px; padding:3px 6px; font-size:11px; cursor:pointer; }
+  .ch-emoji-bar { display:none; flex-wrap:wrap; gap:4px; padding:6px 10px; background:#0B1120; border-top:1px solid #334155; }
+  .ch-emoji-bar.show { display:flex; }
+  .ch-emoji-item { font-size:16px; cursor:pointer; padding:2px 4px; border-radius:4px; }
+  .ch-chat-compose { padding:8px 10px; background:#0F172A; display:flex; gap:6px; align-items:flex-end; }
+  #chChatInput { flex:1; background:#1E293B; color:#F8FAFC; border:1px solid #475569; border-radius:6px; padding:7px 9px; font-size:12.5px; resize:none; min-height:38px; max-height:95px; font-family:inherit; }
+  body.theme-clair #chChatDrawer, body.light-mode #chChatDrawer { background:#F8FAFC; color:#0F172A; border-left-color:#CBD5E1; }
+  body.theme-clair .ch-chat-hdr, body.light-mode .ch-chat-hdr, body.theme-clair .ch-chat-tools, body.light-mode .ch-chat-tools { background:#F1F5F9; border-color:#CBD5E1; }
+  body.theme-clair .ch-chat-hdr strong, body.light-mode .ch-chat-hdr strong { color:#92400E !important; }
+  body.theme-clair #chChatUserBar, body.light-mode #chChatUserBar { background:#E2E8F0 !important; color:#0F172A !important; border-bottom-color:#CBD5E1 !important; }
+  body.theme-clair #lblChatPseudo, body.light-mode #lblChatPseudo { color:#0369A1 !important; }
+  body.theme-clair .ch-chat-tabs, body.light-mode .ch-chat-tabs { background:#E2E8F0 !important; border-bottom-color:#CBD5E1 !important; }
+  body.theme-clair .ch-chat-tab, body.light-mode .ch-chat-tab { background:#FFF !important; color:#334155 !important; border-color:#CBD5E1 !important; }
+  body.theme-clair .ch-chat-tab.active, body.light-mode .ch-chat-tab.active { background:#0284C7 !important; color:#FFF !important; }
+  body.theme-clair .ch-msg-card, body.light-mode .ch-msg-card { background:#FFF; border-color:#E2E8F0; color:#0F172A; }
+  body.theme-clair .ch-tool-btn, body.light-mode .ch-tool-btn { background:#FFF !important; color:#0F172A !important; border-color:#CBD5E1 !important; }
+  body.theme-clair .ch-chat-compose, body.light-mode .ch-chat-compose { background:#F1F5F9 !important; }
+  body.theme-clair #chChatInput, body.light-mode #chChatInput { background:#FFF; color:#0F172A; border-color:#CBD5E1; }
 </style>
-
 <div id="chChatDrawer" aria-hidden="true">
   <div class="ch-chat-hdr">
     <strong style="font-size:13px; color:#FFD700;">💬 Salon Communautaire — CH-WaveCandle</strong>
     <button id="btnCloseChat" type="button" class="btn-action" style="padding:2px 8px; font-size:11px;">✕ Fermer</button>
   </div>
-    <div id="chChatUserBar" style="padding:5px 12px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
+  <div id="chChatUserBar" style="padding:5px 12px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
     <span>👤 Pseudo forum : <strong id="lblChatPseudo" style="color:#38BDF8;">...</strong></span>
     <button type="button" id="btnEditChatPseudo" class="ch-tool-btn" style="font-size:10.5px;padding:2px 7px;">✏️ Modifier</button>
   </div>
@@ -4171,9 +4062,9 @@ window.addEventListener('load', () => {
   <div id="chEmojiBar" class="ch-emoji-bar"></div>
   <div class="ch-chat-tools">
     <button type="button" id="btnChatEmoji" class="ch-tool-btn" title="Émoticônes">😊</button>
-    <button type="button" id="btnChatBold" class="ch-tool-btn" title="Texte en gras"><b>B</b></button>
-    <button type="button" id="btnChatItalic" class="ch-tool-btn" title="Texte en italique"><i>I</i></button>
-    <button type="button" id="btnChatCiteTicker" class="ch-tool-btn" style="color:#FFD700; border-color:rgba(255,215,0,0.45);" title="Joindre la valeur et le cours affichés">📌 Citer valeur</button>
+    <button type="button" id="btnChatBold" class="ch-tool-btn" title="Gras"><b>B</b></button>
+    <button type="button" id="btnChatItalic" class="ch-tool-btn" title="Italique"><i>I</i></button>
+    <button type="button" id="btnChatCiteTicker" class="ch-tool-btn" style="color:#FFD700; border-color:rgba(255,215,0,0.45);">📌 Citer valeur</button>
     <select id="selChatSentiment" style="padding:2px 5px; font-size:11px; min-height:24px;">
       <option value="NEUTRE">🟡 Neutre</option>
       <option value="HAUSSIER">🟢 Haussier</option>
@@ -4186,35 +4077,259 @@ window.addEventListener('load', () => {
   </div>
 </div>
 <!-- CH_CHAT_HTML_END -->
+<!-- CH_CHAT_JS_START -->
+<script>
+window.__CH_CHAT_CORE = {
+  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
+  salon: "GENERAL",
+  quote: "",
+  tickerTag: "",
+  timer: null,
+
+  rpc: async function(payload) {
+    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
+    const bodyObj = { ...payload, token: tk };
+    const r1 = await fetch("/gradio_api/call/bvmt_data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
+    });
+    if (!r1.ok) return { status: r1.status };
+    const j1 = await r1.json();
+    if (!j1.event_id) return { status: 500 };
+    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
+    const txt = await r2.text();
+    const lines = txt.split(String.fromCharCode(10));
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines.at(i).trim();
+      if (ln.startsWith("data:")) {
+        const parsed = JSON.parse(ln.slice(5).trim());
+        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
+        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
+      }
+    }
+    return { status: 500 };
+  },
+
+  renderCard: function(m) {
+    const card = document.createElement("div");
+    card.className = "ch-msg-card";
+
+    const meta = document.createElement("div");
+    meta.className = "ch-msg-meta";
+    const left = document.createElement("span");
+    const auth = document.createElement("span");
+    auth.className = "ch-msg-author";
+    auth.textContent = "@" + (m.auteur || "Membre") + " ";
+    left.appendChild(auth);
+
+    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
+      const tag = document.createElement("span");
+      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
+      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
+      left.appendChild(tag);
+    }
+
+    const right = document.createElement("span");
+    right.style.color = "#64748B";
+    right.textContent = (m.heure || "") + " ";
+    const btnRep = document.createElement("button");
+    btnRep.type = "button";
+    btnRep.textContent = "↩";
+    btnRep.title = "Répondre";
+    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
+    btnRep.onclick = () => {
+      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
+      const prev = document.getElementById("chChatReplyPreview");
+      const rtxt = document.getElementById("chChatReplyText");
+      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
+      document.getElementById("chChatInput")?.focus();
+    };
+    right.appendChild(btnRep);
+
+    meta.appendChild(left);
+    meta.appendChild(right);
+    card.appendChild(meta);
+
+    if (m.ticker_tag) {
+      const tkDiv = document.createElement("div");
+      tkDiv.className = "ch-tag-ticker";
+      tkDiv.textContent = "📌 " + m.ticker_tag;
+      card.appendChild(tkDiv);
+    }
+    if (m.quote) {
+      const qDiv = document.createElement("div");
+      qDiv.className = "ch-msg-quote";
+      qDiv.textContent = "↩ " + m.quote;
+      card.appendChild(qDiv);
+    }
+
+    const body = document.createElement("div");
+    body.textContent = m.text || "";
+    body.style.whiteSpace = "pre-wrap";
+    card.appendChild(body);
+    return card;
+  },
+
+  charger: async function() {
+    const feed = document.getElementById("chChatFeed");
+    if (!feed) return;
+    try {
+      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
+      if (!res || res.status !== 200) return;
+      const msgs = res.messages || new Array();
+      feed.innerHTML = "";
+      if (!msgs.length) {
+        const empty = document.createElement("div");
+        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
+        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
+        feed.appendChild(empty);
+        return;
+      }
+      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
+      feed.scrollTop = feed.scrollHeight;
+    } catch (_) {}
+  }
+};
+</script>
+<!-- CH_CHAT_JS_END -->
+<!-- CH_CHAT_BIND_START -->
+<script>
+(function() {
+  function initChatEvents() {
+    const core = window.__CH_CHAT_CORE;
+    if (!core) return;
+
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btn = document.createElement("button");
+      btn.id = "btnOpenChat";
+      btn.type = "button";
+      btn.className = "btn-action";
+      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
+      btn.textContent = "💬 Chat";
+      btn.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          core.charger();
+          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
+        }
+      };
+      topbar.appendChild(btn);
+    }
+
+    const emBar = document.getElementById("chEmojiBar");
+    if (emBar) {
+      emBar.innerHTML = "";
+      core.emojis.forEach(em => {
+        const sp = document.createElement("span");
+        sp.className = "ch-emoji-item";
+        sp.textContent = em;
+        sp.onclick = () => {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += em; inp.focus(); }
+        };
+        emBar.appendChild(sp);
+      });
+    }
+
+    const bClose = document.getElementById("btnCloseChat");
+    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+    const bEm = document.getElementById("btnChatEmoji");
+    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrap = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
+      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
+      inp.focus();
+    };
+    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
+    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
+
+    const bCite = document.getElementById("btnChatCiteTicker");
+    if (bCite) bCite.onclick = () => {
+      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+      const cours = document.getElementById("kDernier")?.innerText || "";
+      core.tickerTag = tk + (cours ? " • " + cours : "");
+      const prev = document.getElementById("chChatReplyPreview");
+      const rtxt = document.getElementById("chChatReplyText");
+      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
+    };
+
+    const bCancel = document.getElementById("btnCancelReply");
+    if (bCancel) bCancel.onclick = () => {
+      core.quote = ""; core.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+    };
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        core.salon = tab.dataset.salon || "GENERAL";
+        core.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
+
+    const bEditPs = document.getElementById("btnEditChatPseudo");
+    if (bEditPs) bEditPs.onclick = async () => {
+      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
+      if (!saisie) return;
+      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
+      localStorage.setItem("ch_forum_pseudo", clean);
+      if (lblPs) lblPs.textContent = clean;
+      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+    };
+
+    const envoyer = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
+      core.quote = ""; core.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        core.charger();
+      }
+    };
+
+    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
+    const cInp = document.getElementById("chChatInput");
+    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
+  else initChatEvents();
+})();
+</script>
+<!-- CH_CHAT_BIND_END -->
 <!-- CH_TECH_INDICATORS_START -->
 <style id="ch-ind-css">
-  #chIndPopover {
-    display: none;
-    position: fixed;
-    top: 48px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(370px, 94vw);
-    background: #0F172A;
-    border: 1px solid #38BDF8;
-    border-radius: 8px;
-    padding: 12px 14px;
-    z-index: 100015;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    font-size: 12px;
-    color: #E2E8F0;
-  }
-  #chIndPopover.open { display: block; }
-  .ch-ind-sec { font-size: 10.5px; font-weight: 800; color: #FFD700; text-transform: uppercase; letter-spacing: 0.05em; margin: 6px 0 6px 0; border-bottom: 1px solid #1E293B; padding-bottom: 3px; }
-  .ch-ind-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 0; }
-  .ch-ind-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
-  .ch-ind-num { width: 46px; background: #1E293B; color: #FFD700; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; text-align: center; font-size: 11px; font-weight: 700; }
-  .ch-ind-type { background: #1E293B; color: #38BDF8; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: 700; }
-  body.theme-clair #chIndPopover, body.light-mode #chIndPopover { background: #FFFFFF; color: #0F172A; border-color: #0284C7; box-shadow: 0 10px 28px rgba(15,23,42,0.18); }
-  body.theme-clair .ch-ind-sec, body.light-mode .ch-ind-sec { color: #92400E; border-bottom-color: #E2E8F0; }
-  body.theme-clair .ch-ind-num, body.light-mode .ch-ind-num,
-  body.theme-clair .ch-ind-type, body.light-mode .ch-ind-type { background: #F1F5F9; color: #0F172A; border-color: #CBD5E1; }
+  #chIndPopover { display:none; position:fixed; top:48px; left:50%; transform:translateX(-50%); width:min(370px,94vw); background:#0F172A; border:1px solid #38BDF8; border-radius:8px; padding:12px 14px; z-index:100015; box-shadow:0 12px 32px rgba(0,0,0,0.75); font-family:'Segoe UI',system-ui,sans-serif; font-size:12px; color:#E2E8F0; }
+  #chIndPopover.open { display:block; }
+  .ch-ind-sec { font-size:10.5px; font-weight:800; color:#FFD700; text-transform:uppercase; letter-spacing:0.05em; margin:6px 0; border-bottom:1px solid #1E293B; padding-bottom:3px; }
+  .ch-ind-row { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 0; }
+  .ch-ind-row label { display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; }
+  .ch-ind-num { width:46px; background:#1E293B; color:#FFD700; border:1px solid #475569; border-radius:4px; padding:2px 4px; text-align:center; font-size:11px; font-weight:700; }
+  .ch-ind-type { background:#1E293B; color:#38BDF8; border:1px solid #475569; border-radius:4px; padding:2px 4px; font-size:11px; font-weight:700; }
+  body.theme-clair #chIndPopover, body.light-mode #chIndPopover { background:#FFF; color:#0F172A; border-color:#0284C7; box-shadow:0 10px 28px rgba(15,23,42,0.18); }
+  body.theme-clair .ch-ind-sec, body.light-mode .ch-ind-sec { color:#92400E; border-bottom-color:#E2E8F0; }
+  body.theme-clair .ch-ind-num, body.light-mode .ch-ind-num, body.theme-clair .ch-ind-type, body.light-mode .ch-ind-type { background:#F1F5F9; color:#0F172A; border-color:#CBD5E1; }
 </style>
 
 <div id="chIndPopover">
@@ -4222,7 +4337,6 @@ window.addEventListener('load', () => {
     <strong style="color:#38BDF8;font-size:13px;">📐 Indicateurs Techniques & Flux</strong>
     <button type="button" id="btnCloseInd" class="btn-action" style="padding:2px 7px;font-size:11px;">✕</button>
   </div>
-
   <div class="ch-ind-sec">Superpositions sur le Prix</div>
   <div class="ch-ind-row">
     <label><input type="checkbox" id="chkIndMA1"> <span style="color:#38BDF8;">●</span> Moyenne 1</label>
@@ -4240,24 +4354,11 @@ window.addEventListener('load', () => {
     <label><input type="checkbox" id="chkIndBB"> <span style="color:#10B981;">●</span> Bandes de Bollinger</label>
     <span>P:<input type="number" id="inpIndBBP" class="ch-ind-num" value="20" min="5" max="150"> σ:<input type="number" id="inpIndBBK" class="ch-ind-num" value="2" step="0.5" min="1" max="4" style="width:38px;"></span>
   </div>
-
   <div class="ch-ind-sec" style="margin-top:10px;">Oscillateur Inférieur (Sous-graphique)</div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="NONE" checked> Aucun (100% Prix)</label>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="RSI"> RSI (Surachat 70 / Survente 30)</label>
-    <span>P:<input type="number" id="inpIndRSIP" class="ch-ind-num" value="14" min="2" max="100"></span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="MACD"> MACD (Momentum)</label>
-    <span style="font-size:10.5px;color:#94A3B8;">12, 26, 9</span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="CVD"> CVD (Delta Achat - Vente)</label>
-    <span style="font-size:10.5px;color:#10B981;">Flux Cumulé</span>
-  </div>
-
+  <div class="ch-ind-row"><label><input type="radio" name="radOsc" value="NONE" checked> Aucun (100% Prix)</label></div>
+  <div class="ch-ind-row"><label><input type="radio" name="radOsc" value="RSI"> RSI (Surachat 70 / Survente 30)</label><span>P:<input type="number" id="inpIndRSIP" class="ch-ind-num" value="14" min="2" max="100"></span></div>
+  <div class="ch-ind-row"><label><input type="radio" name="radOsc" value="MACD"> MACD (Momentum)</label><span style="font-size:10.5px;color:#94A3B8;">12, 26, 9</span></div>
+  <div class="ch-ind-row"><label><input type="radio" name="radOsc" value="CVD"> CVD (Delta Achat - Vente)</label><span style="font-size:10.5px;color:#10B981;">Flux Cumulé</span></div>
   <div style="margin-top:10px;display:flex;justify-content:space-between;gap:6px;">
     <button type="button" id="btnResetInd" class="btn-action" style="flex:1;font-size:11px;border-color:#64748B;color:#94A3B8;">Tout décocher</button>
     <button type="button" id="btnApplyInd" class="btn-action" style="flex:1;font-size:11px;background:#0284C7;color:#FFF;border-color:#38BDF8;">Appliquer</button>
@@ -4265,101 +4366,92 @@ window.addEventListener('load', () => {
 </div>
 
 <script>
-(function() {
-  window.CH_MathInd = {
-    sma: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      let sum = 0, cnt = 0;
-      const win = new Array();
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        win.push(v); sum += v;
-        if (win.length > p) sum -= win.shift();
-        if (win.length === p) out.splice(i, 1, +(sum / p).toFixed(3));
-      }
-      return out;
-    },
-    ema: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      const k = 2 / (p + 1);
-      let prev = null, seedSum = 0, seedCnt = 0;
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        if (prev === null) {
-          seedSum += v; seedCnt++;
-          if (seedCnt === p) { prev = seedSum / p; out.splice(i, 1, +prev.toFixed(3)); }
-        } else {
-          prev = v * k + prev * (1 - k);
-          out.splice(i, 1, +prev.toFixed(3));
-        }
-      }
-      return out;
-    },
-    bollinger: function(vals, p, mult) {
-      const mid = this.sma(vals, p);
-      const up = new Array(vals.length).fill(null);
-      const lo = new Array(vals.length).fill(null);
-      const win = new Array();
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        win.push(v);
-        if (win.length > p) win.shift();
-        if (win.length === p && mid.at(i) !== null) {
-          const m = mid.at(i);
-          const variance = win.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / p;
-          const sd = Math.sqrt(variance);
-          up.splice(i, 1, +(m + mult * sd).toFixed(3));
-          lo.splice(i, 1, +(m - mult * sd).toFixed(3));
-        }
-      }
-      return { mid, up, lo };
-    },
-    rsi: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      let avgGain = 0, avgLoss = 0, prevV = null, step = 0;
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        if (prevV === null) { prevV = v; continue; }
-        const diff = v - prevV; prevV = v;
-        const g = diff > 0 ? diff : 0;
-        const l = diff < 0 ? -diff : 0;
-        step++;
-        if (step <= p) {
-          avgGain += g; avgLoss += l;
-          if (step === p) {
-            avgGain /= p; avgLoss /= p;
-            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-            out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
-          }
-        } else {
-          avgGain = (avgGain * (p - 1) + g) / p;
-          avgLoss = (avgLoss * (p - 1) + l) / p;
-          const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-          out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
-        }
-      }
-      return out;
-    },
-    macd: function(vals, fast = 12, slow = 26, sig = 9) {
-      const eFast = this.ema(vals, fast);
-      const eSlow = this.ema(vals, slow);
-      const line = vals.map((_, i) => (eFast.at(i) !== null && eSlow.at(i) !== null) ? +(eFast.at(i) - eSlow.at(i)).toFixed(3) : null);
-      const signal = this.ema(line, sig);
-      const hist = vals.map((_, i) => (line.at(i) !== null && signal.at(i) !== null) ? +(line.at(i) - signal.at(i)).toFixed(3) : null);
-      return { line, signal, hist };
+window.CH_MathInd = {
+  sma: function(vals, p) {
+    const out = new Array(vals.length).fill(null);
+    let sum = 0;
+    const win = new Array();
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals.at(i);
+      if (v === null || isNaN(v)) continue;
+      win.push(v); sum += v;
+      if (win.length > p) sum -= win.shift();
+      if (win.length === p) out.splice(i, 1, +(sum / p).toFixed(3));
     }
-  };
-})();
+    return out;
+  },
+  ema: function(vals, p) {
+    const out = new Array(vals.length).fill(null);
+    const k = 2 / (p + 1);
+    let prev = null, seedSum = 0, seedCnt = 0;
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals.at(i);
+      if (v === null || isNaN(v)) continue;
+      if (prev === null) {
+        seedSum += v; seedCnt++;
+        if (seedCnt === p) { prev = seedSum / p; out.splice(i, 1, +prev.toFixed(3)); }
+      } else {
+        prev = v * k + prev * (1 - k);
+        out.splice(i, 1, +prev.toFixed(3));
+      }
+    }
+    return out;
+  },
+  bollinger: function(vals, p, mult) {
+    const mid = this.sma(vals, p);
+    const up = new Array(vals.length).fill(null);
+    const lo = new Array(vals.length).fill(null);
+    const win = new Array();
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals.at(i);
+      if (v === null || isNaN(v)) continue;
+      win.push(v);
+      if (win.length > p) win.shift();
+      if (win.length === p && mid.at(i) !== null) {
+        const m = mid.at(i);
+        const sd = Math.sqrt(win.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / p);
+        up.splice(i, 1, +(m + mult * sd).toFixed(3));
+        lo.splice(i, 1, +(m - mult * sd).toFixed(3));
+      }
+    }
+    return { mid, up, lo };
+  },
+  rsi: function(vals, p) {
+    const out = new Array(vals.length).fill(null);
+    let avgGain = 0, avgLoss = 0, prevV = null, step = 0;
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals.at(i);
+      if (v === null || isNaN(v)) continue;
+      if (prevV === null) { prevV = v; continue; }
+      const diff = v - prevV; prevV = v;
+      const g = diff > 0 ? diff : 0, l = diff < 0 ? -diff : 0;
+      step++;
+      if (step <= p) {
+        avgGain += g; avgLoss += l;
+        if (step === p) { avgGain /= p; avgLoss /= p; const rs = avgLoss === 0 ? 100 : avgGain / avgLoss; out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2)); }
+      } else {
+        avgGain = (avgGain * (p - 1) + g) / p; avgLoss = (avgLoss * (p - 1) + l) / p;
+        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss; out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
+      }
+    }
+    return out;
+  },
+  macd: function(vals, fast = 12, slow = 26, sig = 9) {
+    const eFast = this.ema(vals, fast), eSlow = this.ema(vals, slow);
+    const line = vals.map((_, i) => (eFast.at(i) !== null && eSlow.at(i) !== null) ? +(eFast.at(i) - eSlow.at(i)).toFixed(3) : null);
+    const signal = this.ema(line, sig);
+    const hist = vals.map((_, i) => (line.at(i) !== null && signal.at(i) !== null) ? +(line.at(i) - signal.at(i)).toFixed(3) : null);
+    return { line, signal, hist };
+  }
+};
 </script>
 <!-- CH_TECH_INDICATORS_END -->
 <!-- CH_TECH_RENDER_START -->
 <script>
-window.__chLireConfigIndicateurs = function() {
-  return {
+window.__chInjecterIndicateurs = function() {
+  if (typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
+
+  const cfg = {
     ma1: !!document.getElementById("chkIndMA1")?.checked,
     ma1Type: document.getElementById("selIndMA1Type")?.value || "EMA",
     ma1P: Math.max(2, parseInt(document.getElementById("inpIndMA1P")?.value || "20", 10)),
@@ -4373,13 +4465,8 @@ window.__chLireConfigIndicateurs = function() {
     osc: document.querySelector("input[name='radOsc']:checked")?.value || "NONE",
     rsiP: Math.max(2, parseInt(document.getElementById("inpIndRSIP")?.value || "14", 10))
   };
-};
 
-window.__chInjecterIndicateurs = function() {
-  if (typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
-  const cfg = window.__chLireConfigIndicateurs();
-  const aUnIndicateur = cfg.ma1 || cfg.ma2 || cfg.vwap || cfg.bb || cfg.osc !== "NONE";
-  if (!aUnIndicateur) return;
+  if (!cfg.ma1 && !cfg.ma2 && !cfg.vwap && !cfg.bb && cfg.osc === "NONE") return;
 
   const opt = chart.getOption();
   if (!opt || !opt.series || !opt.xAxis) return;
@@ -4389,59 +4476,49 @@ window.__chInjecterIndicateurs = function() {
                    document.getElementById("selModeRendu")?.value === "CHANDELIERS" ||
                    document.getElementById("selModeRendu")?.value === "JAPON");
 
-  let xVals = new Array();
-  let closes = new Array();
-  let vwapArr = new Array();
-  let cvdArr = new Array();
-
+  let xVals = new Array(), closes = new Array(), vwapArr = new Array(), cvdArr = new Array();
   if (isMulti) {
-    let cumM = 0, cumV = 0, cumDelta = 0;
+    let cumM = 0, cumV = 0, cumD = 0;
     globalData.bougies.forEach((b, idx) => {
       xVals.push(idx);
       const c = (b && !b.vide && b.close !== null) ? b.close : null;
       closes.push(c);
       if (b && !b.vide && b.vol_tot > 0) {
-        cumM += (b.montant_tot || (c * b.vol_tot));
-        cumV += b.vol_tot;
-        cumDelta += ((b.qte_ach || 0) - (b.qte_ven || 0));
+        cumM += (b.montant_tot || (c * b.vol_tot)); cumV += b.vol_tot; cumD += ((b.qte_ach || 0) - (b.qte_ven || 0));
       }
       vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
-      cvdArr.push(cumDelta);
+      cvdArr.push(cumD);
     });
   } else if (Array.isArray(globalData.vagues) && globalData.vagues.length > 0) {
-    let cumM = 0, cumV = 0, cumDelta = 0;
+    let cumM = 0, cumV = 0, cumD = 0;
     globalData.vagues.forEach(v => {
-      const midT = Math.round((secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2);
-      xVals.push(midT);
+      xVals.push(Math.round((secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2));
       closes.push(v.prix_fin);
-      cumM += (v.cmp * v.cumul);
-      cumV += v.cumul;
-      cumDelta += (v.sens === "ACHAT" ? v.cumul : (v.sens === "VENTE" ? -v.cumul : 0));
+      cumM += (v.cmp * v.cumul); cumV += v.cumul;
+      cumD += (v.sens === "ACHAT" ? v.cumul : (v.sens === "VENTE" ? -v.cumul : 0));
       vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
-      cvdArr.push(cumDelta);
+      cvdArr.push(cumD);
     });
-  } else {
-    return;
-  }
+  } else return;
 
-  const pairData = (arr) => arr.map((y, i) => y === null ? null : new Array(xVals.at(i), y));
-  const extraSeries = new Array();
+  const pair = (arr) => arr.map((y, i) => y === null ? null : new Array(xVals.at(i), y));
+  const extra = new Array();
 
   if (cfg.ma1) {
     const m1 = cfg.ma1Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma1P) : CH_MathInd.sma(closes, cfg.ma1P);
-    extraSeries.push({ id: "ind_ma1", name: `${cfg.ma1Type}${cfg.ma1P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#38BDF8" }, data: pairData(m1), z: 40 });
+    extra.push({ id: "ind_ma1", name: cfg.ma1Type + cfg.ma1P, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#38BDF8" }, data: pair(m1), z: 40 });
   }
   if (cfg.ma2) {
     const m2 = cfg.ma2Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma2P) : CH_MathInd.sma(closes, cfg.ma2P);
-    extraSeries.push({ id: "ind_ma2", name: `${cfg.ma2Type}${cfg.ma2P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#F59E0B" }, data: pairData(m2), z: 40 });
+    extra.push({ id: "ind_ma2", name: cfg.ma2Type + cfg.ma2P, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#F59E0B" }, data: pair(m2), z: 40 });
   }
   if (cfg.vwap) {
-    extraSeries.push({ id: "ind_vwap", name: "VWAP", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2, type: "dashed", color: "#A855F7" }, data: pairData(vwapArr), z: 41 });
+    extra.push({ id: "ind_vwap", name: "VWAP", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2, type: "dashed", color: "#A855F7" }, data: pair(vwapArr), z: 41 });
   }
   if (cfg.bb) {
     const bb = CH_MathInd.bollinger(closes, cfg.bbP, cfg.bbK);
-    extraSeries.push({ id: "ind_bb_up", name: "BB Sup", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.up), z: 38 });
-    extraSeries.push({ id: "ind_bb_lo", name: "BB Inf", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.lo), z: 38 });
+    extra.push({ id: "ind_bb_up", name: "BB Sup", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pair(bb.up), z: 38 });
+    extra.push({ id: "ind_bb_lo", name: "BB Inf", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pair(bb.lo), z: 38 });
   }
 
   const baseSeries = (opt.series || new Array()).filter(s => !String(s.id || "").startsWith("ind_"));
@@ -4450,10 +4527,7 @@ window.__chInjecterIndicateurs = function() {
   const splitCol = isClair ? "#E2E8F0" : "#1E293B";
 
   if (cfg.osc === "NONE") {
-    chart.setOption({
-      grid: new Array({ left: 45, right: 92, top: 35, bottom: 62 }),
-      series: baseSeries.concat(extraSeries)
-    }, { replaceMerge: new Array("series") });
+    chart.setOption({ grid: new Array({ left: 45, right: 92, top: 35, bottom: 62 }), series: baseSeries.concat(extra) }, { replaceMerge: new Array("series") });
     return;
   }
 
@@ -4462,46 +4536,29 @@ window.__chInjecterIndicateurs = function() {
   let yOsc = { gridIndex: 1, position: "right", axisLabel: { color: axisCol, fontSize: 10 }, splitLine: { lineStyle: { color: splitCol } } };
 
   if (cfg.osc === "RSI") {
-    const rVals = CH_MathInd.rsi(closes, cfg.rsiP);
     yOsc = { ...yOsc, min: 0, max: 100, interval: 30 };
-    extraSeries.push({
-      id: "ind_osc_rsi", name: `RSI(${cfg.rsiP})`, type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
-      lineStyle: { width: 1.8, color: "#38BDF8" },
+    extra.push({
+      id: "ind_osc_rsi", name: "RSI", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.8, color: "#38BDF8" },
       markLine: { silent: true, symbol: "none", lineStyle: { type: "dashed", width: 1 }, data: new Array({ yAxis: 70, lineStyle: { color: "#EF4444" } }, { yAxis: 30, lineStyle: { color: "#10B981" } }) },
-      data: pairData(rVals)
+      data: pair(CH_MathInd.rsi(closes, cfg.rsiP))
     });
   } else if (cfg.osc === "MACD") {
     const mObj = CH_MathInd.macd(closes, 12, 26, 9);
-    extraSeries.push({
-      id: "ind_osc_macd_h", name: "Hist", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
-      itemStyle: { color: (p) => (p.value && p.value.at(1) >= 0) ? "rgba(16,185,129,0.65)" : "rgba(239,68,68,0.65)" },
-      data: pairData(mObj.hist)
-    });
-    extraSeries.push({ id: "ind_osc_macd_l", name: "MACD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#38BDF8" }, data: pairData(mObj.line) });
-    extraSeries.push({ id: "ind_osc_macd_s", name: "Signal", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#F59E0B" }, data: pairData(mObj.signal) });
+    extra.push({ id: "ind_osc_macd_h", name: "Hist", type: "bar", xAxisIndex: 1, yAxisIndex: 1, itemStyle: { color: (p) => (p.value && p.value.at(1) >= 0) ? "rgba(16,185,129,0.65)" : "rgba(239,68,68,0.65)" }, data: pair(mObj.hist) });
+    extra.push({ id: "ind_osc_macd_l", name: "MACD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#38BDF8" }, data: pair(mObj.line) });
+    extra.push({ id: "ind_osc_macd_s", name: "Signal", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#F59E0B" }, data: pair(mObj.signal) });
   } else if (cfg.osc === "CVD") {
-    extraSeries.push({
-      id: "ind_osc_cvd", name: "CVD (Achat-Vente)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
-      lineStyle: { width: 1.8, color: "#10B981" }, areaStyle: { color: "rgba(16,185,129,0.15)" },
-      data: pairData(cvdArr)
-    });
+    extra.push({ id: "ind_osc_cvd", name: "CVD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.8, color: "#10B981" }, areaStyle: { color: "rgba(16,185,129,0.15)" }, data: pair(cvdArr) });
   }
 
   const yBase = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : opt.yAxis;
   chart.setOption({
     axisPointer: { link: new Array({ xAxisIndex: "all" }) },
-    grid: new Array(
-      { left: 45, right: 92, top: 32, height: "60%" },
-      { left: 45, right: 92, top: "71%", height: "19%" }
-    ),
+    grid: new Array({ left: 45, right: 92, top: 32, height: "60%" }, { left: 45, right: 92, top: "71%", height: "19%" }),
     xAxis: new Array({ ...xBase, gridIndex: 0 }, xOsc),
     yAxis: new Array({ ...yBase, gridIndex: 0 }, yOsc),
-    dataZoom: new Array(
-      { id: "zoomX_inside", xAxisIndex: new Array(0, 1) },
-      { id: "zoomY_inside", yAxisIndex: new Array(0) },
-      { id: "zoomX_slider", xAxisIndex: new Array(0, 1) }
-    ),
-    series: baseSeries.concat(extraSeries)
+    dataZoom: new Array({ id: "zoomX_inside", xAxisIndex: new Array(0, 1) }, { id: "zoomY_inside", yAxisIndex: new Array(0) }, { id: "zoomX_slider", xAxisIndex: new Array(0, 1) }),
+    series: baseSeries.concat(extra)
   }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
 };
 </script>
@@ -4509,7 +4566,7 @@ window.__chInjecterIndicateurs = function() {
 <!-- CH_TECH_UI_START -->
 <script>
 (function() {
-  function initBoutonIndicateurs() {
+  function initIndUI() {
     const topbar = document.querySelector(".topbar");
     if (topbar && !document.getElementById("btnOpenIndicators")) {
       const btn = document.createElement("button");
@@ -4517,3418 +4574,61 @@ window.__chInjecterIndicateurs = function() {
       btn.type = "button";
       btn.className = "btn-action";
       btn.style.cssText = "border-color:#A855F7; color:#C084FC; font-weight:bold;";
-      btn.innerHTML = "📐 Indicateurs";
+      btn.textContent = "📐 Indicateurs";
       btn.onclick = () => document.getElementById("chIndPopover")?.classList.toggle("open");
       const btnChat = document.getElementById("btnOpenChat");
       if (btnChat) topbar.insertBefore(btn, btnChat);
       else topbar.appendChild(btn);
     }
 
-    const btnClose = document.getElementById("btnCloseInd");
-    if (btnClose) btnClose.onclick = () => document.getElementById("chIndPopover")?.classList.remove("open");
+    const bClose = document.getElementById("btnCloseInd");
+    if (bClose) bClose.onclick = () => document.getElementById("chIndPopover")?.classList.remove("open");
 
-    const btnApply = document.getElementById("btnApplyInd");
-    if (btnApply) {
-      btnApply.onclick = () => {
-        document.getElementById("chIndPopover")?.classList.remove("open");
-        if (typeof globalData !== "undefined" && globalData) {
-          if (document.getElementById("selHorizon")?.value === "MULTI" || document.getElementById("selModeRendu")?.value === "CHANDELIERS" || document.getElementById("selModeRendu")?.value === "JAPON") {
-            dessinerChandeliersMulti(globalData);
-          } else {
-            dessinerGraphique(globalData);
-          }
+    const bApply = document.getElementById("btnApplyInd");
+    if (bApply) bApply.onclick = () => {
+      document.getElementById("chIndPopover")?.classList.remove("open");
+      if (typeof globalData !== "undefined" && globalData) {
+        if (document.getElementById("selHorizon")?.value === "MULTI" || document.getElementById("selModeRendu")?.value === "CHANDELIERS" || document.getElementById("selModeRendu")?.value === "JAPON") {
+          dessinerChandeliersMulti(globalData);
+        } else {
+          dessinerGraphique(globalData);
         }
-      };
-    }
+      }
+    };
 
-    const btnReset = document.getElementById("btnResetInd");
-    if (btnReset) {
-      btnReset.onclick = () => {
-        document.querySelectorAll("#chIndPopover input[type='checkbox']").forEach(c => c.checked = false);
-        const radNone = document.querySelector("input[name='radOsc'][value='NONE']");
-        if (radNone) radNone.checked = true;
-        if (btnApply) btnApply.click();
-      };
-    }
+    const bReset = document.getElementById("btnResetInd");
+    if (bReset) bReset.onclick = () => {
+      document.querySelectorAll("#chIndPopover input[type='checkbox']").forEach(c => c.checked = false);
+      const radNone = document.querySelector("input[name='radOsc'][value='NONE']");
+      if (radNone) radNone.checked = true;
+      if (bApply) bApply.click();
+    };
 
-    const hookRender = () => {
+    const hook = () => {
       if (typeof window.dessinerGraphique !== "function" || typeof window.dessinerChandeliersMulti !== "function") {
-        setTimeout(hookRender, 150);
+        setTimeout(hook, 150);
         return;
       }
-      const orig1 = window.dessinerGraphique;
+      const o1 = window.dessinerGraphique;
       window.dessinerGraphique = function(data) {
-        const r = orig1.apply(this, arguments);
+        const r = o1.apply(this, arguments);
         if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
         return r;
       };
-      const orig2 = window.dessinerChandeliersMulti;
+      const o2 = window.dessinerChandeliersMulti;
       window.dessinerChandeliersMulti = function(data) {
-        const r = orig2.apply(this, arguments);
+        const r = o2.apply(this, arguments);
         if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
         return r;
       };
     };
-    hookRender();
+    hook();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initBoutonIndicateurs);
-  } else {
-    initBoutonIndicateurs();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initIndUI);
+  else initIndUI();
 })();
 </script>
 <!-- CH_TECH_UI_END -->
-<!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></b>")
-      .replace(new RegExp("\\*(.+?)\\*", "g"), "<i><!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></i>")
-      .replace(new RegExp("\\r?\\n", "g"), "<br/>");
-  },
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const callRes = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
-    const callJson = await callRes.json();
-    const eventId = callJson.event_id;
-    if (!eventId) return { status: 500, err: "event_id manquant" };
-    const sseRes = await fetch("/gradio_api/call/bvmt_data/" + eventId);
-    const sseTxt = await sseRes.text();
-    const lines = sseTxt.split(new RegExp("\\r?\\n"));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i);
-      if (ln && ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500, err: "Réponse SSE vide" };
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      if (!msgs.length) {
-        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
-        return;
-      }
-      feed.innerHTML = msgs.map(m => {
-        const badgeSent = m.sentiment === "HAUSSIER"
-          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
-          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
-        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
-        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
-        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
-        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(new RegExp("\\r?\\n", "g")," ");
-        return `<div class="ch-msg-card">
-          <div class="ch-msg-meta">
-            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
-            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
-          </div>
-          ${badgeTk}${blocQuote}
-          <div>${this.formatText(m.text)}</div>
-        </div>`;
-      }).join("");
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></b>")
-      .replace(/\*(.+?)\*/g, "<i><!-- CH_TECH_INDICATORS_START -->
-<style id="ch-ind-css">
-  #chIndPopover {
-    display: none;
-    position: fixed;
-    top: 48px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(370px, 94vw);
-    background: #0F172A;
-    border: 1px solid #38BDF8;
-    border-radius: 8px;
-    padding: 12px 14px;
-    z-index: 100015;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    font-size: 12px;
-    color: #E2E8F0;
-  }
-  #chIndPopover.open { display: block; }
-  .ch-ind-sec { font-size: 10.5px; font-weight: 800; color: #FFD700; text-transform: uppercase; letter-spacing: 0.05em; margin: 6px 0 6px 0; border-bottom: 1px solid #1E293B; padding-bottom: 3px; }
-  .ch-ind-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 0; }
-  .ch-ind-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
-  .ch-ind-num { width: 46px; background: #1E293B; color: #FFD700; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; text-align: center; font-size: 11px; font-weight: 700; }
-  .ch-ind-type { background: #1E293B; color: #38BDF8; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: 700; }
-  body.theme-clair #chIndPopover, body.light-mode #chIndPopover { background: #FFFFFF; color: #0F172A; border-color: #0284C7; box-shadow: 0 10px 28px rgba(15,23,42,0.18); }
-  body.theme-clair .ch-ind-sec, body.light-mode .ch-ind-sec { color: #92400E; border-bottom-color: #E2E8F0; }
-  body.theme-clair .ch-ind-num, body.light-mode .ch-ind-num,
-  body.theme-clair .ch-ind-type, body.light-mode .ch-ind-type { background: #F1F5F9; color: #0F172A; border-color: #CBD5E1; }
-</style>
-
-<div id="chIndPopover">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-    <strong style="color:#38BDF8;font-size:13px;">📐 Indicateurs Techniques & Flux</strong>
-    <button type="button" id="btnCloseInd" class="btn-action" style="padding:2px 7px;font-size:11px;">✕</button>
-  </div>
-
-  <div class="ch-ind-sec">Superpositions sur le Prix</div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndMA1"> <span style="color:#38BDF8;">●</span> Moyenne 1</label>
-    <span><select id="selIndMA1Type" class="ch-ind-type"><option value="EMA" selected>EMA</option><option value="SMA">SMA</option></select> <input type="number" id="inpIndMA1P" class="ch-ind-num" value="20" min="2" max="250"></span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndMA2"> <span style="color:#F59E0B;">●</span> Moyenne 2</label>
-    <span><select id="selIndMA2Type" class="ch-ind-type"><option value="SMA" selected>SMA</option><option value="EMA">EMA</option></select> <input type="number" id="inpIndMA2P" class="ch-ind-num" value="50" min="2" max="300"></span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndVWAP"> <span style="color:#A855F7;">●</span> VWAP / CMP Dynamique</label>
-    <span style="font-size:10.5px;color:#94A3B8;">Pondéré Vol.</span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndBB"> <span style="color:#10B981;">●</span> Bandes de Bollinger</label>
-    <span>P:<input type="number" id="inpIndBBP" class="ch-ind-num" value="20" min="5" max="150"> σ:<input type="number" id="inpIndBBK" class="ch-ind-num" value="2" step="0.5" min="1" max="4" style="width:38px;"></span>
-  </div>
-
-  <div class="ch-ind-sec" style="margin-top:10px;">Oscillateur Inférieur (Sous-graphique)</div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="NONE" checked> Aucun (100% Prix)</label>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="RSI"> RSI (Surachat 70 / Survente 30)</label>
-    <span>P:<input type="number" id="inpIndRSIP" class="ch-ind-num" value="14" min="2" max="100"></span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="MACD"> MACD (Momentum)</label>
-    <span style="font-size:10.5px;color:#94A3B8;">12, 26, 9</span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="CVD"> CVD (Delta Achat - Vente)</label>
-    <span style="font-size:10.5px;color:#10B981;">Flux Cumulé</span>
-  </div>
-
-  <div style="margin-top:10px;display:flex;justify-content:space-between;gap:6px;">
-    <button type="button" id="btnResetInd" class="btn-action" style="flex:1;font-size:11px;border-color:#64748B;color:#94A3B8;">Tout décocher</button>
-    <button type="button" id="btnApplyInd" class="btn-action" style="flex:1;font-size:11px;background:#0284C7;color:#FFF;border-color:#38BDF8;">Appliquer</button>
-  </div>
-</div>
-
-<script>
-(function() {
-  window.CH_MathInd = {
-    sma: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      let sum = 0, cnt = 0;
-      const win = new Array();
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        win.push(v); sum += v;
-        if (win.length > p) sum -= win.shift();
-        if (win.length === p) out.splice(i, 1, +(sum / p).toFixed(3));
-      }
-      return out;
-    },
-    ema: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      const k = 2 / (p + 1);
-      let prev = null, seedSum = 0, seedCnt = 0;
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        if (prev === null) {
-          seedSum += v; seedCnt++;
-          if (seedCnt === p) { prev = seedSum / p; out.splice(i, 1, +prev.toFixed(3)); }
-        } else {
-          prev = v * k + prev * (1 - k);
-          out.splice(i, 1, +prev.toFixed(3));
-        }
-      }
-      return out;
-    },
-    bollinger: function(vals, p, mult) {
-      const mid = this.sma(vals, p);
-      const up = new Array(vals.length).fill(null);
-      const lo = new Array(vals.length).fill(null);
-      const win = new Array();
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        win.push(v);
-        if (win.length > p) win.shift();
-        if (win.length === p && mid.at(i) !== null) {
-          const m = mid.at(i);
-          const variance = win.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / p;
-          const sd = Math.sqrt(variance);
-          up.splice(i, 1, +(m + mult * sd).toFixed(3));
-          lo.splice(i, 1, +(m - mult * sd).toFixed(3));
-        }
-      }
-      return { mid, up, lo };
-    },
-    rsi: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      let avgGain = 0, avgLoss = 0, prevV = null, step = 0;
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        if (prevV === null) { prevV = v; continue; }
-        const diff = v - prevV; prevV = v;
-        const g = diff > 0 ? diff : 0;
-        const l = diff < 0 ? -diff : 0;
-        step++;
-        if (step <= p) {
-          avgGain += g; avgLoss += l;
-          if (step === p) {
-            avgGain /= p; avgLoss /= p;
-            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-            out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
-          }
-        } else {
-          avgGain = (avgGain * (p - 1) + g) / p;
-          avgLoss = (avgLoss * (p - 1) + l) / p;
-          const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-          out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
-        }
-      }
-      return out;
-    },
-    macd: function(vals, fast = 12, slow = 26, sig = 9) {
-      const eFast = this.ema(vals, fast);
-      const eSlow = this.ema(vals, slow);
-      const line = vals.map((_, i) => (eFast.at(i) !== null && eSlow.at(i) !== null) ? +(eFast.at(i) - eSlow.at(i)).toFixed(3) : null);
-      const signal = this.ema(line, sig);
-      const hist = vals.map((_, i) => (line.at(i) !== null && signal.at(i) !== null) ? +(line.at(i) - signal.at(i)).toFixed(3) : null);
-      return { line, signal, hist };
-    }
-  };
-})();
-</script>
-<!-- CH_TECH_INDICATORS_END -->
-<!-- CH_TECH_RENDER_START -->
-<script>
-window.__chLireConfigIndicateurs = function() {
-  return {
-    ma1: !!document.getElementById("chkIndMA1")?.checked,
-    ma1Type: document.getElementById("selIndMA1Type")?.value || "EMA",
-    ma1P: Math.max(2, parseInt(document.getElementById("inpIndMA1P")?.value || "20", 10)),
-    ma2: !!document.getElementById("chkIndMA2")?.checked,
-    ma2Type: document.getElementById("selIndMA2Type")?.value || "SMA",
-    ma2P: Math.max(2, parseInt(document.getElementById("inpIndMA2P")?.value || "50", 10)),
-    vwap: !!document.getElementById("chkIndVWAP")?.checked,
-    bb: !!document.getElementById("chkIndBB")?.checked,
-    bbP: Math.max(5, parseInt(document.getElementById("inpIndBBP")?.value || "20", 10)),
-    bbK: Math.max(1, parseFloat(document.getElementById("inpIndBBK")?.value || "2")),
-    osc: document.querySelector("input[name='radOsc']:checked")?.value || "NONE",
-    rsiP: Math.max(2, parseInt(document.getElementById("inpIndRSIP")?.value || "14", 10))
-  };
-};
-
-window.__chInjecterIndicateurs = function() {
-  if (typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
-  const cfg = window.__chLireConfigIndicateurs();
-  const aUnIndicateur = cfg.ma1 || cfg.ma2 || cfg.vwap || cfg.bb || cfg.osc !== "NONE";
-  if (!aUnIndicateur) return;
-
-  const opt = chart.getOption();
-  if (!opt || !opt.series || !opt.xAxis) return;
-
-  const isMulti = Array.isArray(globalData.bougies) && globalData.bougies.length > 0 &&
-                  (document.getElementById("selHorizon")?.value === "MULTI" ||
-                   document.getElementById("selModeRendu")?.value === "CHANDELIERS" ||
-                   document.getElementById("selModeRendu")?.value === "JAPON");
-
-  let xVals = new Array();
-  let closes = new Array();
-  let vwapArr = new Array();
-  let cvdArr = new Array();
-
-  if (isMulti) {
-    let cumM = 0, cumV = 0, cumDelta = 0;
-    globalData.bougies.forEach((b, idx) => {
-      xVals.push(idx);
-      const c = (b && !b.vide && b.close !== null) ? b.close : null;
-      closes.push(c);
-      if (b && !b.vide && b.vol_tot > 0) {
-        cumM += (b.montant_tot || (c * b.vol_tot));
-        cumV += b.vol_tot;
-        cumDelta += ((b.qte_ach || 0) - (b.qte_ven || 0));
-      }
-      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
-      cvdArr.push(cumDelta);
-    });
-  } else if (Array.isArray(globalData.vagues) && globalData.vagues.length > 0) {
-    let cumM = 0, cumV = 0, cumDelta = 0;
-    globalData.vagues.forEach(v => {
-      const midT = Math.round((secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2);
-      xVals.push(midT);
-      closes.push(v.prix_fin);
-      cumM += (v.cmp * v.cumul);
-      cumV += v.cumul;
-      cumDelta += (v.sens === "ACHAT" ? v.cumul : (v.sens === "VENTE" ? -v.cumul : 0));
-      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
-      cvdArr.push(cumDelta);
-    });
-  } else {
-    return;
-  }
-
-  const pairData = (arr) => arr.map((y, i) => y === null ? null : new Array(xVals.at(i), y));
-  const extraSeries = new Array();
-
-  if (cfg.ma1) {
-    const m1 = cfg.ma1Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma1P) : CH_MathInd.sma(closes, cfg.ma1P);
-    extraSeries.push({ id: "ind_ma1", name: `${cfg.ma1Type}${cfg.ma1P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#38BDF8" }, data: pairData(m1), z: 40 });
-  }
-  if (cfg.ma2) {
-    const m2 = cfg.ma2Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma2P) : CH_MathInd.sma(closes, cfg.ma2P);
-    extraSeries.push({ id: "ind_ma2", name: `${cfg.ma2Type}${cfg.ma2P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#F59E0B" }, data: pairData(m2), z: 40 });
-  }
-  if (cfg.vwap) {
-    extraSeries.push({ id: "ind_vwap", name: "VWAP", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2, type: "dashed", color: "#A855F7" }, data: pairData(vwapArr), z: 41 });
-  }
-  if (cfg.bb) {
-    const bb = CH_MathInd.bollinger(closes, cfg.bbP, cfg.bbK);
-    extraSeries.push({ id: "ind_bb_up", name: "BB Sup", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.up), z: 38 });
-    extraSeries.push({ id: "ind_bb_lo", name: "BB Inf", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.lo), z: 38 });
-  }
-
-  const baseSeries = (opt.series || new Array()).filter(s => !String(s.id || "").startsWith("ind_"));
-  const isClair = (typeof estThemeClair === "function" && estThemeClair()) || document.body.classList.contains("theme-clair");
-  const axisCol = isClair ? "#475569" : "#94A3B8";
-  const splitCol = isClair ? "#E2E8F0" : "#1E293B";
-
-  if (cfg.osc === "NONE") {
-    chart.setOption({
-      grid: new Array({ left: 45, right: 92, top: 35, bottom: 62 }),
-      series: baseSeries.concat(extraSeries)
-    }, { replaceMerge: new Array("series") });
-    return;
-  }
-
-  const xBase = Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : opt.xAxis;
-  const xOsc = { ...xBase, gridIndex: 1, axisLabel: { show: false } };
-  let yOsc = { gridIndex: 1, position: "right", axisLabel: { color: axisCol, fontSize: 10 }, splitLine: { lineStyle: { color: splitCol } } };
-
-  if (cfg.osc === "RSI") {
-    const rVals = CH_MathInd.rsi(closes, cfg.rsiP);
-    yOsc = { ...yOsc, min: 0, max: 100, interval: 30 };
-    extraSeries.push({
-      id: "ind_osc_rsi", name: `RSI(${cfg.rsiP})`, type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
-      lineStyle: { width: 1.8, color: "#38BDF8" },
-      markLine: { silent: true, symbol: "none", lineStyle: { type: "dashed", width: 1 }, data: new Array({ yAxis: 70, lineStyle: { color: "#EF4444" } }, { yAxis: 30, lineStyle: { color: "#10B981" } }) },
-      data: pairData(rVals)
-    });
-  } else if (cfg.osc === "MACD") {
-    const mObj = CH_MathInd.macd(closes, 12, 26, 9);
-    extraSeries.push({
-      id: "ind_osc_macd_h", name: "Hist", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
-      itemStyle: { color: (p) => (p.value && p.value.at(1) >= 0) ? "rgba(16,185,129,0.65)" : "rgba(239,68,68,0.65)" },
-      data: pairData(mObj.hist)
-    });
-    extraSeries.push({ id: "ind_osc_macd_l", name: "MACD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#38BDF8" }, data: pairData(mObj.line) });
-    extraSeries.push({ id: "ind_osc_macd_s", name: "Signal", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#F59E0B" }, data: pairData(mObj.signal) });
-  } else if (cfg.osc === "CVD") {
-    extraSeries.push({
-      id: "ind_osc_cvd", name: "CVD (Achat-Vente)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
-      lineStyle: { width: 1.8, color: "#10B981" }, areaStyle: { color: "rgba(16,185,129,0.15)" },
-      data: pairData(cvdArr)
-    });
-  }
-
-  const yBase = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : opt.yAxis;
-  chart.setOption({
-    axisPointer: { link: new Array({ xAxisIndex: "all" }) },
-    grid: new Array(
-      { left: 45, right: 92, top: 32, height: "60%" },
-      { left: 45, right: 92, top: "71%", height: "19%" }
-    ),
-    xAxis: new Array({ ...xBase, gridIndex: 0 }, xOsc),
-    yAxis: new Array({ ...yBase, gridIndex: 0 }, yOsc),
-    dataZoom: new Array(
-      { id: "zoomX_inside", xAxisIndex: new Array(0, 1) },
-      { id: "zoomY_inside", yAxisIndex: new Array(0) },
-      { id: "zoomX_slider", xAxisIndex: new Array(0, 1) }
-    ),
-    series: baseSeries.concat(extraSeries)
-  }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
-};
-</script>
-<!-- CH_TECH_RENDER_END -->
-<!-- CH_TECH_UI_START -->
-<script>
-(function() {
-  function initBoutonIndicateurs() {
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenIndicators")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenIndicators";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#A855F7; color:#C084FC; font-weight:bold;";
-      btn.innerHTML = "📐 Indicateurs";
-      btn.onclick = () => document.getElementById("chIndPopover")?.classList.toggle("open");
-      const btnChat = document.getElementById("btnOpenChat");
-      if (btnChat) topbar.insertBefore(btn, btnChat);
-      else topbar.appendChild(btn);
-    }
-
-    const btnClose = document.getElementById("btnCloseInd");
-    if (btnClose) btnClose.onclick = () => document.getElementById("chIndPopover")?.classList.remove("open");
-
-    const btnApply = document.getElementById("btnApplyInd");
-    if (btnApply) {
-      btnApply.onclick = () => {
-        document.getElementById("chIndPopover")?.classList.remove("open");
-        if (typeof globalData !== "undefined" && globalData) {
-          if (document.getElementById("selHorizon")?.value === "MULTI" || document.getElementById("selModeRendu")?.value === "CHANDELIERS" || document.getElementById("selModeRendu")?.value === "JAPON") {
-            dessinerChandeliersMulti(globalData);
-          } else {
-            dessinerGraphique(globalData);
-          }
-        }
-      };
-    }
-
-    const btnReset = document.getElementById("btnResetInd");
-    if (btnReset) {
-      btnReset.onclick = () => {
-        document.querySelectorAll("#chIndPopover input[type='checkbox']").forEach(c => c.checked = false);
-        const radNone = document.querySelector("input[name='radOsc'][value='NONE']");
-        if (radNone) radNone.checked = true;
-        if (btnApply) btnApply.click();
-      };
-    }
-
-    const hookRender = () => {
-      if (typeof window.dessinerGraphique !== "function" || typeof window.dessinerChandeliersMulti !== "function") {
-        setTimeout(hookRender, 150);
-        return;
-      }
-      const orig1 = window.dessinerGraphique;
-      window.dessinerGraphique = function(data) {
-        const r = orig1.apply(this, arguments);
-        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
-        return r;
-      };
-      const orig2 = window.dessinerChandeliersMulti;
-      window.dessinerChandeliersMulti = function(data) {
-        const r = orig2.apply(this, arguments);
-        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
-        return r;
-      };
-    };
-    hookRender();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initBoutonIndicateurs);
-  } else {
-    initBoutonIndicateurs();
-  }
-})();
-</script>
-<!-- CH_TECH_UI_END -->
-<!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></b>")
-      .replace(new RegExp("\\*(.+?)\\*", "g"), "<i><!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></i>")
-      .replace(new RegExp("\\r?\\n", "g"), "<br/>");
-  },
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const callRes = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
-    const callJson = await callRes.json();
-    const eventId = callJson.event_id;
-    if (!eventId) return { status: 500, err: "event_id manquant" };
-    const sseRes = await fetch("/gradio_api/call/bvmt_data/" + eventId);
-    const sseTxt = await sseRes.text();
-    const lines = sseTxt.split(new RegExp("\\r?\\n"));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i);
-      if (ln && ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500, err: "Réponse SSE vide" };
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      if (!msgs.length) {
-        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
-        return;
-      }
-      feed.innerHTML = msgs.map(m => {
-        const badgeSent = m.sentiment === "HAUSSIER"
-          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
-          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
-        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
-        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
-        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
-        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(new RegExp("\\r?\\n", "g")," ");
-        return `<div class="ch-msg-card">
-          <div class="ch-msg-meta">
-            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
-            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
-          </div>
-          ${badgeTk}${blocQuote}
-          <div>${this.formatText(m.text)}</div>
-        </div>`;
-      }).join("");
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></i>")
-      .replace(/\n/g, "<br/>");
-  }
-
-  async function appelRpcChat(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    if (typeof window.__chGradioRpc === "function") {
-      return await window.__chGradioRpc(bodyObj);
-    }
-    // Appel direct au endpoint Gradio rpc_data (SSE)
-    const callRes = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
-    const callJson = await callRes.json();
-    const eventId = callJson.event_id;
-    if (!eventId) return { status: 500, err: "event_id manquant" };
-    const sseRes = await fetch("/gradio_api/call/bvmt_data/" + eventId);
-    const sseTxt = await sseRes.text();
-    const lines = sseTxt.split(/\r?\n/);
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i);
-      if (ln && ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500, err: "Réponse SSE vide" };
-  }
-
-  async function chargerMessagesSalon() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await appelRpcChat({ cmd: "chat_list", salon: salonActif });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      if (!msgs.length) {
-        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
-        return;
-      }
-      feed.innerHTML = msgs.map(m => {
-        const badgeSent = m.sentiment === "HAUSSIER"
-          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
-          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
-        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
-        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
-        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
-        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(/\n/g," ");
-        return `<div class="ch-msg-card">
-          <div class="ch-msg-meta">
-            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
-            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
-          </div>
-          ${badgeTk}${blocQuote}
-          <div>${formaterTexteChat(m.text)}</div>
-        </div>`;
-      }).join("");
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-
-  window.__repondreChat = (auteur, extrait) => {
-    citationActuelle = `@${auteur} : "${extrait}..."`;
-    const prev = document.getElementById("chChatReplyPreview");
-    const txt = document.getElementById("chChatReplyText");
-    if (prev && txt) { txt.textContent = "Réponse à " + citationActuelle; prev.style.display = "flex"; }
-    document.getElementById("chChatInput")?.focus();
-  };
-
-  function initChatInterface() {
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btnChat = document.createElement("button");
-      btnChat.id = "btnOpenChat";
-      btnChat.type = "button";
-      btnChat.className = "btn-action";
-      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
-      btnChat.innerHTML = "💬 Chat";
-      btnChat.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          chargerMessagesSalon();
-          if (!timerPollChat) timerPollChat = setInterval(() => {
-            if (drw.classList.contains("open")) chargerMessagesSalon();
-          }, 8000);
-        }
-      };
-      topbar.appendChild(btnChat);
-    }
-
-    const emojiBar = document.getElementById("chEmojiBar");
-    if (emojiBar) {
-      emojiBar.innerHTML = EMOJIS_TRADING.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
-      emojiBar.onclick = (e) => {
-        if (e.target.classList.contains("ch-emoji-item")) {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += e.target.textContent; inp.focus(); }
-        }
-      };
-    }
-
-    document.getElementById("btnCloseChat").onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    document.getElementById("btnChatEmoji").onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrapSelection = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
-      const sel = val.slice(s, e) || "texte";
-      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
-      inp.focus();
-    };
-    document.getElementById("btnChatBold").onclick = () => wrapSelection("**");
-    document.getElementById("btnChatItalic").onclick = () => wrapSelection("*");
-
-    document.getElementById("btnChatCiteTicker").onclick = () => {
-      const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      tagValeurActuel = `${tk}${cours ? " • " + cours : ""}`;
-      const prev = document.getElementById("chChatReplyPreview");
-      const txt = document.getElementById("chChatReplyText");
-      if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + tagValeurActuel; prev.style.display = "flex"; }
-    };
-
-    document.getElementById("btnCancelReply").onclick = () => {
-      citationActuelle = "";
-      tagValeurActuel = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        salonActif = tab.dataset.salon || "GENERAL";
-        chargerMessagesSalon();
-      };
-    });
-
-    const envoyerMessage = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await appelRpcChat({
-        cmd: "chat_post",
-        salon: salonActif,
-        sentiment,
-        quote: citationActuelle,
-        ticker_tag: tagValeurActuel, pseudo_client: localStorage.getItem("ch_forum_pseudo") || "",
-        text: txt
-      });
-      citationActuelle = "";
-      tagValeurActuel = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) { if (res.message && res.message.auteur) { localStorage.setItem("ch_forum_pseudo", res.message.auteur); const lp = document.getElementById("lblChatPseudo"); if (lp) lp.textContent = res.message.auteur; } chargerMessagesSalon(); }
-    };
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
-
-    const btnEditPs = document.getElementById("btnEditChatPseudo");
-    if (btnEditPs) {
-      btnEditPs.onclick = async () => {
-        const cur = getPseudoLocal();
-        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
-        if (!saisie) return;
-        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
-        localStorage.setItem("ch_forum_pseudo", clean);
-        if (lblPs) lblPs.textContent = clean;
-        await appelRpcChat({ cmd: "chat_set_pseudo", pseudo: clean });
-      };
-    }
-
-    document.getElementById("btnChatSend").onclick = envoyerMessage;
-    document.getElementById("chChatInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
-    });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initChatInterface);
-  } else {
-    initChatInterface();
-  }
-})();
-</script>
-<!-- CH_TECH_INDICATORS_START -->
-<style id="ch-ind-css">
-  #chIndPopover {
-    display: none;
-    position: fixed;
-    top: 48px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(370px, 94vw);
-    background: #0F172A;
-    border: 1px solid #38BDF8;
-    border-radius: 8px;
-    padding: 12px 14px;
-    z-index: 100015;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    font-size: 12px;
-    color: #E2E8F0;
-  }
-  #chIndPopover.open { display: block; }
-  .ch-ind-sec { font-size: 10.5px; font-weight: 800; color: #FFD700; text-transform: uppercase; letter-spacing: 0.05em; margin: 6px 0 6px 0; border-bottom: 1px solid #1E293B; padding-bottom: 3px; }
-  .ch-ind-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 0; }
-  .ch-ind-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
-  .ch-ind-num { width: 46px; background: #1E293B; color: #FFD700; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; text-align: center; font-size: 11px; font-weight: 700; }
-  .ch-ind-type { background: #1E293B; color: #38BDF8; border: 1px solid #475569; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: 700; }
-  body.theme-clair #chIndPopover, body.light-mode #chIndPopover { background: #FFFFFF; color: #0F172A; border-color: #0284C7; box-shadow: 0 10px 28px rgba(15,23,42,0.18); }
-  body.theme-clair .ch-ind-sec, body.light-mode .ch-ind-sec { color: #92400E; border-bottom-color: #E2E8F0; }
-  body.theme-clair .ch-ind-num, body.light-mode .ch-ind-num,
-  body.theme-clair .ch-ind-type, body.light-mode .ch-ind-type { background: #F1F5F9; color: #0F172A; border-color: #CBD5E1; }
-</style>
-
-<div id="chIndPopover">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-    <strong style="color:#38BDF8;font-size:13px;">📐 Indicateurs Techniques & Flux</strong>
-    <button type="button" id="btnCloseInd" class="btn-action" style="padding:2px 7px;font-size:11px;">✕</button>
-  </div>
-
-  <div class="ch-ind-sec">Superpositions sur le Prix</div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndMA1"> <span style="color:#38BDF8;">●</span> Moyenne 1</label>
-    <span><select id="selIndMA1Type" class="ch-ind-type"><option value="EMA" selected>EMA</option><option value="SMA">SMA</option></select> <input type="number" id="inpIndMA1P" class="ch-ind-num" value="20" min="2" max="250"></span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndMA2"> <span style="color:#F59E0B;">●</span> Moyenne 2</label>
-    <span><select id="selIndMA2Type" class="ch-ind-type"><option value="SMA" selected>SMA</option><option value="EMA">EMA</option></select> <input type="number" id="inpIndMA2P" class="ch-ind-num" value="50" min="2" max="300"></span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndVWAP"> <span style="color:#A855F7;">●</span> VWAP / CMP Dynamique</label>
-    <span style="font-size:10.5px;color:#94A3B8;">Pondéré Vol.</span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="checkbox" id="chkIndBB"> <span style="color:#10B981;">●</span> Bandes de Bollinger</label>
-    <span>P:<input type="number" id="inpIndBBP" class="ch-ind-num" value="20" min="5" max="150"> σ:<input type="number" id="inpIndBBK" class="ch-ind-num" value="2" step="0.5" min="1" max="4" style="width:38px;"></span>
-  </div>
-
-  <div class="ch-ind-sec" style="margin-top:10px;">Oscillateur Inférieur (Sous-graphique)</div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="NONE" checked> Aucun (100% Prix)</label>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="RSI"> RSI (Surachat 70 / Survente 30)</label>
-    <span>P:<input type="number" id="inpIndRSIP" class="ch-ind-num" value="14" min="2" max="100"></span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="MACD"> MACD (Momentum)</label>
-    <span style="font-size:10.5px;color:#94A3B8;">12, 26, 9</span>
-  </div>
-  <div class="ch-ind-row">
-    <label><input type="radio" name="radOsc" value="CVD"> CVD (Delta Achat - Vente)</label>
-    <span style="font-size:10.5px;color:#10B981;">Flux Cumulé</span>
-  </div>
-
-  <div style="margin-top:10px;display:flex;justify-content:space-between;gap:6px;">
-    <button type="button" id="btnResetInd" class="btn-action" style="flex:1;font-size:11px;border-color:#64748B;color:#94A3B8;">Tout décocher</button>
-    <button type="button" id="btnApplyInd" class="btn-action" style="flex:1;font-size:11px;background:#0284C7;color:#FFF;border-color:#38BDF8;">Appliquer</button>
-  </div>
-</div>
-
-<script>
-(function() {
-  window.CH_MathInd = {
-    sma: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      let sum = 0, cnt = 0;
-      const win = new Array();
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        win.push(v); sum += v;
-        if (win.length > p) sum -= win.shift();
-        if (win.length === p) out.splice(i, 1, +(sum / p).toFixed(3));
-      }
-      return out;
-    },
-    ema: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      const k = 2 / (p + 1);
-      let prev = null, seedSum = 0, seedCnt = 0;
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        if (prev === null) {
-          seedSum += v; seedCnt++;
-          if (seedCnt === p) { prev = seedSum / p; out.splice(i, 1, +prev.toFixed(3)); }
-        } else {
-          prev = v * k + prev * (1 - k);
-          out.splice(i, 1, +prev.toFixed(3));
-        }
-      }
-      return out;
-    },
-    bollinger: function(vals, p, mult) {
-      const mid = this.sma(vals, p);
-      const up = new Array(vals.length).fill(null);
-      const lo = new Array(vals.length).fill(null);
-      const win = new Array();
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        win.push(v);
-        if (win.length > p) win.shift();
-        if (win.length === p && mid.at(i) !== null) {
-          const m = mid.at(i);
-          const variance = win.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / p;
-          const sd = Math.sqrt(variance);
-          up.splice(i, 1, +(m + mult * sd).toFixed(3));
-          lo.splice(i, 1, +(m - mult * sd).toFixed(3));
-        }
-      }
-      return { mid, up, lo };
-    },
-    rsi: function(vals, p) {
-      const out = new Array(vals.length).fill(null);
-      let avgGain = 0, avgLoss = 0, prevV = null, step = 0;
-      for (let i = 0; i < vals.length; i++) {
-        const v = vals.at(i);
-        if (v === null || isNaN(v)) continue;
-        if (prevV === null) { prevV = v; continue; }
-        const diff = v - prevV; prevV = v;
-        const g = diff > 0 ? diff : 0;
-        const l = diff < 0 ? -diff : 0;
-        step++;
-        if (step <= p) {
-          avgGain += g; avgLoss += l;
-          if (step === p) {
-            avgGain /= p; avgLoss /= p;
-            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-            out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
-          }
-        } else {
-          avgGain = (avgGain * (p - 1) + g) / p;
-          avgLoss = (avgLoss * (p - 1) + l) / p;
-          const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-          out.splice(i, 1, +(100 - 100 / (1 + rs)).toFixed(2));
-        }
-      }
-      return out;
-    },
-    macd: function(vals, fast = 12, slow = 26, sig = 9) {
-      const eFast = this.ema(vals, fast);
-      const eSlow = this.ema(vals, slow);
-      const line = vals.map((_, i) => (eFast.at(i) !== null && eSlow.at(i) !== null) ? +(eFast.at(i) - eSlow.at(i)).toFixed(3) : null);
-      const signal = this.ema(line, sig);
-      const hist = vals.map((_, i) => (line.at(i) !== null && signal.at(i) !== null) ? +(line.at(i) - signal.at(i)).toFixed(3) : null);
-      return { line, signal, hist };
-    }
-  };
-})();
-</script>
-<!-- CH_TECH_INDICATORS_END -->
-<!-- CH_TECH_RENDER_START -->
-<script>
-window.__chLireConfigIndicateurs = function() {
-  return {
-    ma1: !!document.getElementById("chkIndMA1")?.checked,
-    ma1Type: document.getElementById("selIndMA1Type")?.value || "EMA",
-    ma1P: Math.max(2, parseInt(document.getElementById("inpIndMA1P")?.value || "20", 10)),
-    ma2: !!document.getElementById("chkIndMA2")?.checked,
-    ma2Type: document.getElementById("selIndMA2Type")?.value || "SMA",
-    ma2P: Math.max(2, parseInt(document.getElementById("inpIndMA2P")?.value || "50", 10)),
-    vwap: !!document.getElementById("chkIndVWAP")?.checked,
-    bb: !!document.getElementById("chkIndBB")?.checked,
-    bbP: Math.max(5, parseInt(document.getElementById("inpIndBBP")?.value || "20", 10)),
-    bbK: Math.max(1, parseFloat(document.getElementById("inpIndBBK")?.value || "2")),
-    osc: document.querySelector("input[name='radOsc']:checked")?.value || "NONE",
-    rsiP: Math.max(2, parseInt(document.getElementById("inpIndRSIP")?.value || "14", 10))
-  };
-};
-
-window.__chInjecterIndicateurs = function() {
-  if (typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
-  const cfg = window.__chLireConfigIndicateurs();
-  const aUnIndicateur = cfg.ma1 || cfg.ma2 || cfg.vwap || cfg.bb || cfg.osc !== "NONE";
-  if (!aUnIndicateur) return;
-
-  const opt = chart.getOption();
-  if (!opt || !opt.series || !opt.xAxis) return;
-
-  const isMulti = Array.isArray(globalData.bougies) && globalData.bougies.length > 0 &&
-                  (document.getElementById("selHorizon")?.value === "MULTI" ||
-                   document.getElementById("selModeRendu")?.value === "CHANDELIERS" ||
-                   document.getElementById("selModeRendu")?.value === "JAPON");
-
-  let xVals = new Array();
-  let closes = new Array();
-  let vwapArr = new Array();
-  let cvdArr = new Array();
-
-  if (isMulti) {
-    let cumM = 0, cumV = 0, cumDelta = 0;
-    globalData.bougies.forEach((b, idx) => {
-      xVals.push(idx);
-      const c = (b && !b.vide && b.close !== null) ? b.close : null;
-      closes.push(c);
-      if (b && !b.vide && b.vol_tot > 0) {
-        cumM += (b.montant_tot || (c * b.vol_tot));
-        cumV += b.vol_tot;
-        cumDelta += ((b.qte_ach || 0) - (b.qte_ven || 0));
-      }
-      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
-      cvdArr.push(cumDelta);
-    });
-  } else if (Array.isArray(globalData.vagues) && globalData.vagues.length > 0) {
-    let cumM = 0, cumV = 0, cumDelta = 0;
-    globalData.vagues.forEach(v => {
-      const midT = Math.round((secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2);
-      xVals.push(midT);
-      closes.push(v.prix_fin);
-      cumM += (v.cmp * v.cumul);
-      cumV += v.cumul;
-      cumDelta += (v.sens === "ACHAT" ? v.cumul : (v.sens === "VENTE" ? -v.cumul : 0));
-      vwapArr.push(cumV > 0 ? +(cumM / cumV).toFixed(3) : null);
-      cvdArr.push(cumDelta);
-    });
-  } else {
-    return;
-  }
-
-  const pairData = (arr) => arr.map((y, i) => y === null ? null : new Array(xVals.at(i), y));
-  const extraSeries = new Array();
-
-  if (cfg.ma1) {
-    const m1 = cfg.ma1Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma1P) : CH_MathInd.sma(closes, cfg.ma1P);
-    extraSeries.push({ id: "ind_ma1", name: `${cfg.ma1Type}${cfg.ma1P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#38BDF8" }, data: pairData(m1), z: 40 });
-  }
-  if (cfg.ma2) {
-    const m2 = cfg.ma2Type === "EMA" ? CH_MathInd.ema(closes, cfg.ma2P) : CH_MathInd.sma(closes, cfg.ma2P);
-    extraSeries.push({ id: "ind_ma2", name: `${cfg.ma2Type}${cfg.ma2P}`, type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.15, lineStyle: { width: 1.8, color: "#F59E0B" }, data: pairData(m2), z: 40 });
-  }
-  if (cfg.vwap) {
-    extraSeries.push({ id: "ind_vwap", name: "VWAP", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 2, type: "dashed", color: "#A855F7" }, data: pairData(vwapArr), z: 41 });
-  }
-  if (cfg.bb) {
-    const bb = CH_MathInd.bollinger(closes, cfg.bbP, cfg.bbK);
-    extraSeries.push({ id: "ind_bb_up", name: "BB Sup", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.up), z: 38 });
-    extraSeries.push({ id: "ind_bb_lo", name: "BB Inf", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, lineStyle: { width: 1.2, color: "rgba(16,185,129,0.75)" }, data: pairData(bb.lo), z: 38 });
-  }
-
-  const baseSeries = (opt.series || new Array()).filter(s => !String(s.id || "").startsWith("ind_"));
-  const isClair = (typeof estThemeClair === "function" && estThemeClair()) || document.body.classList.contains("theme-clair");
-  const axisCol = isClair ? "#475569" : "#94A3B8";
-  const splitCol = isClair ? "#E2E8F0" : "#1E293B";
-
-  if (cfg.osc === "NONE") {
-    chart.setOption({
-      grid: new Array({ left: 45, right: 92, top: 35, bottom: 62 }),
-      series: baseSeries.concat(extraSeries)
-    }, { replaceMerge: new Array("series") });
-    return;
-  }
-
-  const xBase = Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : opt.xAxis;
-  const xOsc = { ...xBase, gridIndex: 1, axisLabel: { show: false } };
-  let yOsc = { gridIndex: 1, position: "right", axisLabel: { color: axisCol, fontSize: 10 }, splitLine: { lineStyle: { color: splitCol } } };
-
-  if (cfg.osc === "RSI") {
-    const rVals = CH_MathInd.rsi(closes, cfg.rsiP);
-    yOsc = { ...yOsc, min: 0, max: 100, interval: 30 };
-    extraSeries.push({
-      id: "ind_osc_rsi", name: `RSI(${cfg.rsiP})`, type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
-      lineStyle: { width: 1.8, color: "#38BDF8" },
-      markLine: { silent: true, symbol: "none", lineStyle: { type: "dashed", width: 1 }, data: new Array({ yAxis: 70, lineStyle: { color: "#EF4444" } }, { yAxis: 30, lineStyle: { color: "#10B981" } }) },
-      data: pairData(rVals)
-    });
-  } else if (cfg.osc === "MACD") {
-    const mObj = CH_MathInd.macd(closes, 12, 26, 9);
-    extraSeries.push({
-      id: "ind_osc_macd_h", name: "Hist", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
-      itemStyle: { color: (p) => (p.value && p.value.at(1) >= 0) ? "rgba(16,185,129,0.65)" : "rgba(239,68,68,0.65)" },
-      data: pairData(mObj.hist)
-    });
-    extraSeries.push({ id: "ind_osc_macd_l", name: "MACD", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#38BDF8" }, data: pairData(mObj.line) });
-    extraSeries.push({ id: "ind_osc_macd_s", name: "Signal", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false, lineStyle: { width: 1.5, color: "#F59E0B" }, data: pairData(mObj.signal) });
-  } else if (cfg.osc === "CVD") {
-    extraSeries.push({
-      id: "ind_osc_cvd", name: "CVD (Achat-Vente)", type: "line", xAxisIndex: 1, yAxisIndex: 1, showSymbol: false,
-      lineStyle: { width: 1.8, color: "#10B981" }, areaStyle: { color: "rgba(16,185,129,0.15)" },
-      data: pairData(cvdArr)
-    });
-  }
-
-  const yBase = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : opt.yAxis;
-  chart.setOption({
-    axisPointer: { link: new Array({ xAxisIndex: "all" }) },
-    grid: new Array(
-      { left: 45, right: 92, top: 32, height: "60%" },
-      { left: 45, right: 92, top: "71%", height: "19%" }
-    ),
-    xAxis: new Array({ ...xBase, gridIndex: 0 }, xOsc),
-    yAxis: new Array({ ...yBase, gridIndex: 0 }, yOsc),
-    dataZoom: new Array(
-      { id: "zoomX_inside", xAxisIndex: new Array(0, 1) },
-      { id: "zoomY_inside", yAxisIndex: new Array(0) },
-      { id: "zoomX_slider", xAxisIndex: new Array(0, 1) }
-    ),
-    series: baseSeries.concat(extraSeries)
-  }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
-};
-</script>
-<!-- CH_TECH_RENDER_END -->
-<!-- CH_TECH_UI_START -->
-<script>
-(function() {
-  function initBoutonIndicateurs() {
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenIndicators")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenIndicators";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#A855F7; color:#C084FC; font-weight:bold;";
-      btn.innerHTML = "📐 Indicateurs";
-      btn.onclick = () => document.getElementById("chIndPopover")?.classList.toggle("open");
-      const btnChat = document.getElementById("btnOpenChat");
-      if (btnChat) topbar.insertBefore(btn, btnChat);
-      else topbar.appendChild(btn);
-    }
-
-    const btnClose = document.getElementById("btnCloseInd");
-    if (btnClose) btnClose.onclick = () => document.getElementById("chIndPopover")?.classList.remove("open");
-
-    const btnApply = document.getElementById("btnApplyInd");
-    if (btnApply) {
-      btnApply.onclick = () => {
-        document.getElementById("chIndPopover")?.classList.remove("open");
-        if (typeof globalData !== "undefined" && globalData) {
-          if (document.getElementById("selHorizon")?.value === "MULTI" || document.getElementById("selModeRendu")?.value === "CHANDELIERS" || document.getElementById("selModeRendu")?.value === "JAPON") {
-            dessinerChandeliersMulti(globalData);
-          } else {
-            dessinerGraphique(globalData);
-          }
-        }
-      };
-    }
-
-    const btnReset = document.getElementById("btnResetInd");
-    if (btnReset) {
-      btnReset.onclick = () => {
-        document.querySelectorAll("#chIndPopover input[type='checkbox']").forEach(c => c.checked = false);
-        const radNone = document.querySelector("input[name='radOsc'][value='NONE']");
-        if (radNone) radNone.checked = true;
-        if (btnApply) btnApply.click();
-      };
-    }
-
-    const hookRender = () => {
-      if (typeof window.dessinerGraphique !== "function" || typeof window.dessinerChandeliersMulti !== "function") {
-        setTimeout(hookRender, 150);
-        return;
-      }
-      const orig1 = window.dessinerGraphique;
-      window.dessinerGraphique = function(data) {
-        const r = orig1.apply(this, arguments);
-        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
-        return r;
-      };
-      const orig2 = window.dessinerChandeliersMulti;
-      window.dessinerChandeliersMulti = function(data) {
-        const r = orig2.apply(this, arguments);
-        if (typeof window.__chInjecterIndicateurs === "function") setTimeout(window.__chInjecterIndicateurs, 15);
-        return r;
-      };
-    };
-    hookRender();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initBoutonIndicateurs);
-  } else {
-    initBoutonIndicateurs();
-  }
-})();
-</script>
-<!-- CH_TECH_UI_END -->
-<!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></b>")
-      .replace(new RegExp("\\*(.+?)\\*", "g"), "<i><!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
-</body></i>")
-      .replace(new RegExp("\\r?\\n", "g"), "<br/>");
-  },
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const callRes = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
-    const callJson = await callRes.json();
-    const eventId = callJson.event_id;
-    if (!eventId) return { status: 500, err: "event_id manquant" };
-    const sseRes = await fetch("/gradio_api/call/bvmt_data/" + eventId);
-    const sseTxt = await sseRes.text();
-    const lines = sseTxt.split(new RegExp("\\r?\\n"));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i);
-      if (ln && ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500, err: "Réponse SSE vide" };
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      if (!msgs.length) {
-        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
-        return;
-      }
-      feed.innerHTML = msgs.map(m => {
-        const badgeSent = m.sentiment === "HAUSSIER"
-          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
-          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
-        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
-        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
-        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
-        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(new RegExp("\\r?\\n", "g")," ");
-        return `<div class="ch-msg-card">
-          <div class="ch-msg-meta">
-            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
-            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
-          </div>
-          ${badgeTk}${blocQuote}
-          <div>${this.formatText(m.text)}</div>
-        </div>`;
-      }).join("");
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_JS_START -->
-<script>
-window.__CH_CHAT_CORE = {
-  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
-  salon: "GENERAL",
-  quote: "",
-  tickerTag: "",
-  timer: null,
-
-  rpc: async function(payload) {
-    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
-    const bodyObj = { ...payload, token: tk };
-    const r1 = await fetch("/gradio_api/call/bvmt_data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
-    });
-    if (!r1.ok) return { status: r1.status };
-    const j1 = await r1.json();
-    if (!j1.event_id) return { status: 500 };
-    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
-    const txt = await r2.text();
-    const lines = txt.split(String.fromCharCode(10));
-    for (let i = 0; i < lines.length; i++) {
-      const ln = lines.at(i).trim();
-      if (ln.startsWith("data:")) {
-        const parsed = JSON.parse(ln.slice(5).trim());
-        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
-        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
-      }
-    }
-    return { status: 500 };
-  },
-
-  renderCard: function(m) {
-    const card = document.createElement("div");
-    card.className = "ch-msg-card";
-
-    const meta = document.createElement("div");
-    meta.className = "ch-msg-meta";
-    const left = document.createElement("span");
-    const auth = document.createElement("span");
-    auth.className = "ch-msg-author";
-    auth.textContent = "@" + (m.auteur || "Membre") + " ";
-    left.appendChild(auth);
-
-    if (m.sentiment === "HAUSSIER" || m.sentiment === "BAISSIER") {
-      const tag = document.createElement("span");
-      tag.className = m.sentiment === "HAUSSIER" ? "ch-tag-bull" : "ch-tag-bear";
-      tag.textContent = m.sentiment === "HAUSSIER" ? "🟢 HAUSSIER" : "🔴 BAISSIER";
-      left.appendChild(tag);
-    }
-
-    const right = document.createElement("span");
-    right.style.color = "#64748B";
-    right.textContent = (m.heure || "") + " ";
-    const btnRep = document.createElement("button");
-    btnRep.type = "button";
-    btnRep.textContent = "↩";
-    btnRep.title = "Répondre";
-    btnRep.style.cssText = "background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;";
-    btnRep.onclick = () => {
-      this.quote = "@" + (m.auteur || "Membre") + " : " + String(m.text || "").slice(0, 55);
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Réponse à " + this.quote; prev.style.display = "flex"; }
-      document.getElementById("chChatInput")?.focus();
-    };
-    right.appendChild(btnRep);
-
-    meta.appendChild(left);
-    meta.appendChild(right);
-    card.appendChild(meta);
-
-    if (m.ticker_tag) {
-      const tkDiv = document.createElement("div");
-      tkDiv.className = "ch-tag-ticker";
-      tkDiv.textContent = "📌 " + m.ticker_tag;
-      card.appendChild(tkDiv);
-    }
-    if (m.quote) {
-      const qDiv = document.createElement("div");
-      qDiv.className = "ch-msg-quote";
-      qDiv.textContent = "↩ " + m.quote;
-      card.appendChild(qDiv);
-    }
-
-    const body = document.createElement("div");
-    body.textContent = m.text || "";
-    body.style.whiteSpace = "pre-wrap";
-    card.appendChild(body);
-    return card;
-  },
-
-  charger: async function() {
-    const feed = document.getElementById("chChatFeed");
-    if (!feed) return;
-    try {
-      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
-      const msgs = res.messages || new Array();
-      feed.innerHTML = "";
-      if (!msgs.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "text-align:center;color:#64748B;font-size:12px;margin-top:30px;";
-        empty.textContent = "Aucun message dans ce salon. Soyez le premier à partager votre analyse !";
-        feed.appendChild(empty);
-        return;
-      }
-      msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
-    } catch (_) {}
-  }
-};
-</script>
-<!-- CH_CHAT_JS_END -->
-<!-- CH_CHAT_BIND_START -->
-<script>
-(function() {
-  function initChatEvents() {
-    const core = window.__CH_CHAT_CORE;
-    if (!core) return;
-
-    const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("btnOpenChat")) {
-      const btn = document.createElement("button");
-      btn.id = "btnOpenChat";
-      btn.type = "button";
-      btn.className = "btn-action";
-      btn.style.cssText = "border-color:#38BDF8;color:#38BDF8;font-weight:bold;";
-      btn.textContent = "💬 Chat";
-      btn.onclick = () => {
-        const drw = document.getElementById("chChatDrawer");
-        if (drw) {
-          drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open")) core.charger(); }, 8000);
-        }
-      };
-      topbar.appendChild(btn);
-    }
-
-    const emBar = document.getElementById("chEmojiBar");
-    if (emBar) {
-      emBar.innerHTML = "";
-      core.emojis.forEach(em => {
-        const sp = document.createElement("span");
-        sp.className = "ch-emoji-item";
-        sp.textContent = em;
-        sp.onclick = () => {
-          const inp = document.getElementById("chChatInput");
-          if (inp) { inp.value += em; inp.focus(); }
-        };
-        emBar.appendChild(sp);
-      });
-    }
-
-    const bClose = document.getElementById("btnCloseChat");
-    if (bClose) bClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
-    const bEm = document.getElementById("btnChatEmoji");
-    if (bEm) bEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
-
-    const wrap = (tag) => {
-      const inp = document.getElementById("chChatInput");
-      if (!inp) return;
-      const s = inp.selectionStart, e = inp.selectionEnd, v = inp.value;
-      inp.value = v.slice(0, s) + tag + (v.slice(s, e) || "texte") + tag + v.slice(e);
-      inp.focus();
-    };
-    const bB = document.getElementById("btnChatBold"); if (bB) bB.onclick = () => wrap("**");
-    const bI = document.getElementById("btnChatItalic"); if (bI) bI.onclick = () => wrap("*");
-
-    const bCite = document.getElementById("btnChatCiteTicker");
-    if (bCite) bCite.onclick = () => {
-      const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-      const cours = document.getElementById("kDernier")?.innerText || "";
-      core.tickerTag = tk + (cours ? " • " + cours : "");
-      const prev = document.getElementById("chChatReplyPreview");
-      const rtxt = document.getElementById("chChatReplyText");
-      if (prev && rtxt) { rtxt.textContent = "Contexte joint : 📌 " + core.tickerTag; prev.style.display = "flex"; }
-    };
-
-    const bCancel = document.getElementById("btnCancelReply");
-    if (bCancel) bCancel.onclick = () => {
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-    };
-
-    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
-      };
-    });
-
-    const lblPs = document.getElementById("lblChatPseudo");
-    const getPs = () => localStorage.getItem("ch_forum_pseudo") || "";
-    if (lblPs) lblPs.textContent = getPs() || "Compte connecté";
-
-    const bEditPs = document.getElementById("btnEditChatPseudo");
-    if (bEditPs) bEditPs.onclick = async () => {
-      const saisie = prompt("Choisissez votre pseudo sur le salon (3 à 24 caractères) :", getPs());
-      if (!saisie) return;
-      const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
-      if (clean.length < 3) { alert("Minimum 3 caractères."); return; }
-      localStorage.setItem("ch_forum_pseudo", clean);
-      if (lblPs) lblPs.textContent = clean;
-      await core.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
-    };
-
-    const envoyer = async () => {
-      const inp = document.getElementById("chChatInput");
-      const txt = (inp ? inp.value : "").trim();
-      if (!txt) return;
-      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
-      inp.value = "";
-      document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
-      core.quote = ""; core.tickerTag = "";
-      document.getElementById("chChatReplyPreview").style.display = "none";
-      if (res && res.status === 200) {
-        if (res.message && res.message.auteur) {
-          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
-          if (lblPs) lblPs.textContent = res.message.auteur;
-        }
-        core.charger();
-      }
-    };
-
-    const bSend = document.getElementById("btnChatSend"); if (bSend) bSend.onclick = envoyer;
-    const cInp = document.getElementById("chChatInput");
-    if (cInp) cInp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initChatEvents);
-  else initChatEvents();
-})();
-</script>
-<!-- CH_CHAT_BIND_END -->
 </body>
 </html>
