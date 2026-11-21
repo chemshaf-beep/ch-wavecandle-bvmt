@@ -4184,19 +4184,7 @@ window.addEventListener('load', () => {
   </div>
 </div>
 <!-- CH_CHAT_HTML_END -->
-<!-- CH_CHAT_JS_START -->
-<script>
-(function() {
-  const EMOJIS_TRADING = new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉");
-  let salonActif = "GENERAL";
-  let citationActuelle = "";
-  let tagValeurActuel = "";
-  let timerPollChat = null;
-
-  function formaterTexteChat(txt) {
-    const safe = txt.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    return safe
-      .replace(/\*\*(.+?)\*\*/g, "<b><!-- CH_TECH_INDICATORS_START -->
+<!-- CH_TECH_INDICATORS_START -->
 <style id="ch-ind-css">
   #chIndPopover {
     display: none;
@@ -4590,6 +4578,560 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_TECH_UI_END -->
+<!-- CH_CHAT_JS_START -->
+<script>
+window.__CH_CHAT = {
+  salon: "GENERAL",
+  quote: "",
+  tickerTag: "",
+  timer: null,
+  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
+
+  formatText: function(txt) {
+    const safe = String(txt || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return safe
+      .replace(new RegExp("\\*\\*(.+?)\\*\\*", "g"), "<b><!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
+</body></b>")
+      .replace(new RegExp("\\*(.+?)\\*", "g"), "<i><!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
+</body></i>")
+      .replace(new RegExp("\\r?\\n", "g"), "<br/>");
+  },
+
+  rpc: async function(payload) {
+    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
+    const bodyObj = { ...payload, token: tk };
+    const callRes = await fetch("/gradio_api/call/bvmt_data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
+    });
+    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
+    const callJson = await callRes.json();
+    const eventId = callJson.event_id;
+    if (!eventId) return { status: 500, err: "event_id manquant" };
+    const sseRes = await fetch("/gradio_api/call/bvmt_data/" + eventId);
+    const sseTxt = await sseRes.text();
+    const lines = sseTxt.split(new RegExp("\\r?\\n"));
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines.at(i);
+      if (ln && ln.startsWith("data:")) {
+        const parsed = JSON.parse(ln.slice(5).trim());
+        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
+        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
+      }
+    }
+    return { status: 500, err: "Réponse SSE vide" };
+  },
+
+  charger: async function() {
+    const feed = document.getElementById("chChatFeed");
+    if (!feed) return;
+    try {
+      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
+      if (!res || res.status !== 200) return;
+      const msgs = res.messages || new Array();
+      if (!msgs.length) {
+        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
+        return;
+      }
+      feed.innerHTML = msgs.map(m => {
+        const badgeSent = m.sentiment === "HAUSSIER"
+          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
+          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
+        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
+        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
+        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
+        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(new RegExp("\\r?\\n", "g")," ");
+        return `<div class="ch-msg-card">
+          <div class="ch-msg-meta">
+            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
+            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
+          </div>
+          ${badgeTk}${blocQuote}
+          <div>${this.formatText(m.text)}</div>
+        </div>`;
+      }).join("");
+      feed.scrollTop = feed.scrollHeight;
+    } catch (_) {}
+  }
+};
+</script>
+<!-- CH_CHAT_JS_END -->
+<!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
 </body></b>")
       .replace(/\*(.+?)\*/g, "<i><!-- CH_TECH_INDICATORS_START -->
 <style id="ch-ind-css">
@@ -4985,6 +5527,560 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_TECH_UI_END -->
+<!-- CH_CHAT_JS_START -->
+<script>
+window.__CH_CHAT = {
+  salon: "GENERAL",
+  quote: "",
+  tickerTag: "",
+  timer: null,
+  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
+
+  formatText: function(txt) {
+    const safe = String(txt || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return safe
+      .replace(new RegExp("\\*\\*(.+?)\\*\\*", "g"), "<b><!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
+</body></b>")
+      .replace(new RegExp("\\*(.+?)\\*", "g"), "<i><!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
+</body></i>")
+      .replace(new RegExp("\\r?\\n", "g"), "<br/>");
+  },
+
+  rpc: async function(payload) {
+    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
+    const bodyObj = { ...payload, token: tk };
+    const callRes = await fetch("/gradio_api/call/bvmt_data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
+    });
+    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
+    const callJson = await callRes.json();
+    const eventId = callJson.event_id;
+    if (!eventId) return { status: 500, err: "event_id manquant" };
+    const sseRes = await fetch("/gradio_api/call/bvmt_data/" + eventId);
+    const sseTxt = await sseRes.text();
+    const lines = sseTxt.split(new RegExp("\\r?\\n"));
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines.at(i);
+      if (ln && ln.startsWith("data:")) {
+        const parsed = JSON.parse(ln.slice(5).trim());
+        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
+        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
+      }
+    }
+    return { status: 500, err: "Réponse SSE vide" };
+  },
+
+  charger: async function() {
+    const feed = document.getElementById("chChatFeed");
+    if (!feed) return;
+    try {
+      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
+      if (!res || res.status !== 200) return;
+      const msgs = res.messages || new Array();
+      if (!msgs.length) {
+        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
+        return;
+      }
+      feed.innerHTML = msgs.map(m => {
+        const badgeSent = m.sentiment === "HAUSSIER"
+          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
+          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
+        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
+        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
+        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
+        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(new RegExp("\\r?\\n", "g")," ");
+        return `<div class="ch-msg-card">
+          <div class="ch-msg-meta">
+            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
+            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
+          </div>
+          ${badgeTk}${blocQuote}
+          <div>${this.formatText(m.text)}</div>
+        </div>`;
+      }).join("");
+      feed.scrollTop = feed.scrollHeight;
+    } catch (_) {}
+  }
+};
+</script>
+<!-- CH_CHAT_JS_END -->
+<!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
 </body></i>")
       .replace(/\n/g, "<br/>");
   }
@@ -5182,7 +6278,6 @@ window.__chInjecterIndicateurs = function() {
   }
 })();
 </script>
-<!-- CH_CHAT_JS_END -->
 <!-- CH_TECH_INDICATORS_START -->
 <style id="ch-ind-css">
   #chIndPopover {
@@ -5577,5 +6672,559 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_TECH_UI_END -->
+<!-- CH_CHAT_JS_START -->
+<script>
+window.__CH_CHAT = {
+  salon: "GENERAL",
+  quote: "",
+  tickerTag: "",
+  timer: null,
+  emojis: new Array("📈","📉","🚀","🎯","⚡","💰","🛡️","🔥","💎","👏","🤔","👍","👌","📊","💡","✅","⚠️","🎉"),
+
+  formatText: function(txt) {
+    const safe = String(txt || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return safe
+      .replace(new RegExp("\\*\\*(.+?)\\*\\*", "g"), "<b><!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
+</body></b>")
+      .replace(new RegExp("\\*(.+?)\\*", "g"), "<i><!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
+</body></i>")
+      .replace(new RegExp("\\r?\\n", "g"), "<br/>");
+  },
+
+  rpc: async function(payload) {
+    const tk = sessionStorage.getItem("ch_bvmt_auth_token") || localStorage.getItem("ch_bvmt_auth_token") || "";
+    const bodyObj = { ...payload, token: tk };
+    const callRes = await fetch("/gradio_api/call/bvmt_data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: new Array(JSON.stringify(bodyObj)) })
+    });
+    if (!callRes.ok) return { status: callRes.status, err: "Erreur RPC Gradio" };
+    const callJson = await callRes.json();
+    const eventId = callJson.event_id;
+    if (!eventId) return { status: 500, err: "event_id manquant" };
+    const sseRes = await fetch("/gradio_api/call/bvmt_data/" + eventId);
+    const sseTxt = await sseRes.text();
+    const lines = sseTxt.split(new RegExp("\\r?\\n"));
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines.at(i);
+      if (ln && ln.startsWith("data:")) {
+        const parsed = JSON.parse(ln.slice(5).trim());
+        const rawStr = Array.isArray(parsed) ? parsed.at(0) : parsed;
+        return typeof rawStr === "string" ? JSON.parse(rawStr) : rawStr;
+      }
+    }
+    return { status: 500, err: "Réponse SSE vide" };
+  },
+
+  charger: async function() {
+    const feed = document.getElementById("chChatFeed");
+    if (!feed) return;
+    try {
+      const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
+      if (!res || res.status !== 200) return;
+      const msgs = res.messages || new Array();
+      if (!msgs.length) {
+        feed.innerHTML = `<div style="text-align:center;color:#64748B;font-size:12px;margin-top:30px;">Aucun message dans ce salon.<br/>Soyez le premier à partager votre analyse !</div>`;
+        return;
+      }
+      feed.innerHTML = msgs.map(m => {
+        const badgeSent = m.sentiment === "HAUSSIER"
+          ? `<span class="ch-tag-bull">🟢 HAUSSIER</span>`
+          : (m.sentiment === "BAISSIER" ? `<span class="ch-tag-bear">🔴 BAISSIER</span>` : "");
+        const badgeTk = m.ticker_tag ? `<div class="ch-tag-ticker">📌 ${m.ticker_tag}</div>` : "";
+        const blocQuote = m.quote ? `<div class="ch-msg-quote">↩ ${m.quote}</div>` : "";
+        const safeAuteur = String(m.auteur || "Membre").replace(/'/g,"");
+        const safeExtrait = String(m.text || "").slice(0,60).replace(/'/g,"").replace(new RegExp("\\r?\\n", "g")," ");
+        return `<div class="ch-msg-card">
+          <div class="ch-msg-meta">
+            <span><span class="ch-msg-author">@${m.auteur}</span> ${badgeSent}</span>
+            <span style="color:#64748B;">${m.heure} <button type="button" onclick="window.__repondreChat('${safeAuteur}','${safeExtrait}')" style="background:none;border:none;color:#38BDF8;cursor:pointer;font-size:11px;margin-left:4px;" title="Répondre">↩</button></span>
+          </div>
+          ${badgeTk}${blocQuote}
+          <div>${this.formatText(m.text)}</div>
+        </div>`;
+      }).join("");
+      feed.scrollTop = feed.scrollHeight;
+    } catch (_) {}
+  }
+};
+</script>
+<!-- CH_CHAT_JS_END -->
+<!-- CH_CHAT_UI_JS_START -->
+<script>
+(function() {
+  window.__repondreChat = (auteur, extrait) => {
+    window.__CH_CHAT.quote = `@${auteur} : "${extrait}..."`;
+    const prev = document.getElementById("chChatReplyPreview");
+    const txt = document.getElementById("chChatReplyText");
+    if (prev && txt) { txt.textContent = "Réponse à " + window.__CH_CHAT.quote; prev.style.display = "flex"; }
+    document.getElementById("chChatInput")?.focus();
+  };
+
+  function initChatInterface() {
+    const topbar = document.querySelector(".topbar");
+    if (topbar && !document.getElementById("btnOpenChat")) {
+      const btnChat = document.createElement("button");
+      btnChat.id = "btnOpenChat";
+      btnChat.type = "button";
+      btnChat.className = "btn-action";
+      btnChat.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:bold;";
+      btnChat.innerHTML = "💬 Chat";
+      btnChat.onclick = () => {
+        const drw = document.getElementById("chChatDrawer");
+        if (drw) {
+          drw.classList.add("open");
+          window.__CH_CHAT.charger();
+          if (!window.__CH_CHAT.timer) {
+            window.__CH_CHAT.timer = setInterval(() => {
+              if (drw.classList.contains("open")) window.__CH_CHAT.charger();
+            }, 8000);
+          }
+        }
+      };
+      topbar.appendChild(btnChat);
+    }
+
+    const emojiBar = document.getElementById("chEmojiBar");
+    if (emojiBar) {
+      emojiBar.innerHTML = window.__CH_CHAT.emojis.map(em => `<span class="ch-emoji-item">${em}</span>`).join("");
+      emojiBar.onclick = (e) => {
+        if (e.target.classList.contains("ch-emoji-item")) {
+          const inp = document.getElementById("chChatInput");
+          if (inp) { inp.value += e.target.textContent; inp.focus(); }
+        }
+      };
+    }
+
+    const btnClose = document.getElementById("btnCloseChat");
+    if (btnClose) btnClose.onclick = () => document.getElementById("chChatDrawer")?.classList.remove("open");
+
+    const btnEm = document.getElementById("btnChatEmoji");
+    if (btnEm) btnEm.onclick = () => document.getElementById("chEmojiBar")?.classList.toggle("show");
+
+    const wrapSelection = (tag) => {
+      const inp = document.getElementById("chChatInput");
+      if (!inp) return;
+      const s = inp.selectionStart, e = inp.selectionEnd, val = inp.value;
+      const sel = val.slice(s, e) || "texte";
+      inp.value = val.slice(0, s) + tag + sel + tag + val.slice(e);
+      inp.focus();
+    };
+    const btnB = document.getElementById("btnChatBold");
+    if (btnB) btnB.onclick = () => wrapSelection("**");
+    const btnI = document.getElementById("btnChatItalic");
+    if (btnI) btnI.onclick = () => wrapSelection("*");
+
+    const btnCite = document.getElementById("btnChatCiteTicker");
+    if (btnCite) {
+      btnCite.onclick = () => {
+        const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+        const cours = document.getElementById("kDernier")?.innerText || "";
+        window.__CH_CHAT.tickerTag = `${tk}${cours ? " • " + cours : ""}`;
+        const prev = document.getElementById("chChatReplyPreview");
+        const txt = document.getElementById("chChatReplyText");
+        if (prev && txt) { txt.textContent = "Contexte joint : 📌 " + window.__CH_CHAT.tickerTag; prev.style.display = "flex"; }
+      };
+    }
+
+    const btnCancel = document.getElementById("btnCancelReply");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        window.__CH_CHAT.quote = "";
+        window.__CH_CHAT.tickerTag = "";
+        document.getElementById("chChatReplyPreview").style.display = "none";
+      };
+    }
+
+    document.querySelectorAll(".ch-chat-tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        window.__CH_CHAT.salon = tab.dataset.salon || "GENERAL";
+        window.__CH_CHAT.charger();
+      };
+    });
+
+    const lblPs = document.getElementById("lblChatPseudo");
+    const getPseudoLocal = () => localStorage.getItem("ch_forum_pseudo") || "";
+    if (lblPs) lblPs.textContent = getPseudoLocal() || "Compte connecté";
+
+    const btnEditPs = document.getElementById("btnEditChatPseudo");
+    if (btnEditPs) {
+      btnEditPs.onclick = async () => {
+        const cur = getPseudoLocal();
+        const saisie = prompt("Choisissez votre pseudo sur le salon de discussion (3 à 24 caractères) :", cur);
+        if (!saisie) return;
+        const clean = saisie.trim().replace(/[^a-zA-Z0-9_\-\.]/g, "").slice(0, 24);
+        if (clean.length < 3) { alert("Veuillez saisir au moins 3 caractères."); return; }
+        localStorage.setItem("ch_forum_pseudo", clean);
+        if (lblPs) lblPs.textContent = clean;
+        await window.__CH_CHAT.rpc({ cmd: "chat_set_pseudo", pseudo: clean });
+      };
+    }
+
+    const envoyerMessage = async () => {
+      const inp = document.getElementById("chChatInput");
+      const txt = (inp ? inp.value : "").trim();
+      if (!txt) return;
+      const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
+      inp.value = "";
+      document.getElementById("chEmojiBar")?.classList.remove("show");
+      const res = await window.__CH_CHAT.rpc({
+        cmd: "chat_post",
+        salon: window.__CH_CHAT.salon,
+        sentiment,
+        quote: window.__CH_CHAT.quote,
+        ticker_tag: window.__CH_CHAT.tickerTag,
+        pseudo_client: getPseudoLocal(),
+        text: txt
+      });
+      window.__CH_CHAT.quote = "";
+      window.__CH_CHAT.tickerTag = "";
+      document.getElementById("chChatReplyPreview").style.display = "none";
+      if (res && res.status === 200) {
+        if (res.message && res.message.auteur) {
+          localStorage.setItem("ch_forum_pseudo", res.message.auteur);
+          if (lblPs) lblPs.textContent = res.message.auteur;
+        }
+        window.__CH_CHAT.charger();
+      }
+    };
+
+    const btnSend = document.getElementById("btnChatSend");
+    if (btnSend) btnSend.onclick = envoyerMessage;
+    const chatInp = document.getElementById("chChatInput");
+    if (chatInp) {
+      chatInp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChatInterface);
+  } else {
+    initChatInterface();
+  }
+})();
+</script>
+<!-- CH_CHAT_UI_JS_END -->
 </body>
 </html>
