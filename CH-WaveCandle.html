@@ -4734,7 +4734,7 @@ window.__chInjecterIndicateurs = function() {
     if (gt) gt.style.display = actif ? "none" : "";
 
     // Recalculer la taille du graphique ECharts après transition de fenêtre
-    [60, 220, 450].forEach(delay => {
+    new Array(50, 200, 450).forEach(delay => {
       setTimeout(() => {
         if (typeof chart !== "undefined" && chart) {
           chart.resize();
