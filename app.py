@@ -2828,7 +2828,7 @@ def _rpc_data(payload_json: str):
                 "messages": out_msgs,
                 "total": len(all_salon),
                 "is_admin": is_admin,
-                "sync_info": f"{repo_s or 'NON_CONFIG'} ({globals().get("_LAST_GH_SYNC_STATUS", "PostgreSQL Neon OK")})"
+                "sync_info": f"{repo_s or 'NON_CONFIG'} ({globals().get('_LAST_GH_SYNC_STATUS', 'PostgreSQL Neon OK')})"
             })
         if cmd == "chat_set_pseudo":
             nouv_pseudo = re.sub(r"[^a-zA-Z0-9_\-\.]", "", str(b.get("pseudo", "")).strip())[:24]
