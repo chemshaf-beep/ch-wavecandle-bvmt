@@ -2509,6 +2509,29 @@ def _lire_xlsx_table(fp_xlsx, max_rows=300):
                     break
     return rows_out
 
+def _extraire_mini_apercu(mid):
+    try:
+        if not mid:
+            return None
+        fp = os.path.join(_CHAT_MEDIA_DIR, mid)
+        if not os.path.isfile(fp):
+            return None
+        if mid.endswith(".xlsx"):
+            rows = _lire_xlsx_table(fp, max_rows=5)
+            return [r[:5] for r in rows[:4]]
+        if mid.endswith(".csv"):
+            with open(fp, "r", encoding="utf-8", errors="replace") as f:
+                lines = [ln.strip() for ln in f.readlines()[:4] if ln.strip()]
+            if not lines:
+                return None
+            sep = ";" if ";" in lines.pop(0) else ","
+            f.seek(0)
+            lines = [ln.strip() for ln in f.readlines()[:4] if ln.strip()]
+            return [[c.strip().strip('"') for c in ln.split(sep)[:5]] for ln in lines]
+    except Exception:
+        pass
+    return None
+
 def _rpc_data(payload_json: str):
     try:
         b = json.loads(payload_json)
@@ -2670,7 +2693,7 @@ def _rpc_data(payload_json: str):
                     "sentiment": sentiment,
                     "quote": quote,
                     "ticker_tag": ticker_tag,
-                    "owner_email": _email_depuis_token(tk), "media_name": str(b.get("media_name", "")).strip()[:80], "media_id": _enregistrer_media_direct(b.get("media_data_url", ""), str(b.get("media_name", ""))) or str(b.get("media_id", "")).strip()[:80],
+                    "owner_email": _email_depuis_token(tk), "media_name": str(b.get("media_name", "")).strip()[:80], "media_id": (_mid_new := _enregistrer_media_direct(b.get("media_data_url", ""), str(b.get("media_name", ""))) or str(b.get("media_id", "")).strip()[:80]), "preview_rows": _extraire_mini_apercu(_mid_new),
                     "text": texte,
                     "heure": datetime.datetime.now().strftime("%d/%m %H:%M")
                 }
