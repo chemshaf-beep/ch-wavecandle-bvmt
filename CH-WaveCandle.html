@@ -5660,6 +5660,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }, true);
 })();
 </script>
+
 <script id="ch-candle-labels-toggle">
 (function(){
   const LBL_KEY = "ch_wc_show_candle_labels_v1";
@@ -5669,19 +5670,38 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     if (saved === "0") showLabels = false;
   } catch(e){}
 
+  function filterTextNodes(node){
+    if(!node || typeof node !== "object") return node;
+    if(!showLabels && node.type === "text"){
+      node.ignore = true;
+      node.invisible = true;
+    }
+    if(Array.isArray(node.children)){
+      node.children.forEach(filterTextNodes);
+    }
+    return node;
+  }
+
+  function wrapSeriesItem(s){
+    if(!s || typeof s !== "object") return;
+    const t = String(s.type || "").toLowerCase();
+    if(t === "pie") return;
+    if(s.label && typeof s.label === "object") s.label.show = showLabels;
+    if(s.emphasis && s.emphasis.label && typeof s.emphasis.label === "object") s.emphasis.label.show = showLabels;
+    if(typeof s.renderItem === "function" && !s.renderItem.__chWrapped){
+      const origRender = s.renderItem;
+      const wrappedRender = function(params, api){
+        const res = origRender.apply(this, arguments);
+        return filterTextNodes(res);
+      };
+      wrappedRender.__chWrapped = true;
+      s.renderItem = wrappedRender;
+    }
+  }
+
   function applyLabelFilter(opt){
     if(!opt || !Array.isArray(opt.series)) return;
-    opt.series.forEach(s => {
-      if(!s || typeof s !== "object") return;
-      const t = String(s.type || "").toLowerCase();
-      const nm = String(s.name || "").toLowerCase();
-      const isCandleSeries = t === "candlestick" || t === "custom" || nm.includes("bougie") || nm.includes("chandelier") || nm.includes("candle");
-      if(isCandleSeries){
-        if(!s.label) s.label = {};
-        s.label.show = showLabels;
-        if(s.emphasis && s.emphasis.label) s.emphasis.label.show = showLabels;
-      }
-    });
+    opt.series.forEach(wrapSeriesItem);
   }
 
   function refreshCharts(){
@@ -5692,14 +5712,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         if(!inst) return;
         const cur = inst.getOption();
         if(!cur || !Array.isArray(cur.series)) return;
-        const patchSeries = cur.series.map(s => {
-          const t = String(s.type || "").toLowerCase();
-          const nm = String(s.name || "").toLowerCase();
-          const isCandleSeries = t === "candlestick" || t === "custom" || nm.includes("bougie") || nm.includes("chandelier") || nm.includes("candle");
-          if(!isCandleSeries) return {};
-          return { label: { show: showLabels }, emphasis: { label: { show: showLabels } } };
-        });
-        inst.setOption({ series: patchSeries });
+        cur.series.forEach(wrapSeriesItem);
+        inst.setOption({ series: cur.series });
       } catch(e){}
     });
   }
@@ -5733,7 +5747,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     wrap.title = "Afficher ou masquer les étiquettes des bougies et chandeliers";
     wrap.style.cssText = resetBtn
       ? "display:inline-flex;align-items:center;gap:4px;padding:2px 6px;margin-left:3px;border-radius:5px;background:rgba(15,23,42,0.85);border:1px solid #334155;color:#E2E8F0;font-size:10.5px;font-weight:700;cursor:pointer;user-select:none;white-space:nowrap;height:22px;box-sizing:border-box;"
-      : "position:fixed;top:32px;right:46px;z-index:46;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(15,23,42,0.88);border:1px solid #334155;color:#E2E8F0;font-size:11px;font-weight:700;cursor:pointer;user-select:none;";
+      : "position:fixed;top:6px;right:12px;z-index:46;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(15,23,42,0.88);border:1px solid #334155;color:#E2E8F0;font-size:11px;font-weight:700;cursor:pointer;user-select:none;";
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
@@ -5756,7 +5770,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }
 
   hookEchartsLabels();
-  window.addEventListener("load", () => { hookEchartsLabels(); injectToggleUI(); setTimeout(injectToggleUI, 600); });
+  window.addEventListener("load", () => { hookEchartsLabels(); injectToggleUI(); setTimeout(() => { injectToggleUI(); refreshCharts(); }, 700); });
   new MutationObserver(() => { hookEchartsLabels(); injectToggleUI(); }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
