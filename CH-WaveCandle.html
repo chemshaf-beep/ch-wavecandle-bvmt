@@ -3992,8 +3992,8 @@ window.addEventListener('load', () => {
   .ch-chat-tabs { display:flex; gap:4px; padding:6px 10px; background:#0B1120; border-bottom:1px solid #1E293B; }
   .ch-chat-tab { flex:1; padding:5px 6px; font-size:11px; font-weight:700; border-radius:5px; border:1px solid #334155; background:#1E293B; color:#94A3B8; cursor:pointer; text-align:center; }
   .ch-chat-tab.active { background:#0284C7; color:#FFF; border-color:#38BDF8; }
-  #chChatFeed { flex:1; overflow-y:auto; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
-  .ch-msg-card { background:#1E293B; border:1px solid #334155; border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.4; overflow:hidden; min-width:0; max-width:100%; box-sizing:border-box; }
+  #chChatFeed { flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px 14px; display:block; }
+  .ch-msg-card { background:#1E293B; border:1px solid #334155; border-radius:8px; padding:10px 12px; font-size:12.5px; line-height:1.45; margin-bottom:10px; width:100%; box-sizing:border-box; display:block; overflow:visible; }
   .ch-msg-meta { display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:4px; }
   .ch-msg-author { font-weight:700; color:#38BDF8; }
   .ch-tag-bull { background:rgba(16,185,129,0.2); color:#34D399; border:1px solid #059669; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700; }
@@ -5122,7 +5122,7 @@ window.__chInjecterIndicateurs = function() {
     font-family: 'Segoe UI', system-ui, sans-serif;
   }
   #chDocModal.open { display: flex; }
-  .ch-doc-thumb-card {
+  .ch-doc-thumb-card { width: 100%; box-sizing: border-box;
     margin-top: 8px;
     border: 1px solid #334155;
     border-radius: 8px;
@@ -5150,7 +5150,7 @@ window.__chInjecterIndicateurs = function() {
   .ch-mini-tbl th { background: rgba(56,189,248,0.1); color: #FFD700; padding: 4px 7px; text-align: left; border-bottom: 1px solid #1E293B; }
   .ch-mini-tbl td { padding: 3px 7px; border-bottom: 1px solid rgba(51,65,85,0.45); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ch-pdf-thumb-body { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
-  body.theme-clair .ch-doc-thumb-card, body.light-mode .ch-doc-thumb-card { background: #F8FAFC; border-color: #CBD5E1; }
+  body.theme-clair .ch-doc-thumb-card, body.light-mode .ch-doc-thumb-card { width: 100%; box-sizing: border-box; background: #F8FAFC; border-color: #CBD5E1; }
   body.theme-clair .ch-doc-thumb-top, body.light-mode .ch-doc-thumb-top { background: #E2E8F0; border-bottom-color: #CBD5E1; color: #0F172A; }
   body.theme-clair .ch-mini-tbl, body.light-mode .ch-mini-tbl { color: #334155; }
   body.theme-clair .ch-mini-tbl th, body.light-mode .ch-mini-tbl th { color: #92400E; background: #F1F5F9; }
