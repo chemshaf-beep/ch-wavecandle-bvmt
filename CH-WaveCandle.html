@@ -983,8 +983,9 @@ body.theme-clair .statusbar {
 <style id="ch-tuto-css">
 #chTutoOverlay{display:none;position:fixed;inset:0;z-index:100200;pointer-events:auto;font-family:"Segoe UI",system-ui,sans-serif;}#chTutoOverlay.open{display:block;}#chTutoSpot{position:fixed;border:2px solid #38BDF8;border-radius:8px;box-shadow:0 0 0 9999px rgba(2,6,23,0.68),0 0 18px rgba(56,189,248,0.65);transition:all .25s ease;pointer-events:none;z-index:100201;}#chTutoCard{position:fixed;z-index:100202;width:min(350px,90vw);background:#0F172A;color:#F8FAFC;border:1px solid #38BDF8;border-radius:12px;padding:12px 14px;box-shadow:0 14px 38px rgba(0,0,0,0.8);font-size:12px;line-height:1.45;}#chTutoCard h4{margin:0 0 6px;font-size:13.5px;color:#38BDF8;display:flex;align-items:center;justify-content:space-between;}#chTutoCard p{margin:0 0 10px;color:#CBD5E1;font-size:11.5px;}.ch-tuto-actions{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;}.ch-tuto-btn{border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;min-height:26px!important;}.ch-tuto-btn-pri{background:#0284C7;color:#FFF;}.ch-tuto-btn-sec{background:#1E293B;color:#CBD5E1;border:1px solid #334155;}.ch-tuto-btn-lex{background:rgba(245,158,11,0.18);color:#FBBF24;border:1px solid rgba(245,158,11,0.5);}#chLexModal{display:none;position:fixed;inset:0;z-index:100210;background:rgba(2,6,23,0.88);align-items:center;justify-content:center;padding:14px;font-family:"Segoe UI",system-ui,sans-serif;}#chLexModal.open{display:flex;}.ch-lex-box{width:min(760px,96vw);max-height:88vh;background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.85);}.ch-lex-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1E293B;border-bottom:1px solid #334155;}.ch-lex-tabs{display:flex;gap:6px;padding:8px 12px;background:#0B1120;border-bottom:1px solid #1E293B;overflow-x:auto;}.ch-lex-tab{background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;height:auto!important;}.ch-lex-tab.active{background:#0284C7;color:#FFF;border-color:#38BDF8;}.ch-lex-body{padding:12px 14px;overflow-y:auto;font-size:12px;line-height:1.5;color:#CBD5E1;display:grid;gap:10px;}.ch-lex-item{background:#1E293B;border:1px solid #334155;border-radius:8px;padding:10px 12px;}.ch-lex-item strong{color:#38BDF8;display:block;margin-bottom:4px;font-size:12.5px;}.ch-lex-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:6px;}
 </style>
+
 <style id="ch-hand-cursor-css">
-body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] canvas { cursor: grab !important; } body.ch-mode-hand [_echarts_instance_]:active, body.ch-mode-hand [_echarts_instance_] canvas:active { cursor: grabbing !important; } body.ch-mode-draw [_echarts_instance_], body.ch-mode-draw [_echarts_instance_] canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://w3.org' width='24' height='24' viewBox='0 0 24 24'><path fill='%23FBBF24' stroke='%230F172A' stroke-width='1.5' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z'/></svg>") 2 22, crosshair !important; }
+body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] canvas { cursor: grab !important; } body.ch-mode-hand [_echarts_instance_]:active, body.ch-mode-hand [_echarts_instance_] canvas:active { cursor: grabbing !important; } body.ch-mode-draw [_echarts_instance_], body.ch-mode-draw [_echarts_instance_] canvas { cursor: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3czLm9yZyIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiNGQkJGMjQiIHN0cm9rZT0iIzBGMTcyQSIgc3Ryb2tlLXdpZHRoPSIxLjYiIGQ9Ik0zIDE3LjI1VjIxaDMuNzVMMTcuODEgOS45NGwtMy43NS0zLjc1TDMgMTcuMjV6TTIwLjcxIDcuMDRhMSAxIDAgMCAwIDAtMS40MmwtMi4zNC0yLjM0YTEgMSAwIDAgMC0xLjQyIDBsLTEuODMgMS44MyAzLjc1IDMuNzUgMS44NC0xLjgyeiIvPjwvc3ZnPg==') 2 22, auto !important; }
 </style>
 </head>
 <body>
@@ -5881,10 +5882,15 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 </script>
 
+
 <script id="ch-cursor-horizon-fix">
 (function(){
-  let clicksNeeded = 0;
-  let clicksDone = 0;
+  const PENCIL_CURSOR = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3czLm9yZyIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiNGQkJGMjQiIHN0cm9rZT0iIzBGMTcyQSIgc3Ryb2tlLXdpZHRoPSIxLjYiIGQ9Ik0zIDE3LjI1VjIxaDMuNzVMMTcuODEgOS45NGwtMy43NS0zLjc1TDMgMTcuMjV6TTIwLjcxIDcuMDRhMSAxIDAgMCAwIDAtMS40MmwtMi4zNC0yLjM0YTEgMSAwIDAgMC0xLjQyIDBsLTEuODMgMS44MyAzLjc1IDMuNzUgMS44NC0xLjgyeiIvPjwvc3ZnPg==') 2 22, auto";
+  let isDrawingTool = false;
+  let drawStartedOnChart = false;
+  let dragMoved = false;
+  let startX = 0, startY = 0;
+  let clicksNeeded = 0, clicksDone = 0;
 
   function getCursorSelect(){
     return Array.from(document.querySelectorAll("select")).find(s =>
@@ -5896,31 +5902,34 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       Array.from(s.options).some(o => /horizon|séance|seance|ticks|multi/i.test((o.textContent||"") + " " + (o.value||"")))
     );
   }
-  function updateBodyCursorClass(isHand){
-    document.body.classList.toggle("ch-mode-hand", !!isHand);
-    document.body.classList.toggle("ch-mode-draw", !isHand);
+  function applyCanvasCursor(){
+    const cur = isDrawingTool ? PENCIL_CURSOR : "grab";
+    document.body.classList.toggle("ch-mode-hand", !isDrawingTool);
+    document.body.classList.toggle("ch-mode-draw", isDrawingTool);
+    document.querySelectorAll("[_echarts_instance_], [_echarts_instance_] canvas").forEach(el => {
+      el.style.setProperty("cursor", cur, "important");
+    });
   }
   function syncToolState(sel){
     if(!sel) return;
     const curOpt = sel.options.item(sel.selectedIndex);
     const txt = ((curOpt ? curOpt.textContent : "") + " " + (sel.value || "")).toLowerCase();
     if(txt.includes("main") || txt.includes("free_hand") || txt.includes("zoom") || txt.includes("navigation")){
+      isDrawingTool = false;
       clicksNeeded = 0;
       clicksDone = 0;
-      updateBodyCursorClass(true);
     } else if(txt.includes("support") || txt.includes("résistance") || txt.includes("resistance") || txt.includes("horizontal")){
+      isDrawingTool = true;
       clicksNeeded = 1;
       clicksDone = 0;
-      updateBodyCursorClass(false);
-    } else if(txt.includes("tendance") || txt.includes("droite") || txt.includes("segment") || txt.includes("canal") || txt.includes("fibo")){
+    } else {
+      isDrawingTool = true;
       clicksNeeded = 2;
       clicksDone = 0;
-      updateBodyCursorClass(false);
-    } else {
-      clicksNeeded = 1;
-      clicksDone = 0;
-      updateBodyCursorClass(false);
     }
+    drawStartedOnChart = false;
+    dragMoved = false;
+    applyCanvasCursor();
   }
   function ensureFreeHandOption(){
     const sel = getCursorSelect();
@@ -5946,24 +5955,40 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     if(!info) return;
     info.sel.value = info.handOpt.value;
     info.sel.dispatchEvent(new Event("change", { bubbles: true }));
+    isDrawingTool = false;
     clicksNeeded = 0;
     clicksDone = 0;
-    updateBodyCursorClass(true);
+    drawStartedOnChart = false;
+    dragMoved = false;
+    applyCanvasCursor();
   }
 
-  document.addEventListener("pointerup", function(e){
-    if(clicksNeeded <= 0) return;
-    const chartDom = e.target && e.target.closest && e.target.closest("[_echarts_instance_]");
+  function onDown(clientX, clientY, target){
+    if(!isDrawingTool) return;
+    const chartDom = target && target.closest && target.closest("[_echarts_instance_]");
     if(!chartDom) return;
-    const rect = chartDom.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    if(x < 10 || x > rect.width - 25 || y < 15 || y > rect.height - 20) return;
+    drawStartedOnChart = true;
+    dragMoved = false;
+    startX = clientX;
+    startY = clientY;
+  }
+  function onMove(clientX, clientY){
+    if(!drawStartedOnChart) return;
+    if(Math.hypot(clientX - startX, clientY - startY) > 8) dragMoved = true;
+  }
+  function onRelease(){
+    if(!isDrawingTool || !drawStartedOnChart) return;
+    drawStartedOnChart = false;
     clicksDone++;
-    if(clicksDone >= clicksNeeded){
-      setTimeout(returnToFreeHand, 140);
+    if(dragMoved || clicksDone >= clicksNeeded){
+      setTimeout(returnToFreeHand, 90);
     }
-  }, true);
+  }
+
+  document.addEventListener("pointerdown", e => onDown(e.clientX, e.clientY, e.target), true);
+  document.addEventListener("pointermove", e => onMove(e.clientX, e.clientY), true);
+  document.addEventListener("pointerup", () => onRelease(), true);
+  document.addEventListener("touchend", () => onRelease(), { capture: true, passive: true });
 
   function hookModeSelectHorizonLock(){
     const modeSel = Array.from(document.querySelectorAll("select")).find(s =>
@@ -5990,9 +6015,10 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   function boot(){
     ensureFreeHandOption();
     hookModeSelectHorizonLock();
+    applyCanvasCursor();
   }
   window.addEventListener("load", () => { boot(); setTimeout(boot, 600); });
-  new MutationObserver(boot).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(boot).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
 })();
 </script>
 </body>
