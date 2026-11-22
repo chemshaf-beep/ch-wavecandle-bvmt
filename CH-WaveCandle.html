@@ -5050,7 +5050,7 @@ window.__chInjecterIndicateurs = function() {
               core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
                 if (r && r.status === 200) {
                   if (r.data_url) _MEDIA_CACHE.set(m.media_id, r.data_url);
-                  if (r.pdf_thumb) { _MEDIA_CACHE.set(m.media_id + "_thumb", r.pdf_thumb); afficherImgPdf(r.pdf_thumb); }
+                  if (r.pdf_thumb) { _MEDIA_CACHE.set(m.media_id + "_thumb", r.pdf_thumb); afficherImgPdf(r.pdf_thumb); } else { const subTxt = pWrap.querySelector("div > div:last-child > div:last-child"); if (subTxt) subTxt.textContent = "Cliquez sur la carte pour consulter ou télécharger le PDF"; }
                 }
               });
             }

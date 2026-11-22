@@ -2707,11 +2707,15 @@ def _generer_miniature_pdf_b64(mid):
                     dl = hf_hub_download(repo_id=repo_g, filename=f"chat_media/{mid}", repo_type="dataset", token=tk_g)
                     shutil.copyfile(dl, fp_pdf)
             if os.path.isfile(fp_pdf):
-                import fitz
-                doc = fitz.open(fp_pdf)
+                try:
+                    import pymupdf as _mupdf
+                except ImportError:
+                    import fitz as _mupdf
+                doc = _mupdf.open(fp_pdf)
                 if len(doc) > 0:
-                    pix = doc.load_page(0).get_pixmap(matrix=fitz.Matrix(0.75, 0.75), alpha=False)
+                    pix = doc.load_page(0).get_pixmap(matrix=_mupdf.Matrix(0.85, 0.85), alpha=False)
                     pix.save(fp_png)
+                doc.close()
         if os.path.isfile(fp_png):
             with open(fp_png, "rb") as f:
                 return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
