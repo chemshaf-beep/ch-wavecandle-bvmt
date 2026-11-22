@@ -5422,5 +5422,155 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 
 
+<script id="ch-step1-ind">
+(function(){
+  let showLabels = true;
+
+  function getModeSelect(){
+    return Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+  }
+  function isCandleOrCh3D(sel){
+    if(!sel) return true;
+    const opt = sel.options.item(sel.selectedIndex);
+    const txt = ((opt ? opt.textContent : "") + " " + (sel.value || "")).toLowerCase();
+    return txt.includes("bougie") || txt.includes("chandelier");
+  }
+  function switchModeAndApply(sel, targetRe, resumeAction){
+    const match = Array.from(sel.options).find(o => targetRe.test((o.textContent || "") + " " + (o.value || "")));
+    if(match){
+      sel.value = match.value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    setTimeout(() => { if(typeof resumeAction === "function") resumeAction(); }, 200);
+  }
+  function askModeModal(sel, resumeAction){
+    let m = document.getElementById("chIndModeModal");
+    if(!m){
+      m = document.createElement("div");
+      m.id = "chIndModeModal";
+      m.style.cssText = "display:none;position:fixed;inset:0;z-index:100250;background:rgba(2,6,23,0.85);align-items:center;justify-content:center;padding:16px;font-family:'Segoe UI',system-ui,sans-serif;";
+      m.innerHTML = "<div style='width:min(380px,92vw);background:#0F172A;color:#F8FAFC;border:1px solid #38BDF8;border-radius:12px;padding:16px;box-shadow:0 16px 42px rgba(0,0,0,0.8);text-align:center;'>" +
+        "<div style='font-size:14px;font-weight:800;color:#38BDF8;margin-bottom:8px;'>Mode Graphique Requis</div>" +
+        "<p style='font-size:12px;color:#CBD5E1;line-height:1.45;margin:0 0 14px;'>Les indicateurs techniques nécessitent une représentation en bougies. Choisissez le mode à activer :</p>" +
+        "<div style='display:flex;flex-direction:column;gap:8px;'>" +
+        "<button id='chPickJapBtn' type='button' style='background:#0284C7;color:#FFF;border:1px solid #38BDF8;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;height:auto!important;'>🕯️ Bougies Japonaises Classiques</button>" +
+        "<button id='chPickCh3dBtn' type='button' style='background:#10B981;color:#052E16;border:1px solid #34D399;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:800;cursor:pointer;height:auto!important;'>📊 Chandeliers-CH 3D</button>" +
+        "<button id='chPickCancelBtn' type='button' style='background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:8px;padding:7px 12px;font-size:11.5px;font-weight:600;cursor:pointer;height:auto!important;'>Annuler</button>" +
+        "</div></div>";
+      document.body.appendChild(m);
+      m.onclick = e => { if(e.target === m) m.style.display = "none"; };
+      document.getElementById("chPickCancelBtn").onclick = () => { m.style.display = "none"; };
+    }
+    document.getElementById("chPickJapBtn").onclick = () => { m.style.display = "none"; switchModeAndApply(sel, /bougie|japon/i, resumeAction); };
+    document.getElementById("chPickCh3dBtn").onclick = () => { m.style.display = "none"; switchModeAndApply(sel, /chandelier|3d/i, resumeAction); };
+    m.style.display = "flex";
+  }
+
+  document.addEventListener("click", function(e){
+    if(e.__chBypassGuard) return;
+    const target = e.target;
+    if(!target) return;
+    const panel = target.closest("[id*='indic' i], [class*='indic' i], .modal, [role='dialog']");
+    if(!panel) return;
+    const panelTxt = (panel.innerText || "").toLowerCase();
+    if(!panelTxt.includes("indicateur") && !panelTxt.includes("vwap") && !panelTxt.includes("bollinger") && !panelTxt.includes("rsi") && !panelTxt.includes("macd")) return;
+    const input = target.closest("input[type='checkbox'], input[type='radio']") || (target.tagName === "LABEL" ? target.querySelector("input[type='checkbox']") : null);
+    const btn = target.closest("button");
+    if(!input && !btn) return;
+    if(btn && /fermer|annuler|close|✕|×/i.test((btn.textContent || "").trim())) return;
+    if(input && input.checked) return;
+    const sel = getModeSelect();
+    if(!sel || isCandleOrCh3D(sel)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const replayTarget = input || btn;
+    askModeModal(sel, () => {
+      const ev = new MouseEvent("click", { bubbles: true, cancelable: true });
+      ev.__chBypassGuard = true;
+      replayTarget.dispatchEvent(ev);
+    });
+  }, true);
+
+  function filterTextNodes(node){
+    if(!node || typeof node !== "object") return node;
+    if(node.type === "text"){ node.ignore = !showLabels; node.invisible = !showLabels; }
+    if(Array.isArray(node.children)) node.children.forEach(filterTextNodes);
+    return node;
+  }
+  function wrapSeriesItem(s){
+    if(!s || typeof s !== "object" || String(s.type || "").toLowerCase() === "pie") return;
+    if(s.label && typeof s.label === "object") s.label.show = showLabels;
+    if(s.emphasis && s.emphasis.label && typeof s.emphasis.label === "object") s.emphasis.label.show = showLabels;
+    if(typeof s.renderItem === "function" && !s.renderItem.__chWrapped){
+      const origRender = s.renderItem;
+      const wrappedRender = function(){ return filterTextNodes(origRender.apply(this, arguments)); };
+      wrappedRender.__chWrapped = true;
+      s.renderItem = wrappedRender;
+    }
+  }
+  function refreshCharts(){
+    if(!window.echarts) return;
+    document.querySelectorAll("[_echarts_instance_]").forEach(el => {
+      try {
+        const inst = window.echarts.getInstanceByDom(el);
+        if(!inst) return;
+        const cur = inst.getOption();
+        if(cur && Array.isArray(cur.series)){
+          const partial = cur.series.map(s => {
+            if(String(s.type || "").toLowerCase() === "pie") return {};
+            const obj = {};
+            if(s.label) obj.label = { show: showLabels };
+            if(typeof s.renderItem === "function"){ wrapSeriesItem(s); obj.renderItem = s.renderItem; }
+            return obj;
+          });
+          inst.setOption({ series: partial });
+        }
+      } catch(e){}
+    });
+  }
+  function patchInst(inst){
+    if(!inst || inst.__chLblSetOpt || typeof inst.setOption !== "function") return inst;
+    inst.__chLblSetOpt = true;
+    const origSet = inst.setOption.bind(inst);
+    inst.setOption = function(opt, notMerge, lazyUpdate){
+      try { if(opt && Array.isArray(opt.series)) opt.series.forEach(wrapSeriesItem); } catch(e){}
+      return origSet(opt, notMerge, lazyUpdate);
+    };
+    return inst;
+  }
+  function hookEcharts(){
+    if(!window.echarts) return;
+    if(!window.echarts.__chLblHooked){
+      window.echarts.__chLblHooked = true;
+      const origInit = window.echarts.init.bind(window.echarts);
+      window.echarts.init = function(){ return patchInst(origInit.apply(null, arguments)); };
+    }
+    document.querySelectorAll("[_echarts_instance_]").forEach(el => { try { patchInst(window.echarts.getInstanceByDom(el)); } catch(e){} });
+  }
+  function injectTopBarItems(){
+    const indBtn = Array.from(document.querySelectorAll("button")).find(b => /indicateurs/i.test(b.textContent || ""));
+    if(!indBtn || !indBtn.parentElement) return;
+    if(!document.getElementById("chCandleLblWrap")){
+      const wrap = document.createElement("label");
+      wrap.id = "chCandleLblWrap";
+      wrap.title = "Afficher ou masquer les étiquettes des bougies et chandeliers";
+      wrap.style.cssText = "display:inline-flex;align-items:center;gap:4px;padding:3px 8px;margin-left:6px;border-radius:6px;background:rgba(15,23,42,0.88);border:1px solid #334155;color:#E2E8F0;font-size:11px;font-weight:700;cursor:pointer;user-select:none;white-space:nowrap;";
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.id = "chCandleLblCb"; cb.checked = true;
+      cb.style.cssText = "margin:0;width:12px;height:12px;accent-color:#38BDF8;cursor:pointer;";
+      cb.onchange = () => { showLabels = cb.checked; refreshCharts(); };
+      const sp = document.createElement("span"); sp.textContent = "Étiquettes";
+      wrap.appendChild(cb); wrap.appendChild(sp);
+      indBtn.insertAdjacentElement("afterend", wrap);
+    }
+  }
+  hookEcharts();
+  window.addEventListener("load", () => { hookEcharts(); injectTopBarItems(); setTimeout(() => { hookEcharts(); injectTopBarItems(); }, 600); });
+  new MutationObserver(() => { hookEcharts(); injectTopBarItems(); }).observe(document.body, { childList: true, subtree: true });
+})();
+
+</script>
 </body>
 </html>
