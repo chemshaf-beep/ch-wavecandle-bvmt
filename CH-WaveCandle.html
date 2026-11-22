@@ -4160,7 +4160,7 @@ window.__CH_CHAT_CORE = {
     if (!feed) return;
     try {
       const res = await this.rpc({ cmd: "chat_list", salon: this.salon });
-      if (!res || res.status !== 200) return;
+      if (!res || res.status !== 200) { feed.innerHTML = "<div style='padding:16px;text-align:center;color:#F87171;font-size:12px;'>⚠️ " + ((res && res.err) ? res.err : "Session expirée — rechargez ou reconnectez-vous") + "</div>"; return; }
       const msgs = res.messages || new Array(); const lSync = document.getElementById("lblChatSync"); if (lSync && res.sync_info) lSync.textContent = "☁️ " + res.sync_info;
       feed.innerHTML = "";
       if (!msgs.length) {
