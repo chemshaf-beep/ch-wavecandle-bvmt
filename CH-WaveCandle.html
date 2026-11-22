@@ -4196,8 +4196,8 @@ window.__CH_CHAT_CORE = {
         const drw = document.getElementById("chChatDrawer");
         if (drw) {
           drw.classList.add("open");
-          core.charger();
-          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open") && !document.hidden && navigator.onLine) core.charger(); }, 8000);
+          core._lastSig = ""; core.charger();
+          if (!core.timer) core.timer = setInterval(() => { if (drw.classList.contains("open") && !document.hidden && navigator.onLine) core._lastSig = ""; core.charger(); }, 8000);
         }
       };
       topbar.appendChild(btn);
@@ -4254,7 +4254,7 @@ window.__CH_CHAT_CORE = {
         document.querySelectorAll(".ch-chat-tab").forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
         core.salon = tab.dataset.salon || "GENERAL";
-        core.charger();
+        core._lastSig = ""; core.charger();
       };
     });
 
@@ -4289,7 +4289,7 @@ window.__CH_CHAT_CORE = {
           localStorage.setItem("ch_forum_pseudo", res.message.auteur);
           if (lblPs) lblPs.textContent = res.message.auteur;
         }
-        core.charger();
+        core._lastSig = ""; core.charger();
       }
     };
 
@@ -4811,7 +4811,7 @@ window.__chInjecterIndicateurs = function() {
   window.__CH_PENDING_MEDIA_NAME = "";
   window.__CH_CHAT_LIMIT = 40;
 
-  function compresserImageLegere(rawUrl, maxW = 920, quality = 0.74) {
+  function compresserImageLegere(rawUrl, maxW = 840, quality = 0.72) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -4829,8 +4829,7 @@ window.__chInjecterIndicateurs = function() {
         ctx.drawImage(img, 0, 0, w, h);
         let q = quality;
         let out = cv.toDataURL("image/jpeg", q);
-        // Réduire progressivement si l'image dépasse encore ~160 Ko (220 000 caractères base64)
-        while (out.length > 220000 && q > 0.38) {
+        while (out.length > 200000 && q > 0.35) {
           q -= 0.12;
           out = cv.toDataURL("image/jpeg", q);
         }
@@ -4952,7 +4951,7 @@ window.__chInjecterIndicateurs = function() {
         btnMore.textContent = "⬆️ Charger les messages précédents";
         btnMore.onclick = () => {
           window.__CH_CHAT_LIMIT = (window.__CH_CHAT_LIMIT || 40) + 50;
-          core.charger();
+          core._lastSig = ""; core.charger();
         };
         feed.insertBefore(btnMore, feed.firstChild);
       }
@@ -4984,7 +4983,7 @@ window.__chInjecterIndicateurs = function() {
             const nouveauTexte = prompt("Modifier le message :", m.text || "");
             if (!nouveauTexte || nouveauTexte.trim() === m.text) return;
             const res = await core.rpc({ cmd: "chat_edit", id: m.id, text: nouveauTexte.trim() });
-            if (res && res.status === 200) core.charger();
+            if (res && res.status === 200) core._lastSig = ""; core.charger();
           };
           metaRight.appendChild(btnEd);
 
@@ -4996,7 +4995,7 @@ window.__chInjecterIndicateurs = function() {
           btnDel.onclick = async () => {
             if (!confirm("Supprimer ce message ?")) return;
             const res = await core.rpc({ cmd: "chat_delete", id: m.id });
-            if (res && res.status === 200) core.charger();
+            if (res && res.status === 200) core._lastSig = ""; core.charger();
           };
           metaRight.appendChild(btnDel);
         }
