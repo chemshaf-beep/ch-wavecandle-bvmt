@@ -5381,41 +5381,53 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 <script id="ch-mobile-pdf-viewer">(function(){const wrapPdfModal=()=>{const orig=window.__chOuvrirDocumentForum;if(typeof orig!=="function"||orig.__chMobPdf)return;const wrapped=function(dUrl,fname,rows,pages){orig.apply(this,arguments);const isPdf=(dUrl&&dUrl.startsWith("data:application/pdf"))||(fname&&fname.toLowerCase().endsWith(".pdf"));const isTouch=(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches)||window.innerWidth<=960;if(!isPdf||!isTouch)return;const modal=document.getElementById("chDocModal");if(!modal)return;Array.from(modal.children).forEach((ch,idx)=>{if(idx>0&&ch.id!=="chMobPdfPages")ch.style.setProperty("display","none","important");});modal.querySelectorAll("button").forEach(b=>{b.style.setProperty("height","auto","important");b.style.setProperty("min-height","28px","important");b.style.setProperty("padding","5px 10px","important");b.style.setProperty("line-height","1.2","important");});let box=document.getElementById("chMobPdfPages");if(!box){box=document.createElement("div");box.id="chMobPdfPages";box.style.cssText="flex:1;width:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#0F172A;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:12px;border:1px solid #334155;border-top:none;border-radius:0 0 8px 8px;";modal.appendChild(box);}box.style.setProperty("display","flex","important");if(Array.isArray(pages)&&pages.length>0){box.innerHTML="";pages.forEach((src,i)=>{const wrap=document.createElement("div");wrap.style.cssText="width:100%;max-width:720px;text-align:center;";const im=document.createElement("img");im.src=src;im.alt="Page "+(i+1);im.style.cssText="width:100%;height:auto;background:#FFFFFF;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.45);display:block;";const lbl=document.createElement("div");lbl.textContent="Page "+(i+1)+" / "+pages.length;lbl.style.cssText="color:#94A3B8;font-size:10px;margin-top:4px;";wrap.appendChild(im);wrap.appendChild(lbl);box.appendChild(wrap);});}else{box.innerHTML="<div style='color:#F87171;padding:20px;text-align:center;'>Aperçu multi-pages indisponible. Utilisez le bouton <b>Télécharger</b> en haut.</div>";}};wrapped.__chMobPdf=true;window.__chOuvrirDocumentForum=wrapped;};wrapPdfModal();window.addEventListener("load",wrapPdfModal);setTimeout(wrapPdfModal,500);})();</script>
 
+
 <script id="ch-tuto-js">
 (function(){
-  const KEY = "ch_wc_tuto_v3";
+  const KEY = "ch_wc_tuto_v4";
   const LEX = {
     vagues: [
-      {b:"VAGUES POLYGONALES",c:"#10B981",t:"Vagues HFT Acheteuses (Vert) & Vendeuses (Rouge)",d:"Chaque polygone represente une vague directionnelle de ticks. Sa hauteur indique l amplitude de prix (ex: 19.55 -> 19.80 TND) et sa largeur le nombre de ticks consecutifs."},
-      {b:"GROS BLOCS",c:"#F59E0B",t:"Detection des Gros Blocs Institutionnels",d:"Repere automatiquement les ordres unitaires ou rafales depassant le seuil de volume normal (affiche en bas : ex. 6 gros blocs >= 1 208 titres)."},
-      {b:"FIXINGS",c:"#A855F7",t:"Transactions Neutres / Fixings",d:"Volume execute au prix d equilibre (ouverture/cloture) sans agression directe du carnet Bid ou Ask."}
+      {b:"VAGUE POLYGONALE",c:"#10B981",t:"Anatomie Exacte d une Vague Polygonale (Verte / Rouge)",d:"Chaque polygone represente une vague directionnelle de ticks de meme nature (achat ou vente). Sa hauteur indique l amplitude des quantites executees, la base de sa position correspond au cours d execution qui peut evoluer au fil de la vague (ex: 19.55 -> 19.80 TND), et sa largeur mesure la duree des ticks de meme nature regroupes dans cette vague."},
+      {b:"VAGUE VERTE vs ROUGE",c:"#38BDF8",t:"Impulsion Acheteuse vs Pression Vendeuse",d:"Une vague verte traduit une sequence de ticks executes a l achat (levée du carnet vendeur Ask). Une vague rouge traduit une sequence de ticks executes a la vente (frappe du carnet acheteur Bid). Plus la surface du polygone est vaste, plus le flux directionnel est massif et durable."},
+      {b:"GROS BLOCS",c:"#F59E0B",t:"Detection des Gros Blocs Institutionnels",d:"Identifie automatiquement les transactions unitaires ou rafales exceptionnelles depassant le seuil statistique de volume normal de la seance (ex: 6 gros blocs >= 1 208 titres, signales dans la barre d etat)."},
+      {b:"FIXINGS",c:"#A855F7",t:"Transactions Neutres / Fixings",d:"Volume execute au prix d equilibre (ouverture, cloture ou reservation) sans agression directe d un cote du carnet d ordres."}
     ],
     carnet: [
-      {b:"ACHATS / VENTES",c:"#38BDF8",t:"Achats Cumules vs Ventes Cumulees",d:"Mesure le volume total ayant frappe la vente (Achats cumules) contre celui ayant frappe l achat (Ventes cumulees). L Ecart Net Titres donne le solde reel des flux."},
-      {b:"CMP PONDERE",c:"#10B981",t:"Cours Moyen Pondere par le Volume",d:"Prix moyen reel auquel les titres ont change de mains sur la seance ou sur la vague selectionnee."}
+      {b:"ACHATS / VENTES",c:"#38BDF8",t:"Achats Cumules vs Ventes Cumulees",d:"Cumule l ensemble des titres echanges a l initiative des acheteurs face a ceux inities par les vendeurs depuis l ouverture de la seance."},
+      {b:"ECART NET TITRES",c:"#10B981",t:"Solde Net des Flux & Pression Directionnelle",d:"Difference entre Achats Cumules et Ventes Cumulees. Un ecart net positif croissant confirme une accumulation nette sur le titre."},
+      {b:"CMP PONDERE",c:"#F59E0B",t:"Cours Moyen Pondere par le Volume",d:"Prix d equilibre reel pondere par les quantites echangees. Permet de situer le dernier cours par rapport au prix moyen paye par le marche."}
     ],
     volumes: [
-      {b:"CAMEMBERT AUTO",c:"#10B981",t:"Repartition Volumetrique & Agressivite Achat",d:"Affiche dynamiquement le ratio Achats/Ventes avec leurs CMP respectifs et le taux d Agressivite Achat (ex: 94%)."},
-      {b:"HORIZON",c:"#0284C7",t:"Seance Unique (Ticks) vs Multi-Seances",d:"Permet d alterner entre l analyse microscopique tick par tick d une seance et l agregation sur plusieurs jours."}
+      {b:"CAMEMBERT AUTO",c:"#10B981",t:"Repartition Volumetrique & Agressivite Achat",d:"Synthetise en temps reel la part des volumes acheteurs (vert) et vendeurs (rouge), leurs CMP respectifs ainsi que le taux d Agressivite Achat (ex: 94%)."},
+      {b:"MODES DE VUE",c:"#0284C7",t:"Vagues Polygonales, Bougies & Agregation",d:"Permet de basculer entre la lecture microscopique par vagues de ticks, les chandeliers classiques ou l analyse multi-seances via le selecteur Horizon."}
     ],
     instruments: [
-      {b:"CURSEUR & ZOOM",c:"#38BDF8",t:"Curseur (Zoom) & Plages X/Y",d:"Permet de mesurer precisement un intervalle de prix/temps ou de zoomer sur une vague grace aux barres fines X (bas) et Y (droite)."},
-      {b:"INDICATEURS & CHAT",c:"#F59E0B",t:"Indicateurs Techniques & Salon Communautaire",d:"Ajoutez vos moyennes/oscillateurs via Indicateurs et partagez vos graphiques, tableaux Excel/CSV ou rapports PDF dans le Chat."}
+      {b:"PLAGES X / Y",c:"#38BDF8",t:"Selecteurs de Plage Temporelle (X) & Prix (Y)",d:"La barre fine horizontale en bas isole une fenetre horaire precise de la seance (09:00 -> 15:00), tandis que le curseur vertical a droite dilate l echelle des cours pour lire les micro-decalages."},
+      {b:"CURSEUR & ZOOM",c:"#A855F7",t:"Curseur de Mesure, Zoom (+ / - / Reset) & Indicateurs",d:"Utilisez Curseur (Zoom) pour inspecter chaque tick au survol, les boutons + / - / Reset pour cadrer la vue, et Indicateurs pour superposer vos outils techniques."},
+      {b:"SALON & EXPORT",c:"#F59E0B",t:"Chat Communautaire, Tableaux & Rapports PDF",d:"Partagez vos graphiques annotes, fichiers Excel/CSV ou rapports PDF directement dans le salon de discussion avec apercu instantane sur PC et smartphone."}
     ]
   };
   const STEPS = [
-    {t:"1/5 - Bienvenue sur CH-WaveCandle HFT",d:"Station d analyse tick-by-tick de la BVMT. Suivez ce guide rapide de 30 secondes pour maitriser les modes d affichage et les instruments.",g:()=>document.querySelector("[_echarts_instance_]")},
-    {t:"2/5 - Titre, Horizon & Mode de Representation",d:"Dans le Menu, choisissez la valeur (ex: DELICE HOLDING), l Horizon (Seance Unique Ticks), le Camembert et le Mode (Vagues Polygonales, Bougies...).",g:()=>Array.from(document.querySelectorAll("button")).find(b=>/menu/i.test(b.textContent||""))||document.querySelector("select")},
-    {t:"3/5 - Bandeau des Metriques Temps Reel",d:"Suivez en direct le Dernier Cours, le Volume, les Ticks Totaux, le CMP Pondere, les Achats/Ventes Cumules et l Ecart Net Titres.",g:()=>Array.from(document.querySelectorAll("div")).find(d=>(d.innerText||"").includes("CMP POND")&&d.offsetHeight<120)},
-    {t:"4/5 - Lecture des Vagues HFT & Camembert",d:"Les vagues vertes et rouges visualisent chaque impulsion tick par tick ; le camembert affiche l Agressivite Achat et le CMP acheteur/vendeur.",g:()=>document.querySelector("[_echarts_instance_]")},
-    {t:"5/5 - Lexique Visuel & Instruments",d:"Retrouvez a tout moment dans le Menu les boutons Tutoriel et Lexique HFT pour consulter les definitions detaillees et instruments de mesure.",g:()=>null}
+    {t:"1/6 - Bienvenue sur CH-WaveCandle HFT",d:"Station d analyse boursiere tick-by-tick. Ce guide rapide presente la lecture des vagues polygonales, les metriques temps reel et les instruments.",g:()=>document.querySelector("[_echarts_instance_]")},
+    {t:"2/6 - Anatomie d une Vague Polygonale",d:"Chaque polygone regroupe des ticks de meme nature : sa hauteur mesure l amplitude des quantites executees, sa base suit le cours d execution (ex: 19.55 -> 19.80 TND) et sa largeur indique la duree de la vague.",g:()=>document.querySelector("[_echarts_instance_]")},
+    {t:"3/6 - Selection Valeur, Horizon & Mode",d:"Dans le Menu (ou la barre superieure), choisissez le titre BVMT, l Horizon (Seance Unique Ticks), le Camembert et le Mode d affichage.",g:()=>Array.from(document.querySelectorAll("button")).find(b=>/menu/i.test(b.textContent||""))||document.querySelector("select")},
+    {t:"4/6 - Bandeau des Metriques Temps Reel",d:"Controlez en direct le Dernier Cours, le Volume total, les Ticks, le CMP Pondere, les Achats/Ventes Cumules et l Ecart Net Titres.",g:()=>Array.from(document.querySelectorAll("div")).find(d=>(d.innerText||"").includes("CMP POND")&&d.offsetHeight<120)},
+    {t:"5/6 - Instruments de Zoom & Curseur",d:"Utilisez la barre fine X en bas pour cibler une plage horaire, le curseur vertical Y a droite pour l echelle des prix, ou les boutons +, - et Reset.",g:()=>Array.from(document.querySelectorAll("button")).find(b=>(b.textContent||"").trim()==="+")||document.querySelector("[_echarts_instance_]")},
+    {t:"6/6 - Aide Complete & Lexique Visuel HFT",d:"Ouvrez le Lexique HFT pour consulter a tout moment les explications detaillees sur les vagues polygonales, gros blocs, CMP, carnet et instruments.",g:()=>null}
   ];
   let step = 0;
+  function isUserLoggedIn(){
+    const pwdInputs = Array.from(document.querySelectorAll("input[type='password']")).filter(el=>el.offsetParent!==null && el.offsetHeight>0);
+    if(pwdInputs.length > 0) return false;
+    const hasLogout = Array.from(document.querySelectorAll("button")).some(b=>/d[eé]connexion|quitter/i.test(b.textContent||""));
+    const hasChart = !!document.querySelector("[_echarts_instance_]");
+    return hasLogout && hasChart;
+  }
   function ui(){
     if(!document.getElementById("chTutoOverlay")){
       const ov = document.createElement("div");
       ov.id = "chTutoOverlay";
-      ov.innerHTML = "<div id='chTutoSpot'></div><div id='chTutoCard'><h4><span id='chTutoTitle'></span><button class='ch-tuto-btn ch-tuto-btn-sec' id='chTutoClose' style='padding:2px 7px;'>X</button></h4><p id='chTutoText'></p><div class='ch-tuto-actions'><button class='ch-tuto-btn ch-tuto-btn-lex' id='chTutoOpenLex'>Lexique HFT</button><div style='display:flex;gap:6px;'><button class='ch-tuto-btn ch-tuto-btn-sec' id='chTutoPrev'><</button><button class='ch-tuto-btn ch-tuto-btn-pri' id='chTutoNext'>Suivant ></button></div></div></div>";
+      ov.innerHTML = "<div id='chTutoSpot'></div><div id='chTutoCard'><h4><span id='chTutoTitle'></span><button class='ch-tuto-btn ch-tuto-btn-sec' id='chTutoClose' style='padding:2px 7px;'>X</button></h4><p id='chTutoText'></p><div class='ch-tuto-actions'><button class='ch-tuto-btn ch-tuto-btn-lex' id='chTutoOpenLex'>Lexique & Aide</button><div style='display:flex;gap:6px;'><button class='ch-tuto-btn ch-tuto-btn-sec' id='chTutoPrev'><</button><button class='ch-tuto-btn ch-tuto-btn-pri' id='chTutoNext'>Suivant ></button></div></div></div>";
       document.body.appendChild(ov);
       document.getElementById("chTutoClose").onclick = closeTuto;
       document.getElementById("chTutoPrev").onclick = ()=>{if(step>0){step--;showStep();}};
@@ -5425,7 +5437,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     if(!document.getElementById("chLexModal")){
       const lm = document.createElement("div");
       lm.id = "chLexModal";
-      lm.innerHTML = "<div class='ch-lex-box'><div class='ch-lex-hdr'><span style='font-weight:800;font-size:13px;color:#38BDF8;'>Lexique Visuel & Instruments CH-WaveCandle</span><div style='display:flex;gap:6px;'><button class='ch-tuto-btn ch-tuto-btn-pri' id='chLexRestart'>Visite</button><button class='ch-tuto-btn' id='chLexClose' style='background:#EF4444;color:#FFF;'>Fermer</button></div></div><div class='ch-lex-tabs'><button class='ch-lex-tab active' data-c='vagues'>Vagues & Blocs</button><button class='ch-lex-tab' data-c='carnet'>Flux & CMP</button><button class='ch-lex-tab' data-c='volumes'>Camembert & Modes</button><button class='ch-lex-tab' data-c='instruments'>Instruments</button></div><div class='ch-lex-body' id='chLexBody'></div></div>";
+      lm.innerHTML = "<div class='ch-lex-box'><div class='ch-lex-hdr'><span style='font-weight:800;font-size:13px;color:#38BDF8;'>Centre d Aide & Lexique Visuel CH-WaveCandle</span><div style='display:flex;gap:6px;'><button class='ch-tuto-btn ch-tuto-btn-pri' id='chLexRestart'>Visite guidee</button><button class='ch-tuto-btn' id='chLexClose' style='background:#EF4444;color:#FFF;'>Fermer</button></div></div><div class='ch-lex-tabs'><button class='ch-lex-tab active' data-c='vagues'>Vagues Polygonales & Blocs</button><button class='ch-lex-tab' data-c='carnet'>Flux & CMP</button><button class='ch-lex-tab' data-c='volumes'>Camembert & Modes</button><button class='ch-lex-tab' data-c='instruments'>Instruments & Outils</button></div><div class='ch-lex-body' id='chLexBody'></div></div>";
       document.body.appendChild(lm);
       document.getElementById("chLexClose").onclick = ()=>lm.classList.remove("open");
       document.getElementById("chLexRestart").onclick = ()=>{lm.classList.remove("open");startTuto(0);};
@@ -5456,6 +5468,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }
   }
   function showStep(){
+    if(!isUserLoggedIn()) return;
     ui(); closeMobileMenuIfOpen();
     const ov = document.getElementById("chTutoOverlay"), sp = document.getElementById("chTutoSpot"), cd = document.getElementById("chTutoCard"), st = STEPS[step];
     document.getElementById("chTutoTitle").textContent = st.t;
@@ -5469,16 +5482,16 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       sp.style.cssText = full?("left:10px;top:"+Math.max(32,r.top+8)+"px;width:"+(vw-20)+"px;height:"+(r.height-28)+"px;"):("left:"+Math.max(2,r.left-4)+"px;top:"+Math.max(2,r.top-4)+"px;width:"+(r.width+8)+"px;height:"+(r.height+8)+"px;");
       const cW = Math.min(340,vw*0.9);
       let top = r.bottom+10;
-      if(full || top+155>vh) top = Math.max(36,(vh-160)/2);
+      if(full || top+165>vh) top = Math.max(36,(vh-170)/2);
       cd.style.left = Math.min(Math.max(10,r.left),vw-cW-10)+"px";
       cd.style.top = top+"px";
     } else {
       sp.style.cssText = "left:"+(vw/2)+"px;top:"+(vh/2)+"px;width:0;height:0;box-shadow:0 0 0 9999px rgba(2,6,23,0.72);";
       cd.style.left = Math.max(10,(vw-Math.min(340,vw*0.9))/2)+"px";
-      cd.style.top = Math.max(24,(vh-170)/2)+"px";
+      cd.style.top = Math.max(24,(vh-175)/2)+"px";
     }
   }
-  function startTuto(s){ step = s||0; showStep(); }
+  function startTuto(s){ if(!isUserLoggedIn()) return; step = s||0; showStep(); }
   function closeTuto(){ const ov = document.getElementById("chTutoOverlay"); if(ov) ov.classList.remove("open"); try{ localStorage.setItem(KEY,"1"); }catch(e){} }
   function injectButtons(){
     const chatBtn = Array.from(document.querySelectorAll("button")).find(b=>/\bChat\b/i.test(b.textContent||""));
@@ -5494,7 +5507,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         b1.style.cssText = "width:100%!important;margin-top:8px!important;background:#0284C7!important;color:#FFF!important;border:1px solid #38BDF8!important;border-radius:8px!important;padding:9px 12px!important;height:auto!important;min-height:36px!important;font-size:12.5px!important;font-weight:700!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;";
         b1.onclick = e=>{e.stopPropagation();startTuto(0);};
         const b2 = document.createElement("button");
-        b2.id = "chMobLexBtn"; b2.type = "button"; b2.className = chatBtn.className; b2.textContent = "Lexique Visuel HFT";
+        b2.id = "chMobLexBtn"; b2.type = "button"; b2.className = chatBtn.className; b2.textContent = "Aide & Lexique HFT";
         b2.style.cssText = "width:100%!important;margin-top:6px!important;margin-bottom:12px!important;background:#1E293B!important;color:#FBBF24!important;border:1px solid rgba(245,158,11,0.55)!important;border-radius:8px!important;padding:9px 12px!important;height:auto!important;min-height:36px!important;font-size:12.5px!important;font-weight:700!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;";
         b2.onclick = e=>{e.stopPropagation();openLex("vagues");};
         chatBtn.insertAdjacentElement("afterend",b2);
@@ -5502,7 +5515,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       }
     } else if(!document.getElementById("chTopHelpBtn")){
       const hb = document.createElement("button");
-      hb.id = "chTopHelpBtn"; hb.type = "button"; hb.className = chatBtn.className; hb.textContent = "Aide";
+      hb.id = "chTopHelpBtn"; hb.type = "button"; hb.className = chatBtn.className; hb.textContent = "Aide & Lexique";
       hb.style.cssText = "margin-left:6px;background:#0284C7;color:#FFF;border:1px solid #38BDF8;border-radius:6px;padding:4px 10px;font-weight:700;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;";
       hb.onclick = e=>{e.stopPropagation();startTuto(0);};
       chatBtn.insertAdjacentElement("afterend",hb);
@@ -5510,11 +5523,18 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }
   window.__chStartTutoriel = ()=>startTuto(0);
   window.__chOpenLexiqueHFT = c=>openLex(c||"vagues");
+  let autoChecked = false;
+  function checkPostLogin(){
+    injectButtons();
+    if(!autoChecked && isUserLoggedIn()){
+      autoChecked = true;
+      try{ if(!localStorage.getItem(KEY)) setTimeout(()=>startTuto(0),700); }catch(e){}
+    }
+  }
   function boot(){
-    ui(); injectButtons();
-    new MutationObserver(injectButtons).observe(document.body,{childList:true,subtree:true});
+    ui(); checkPostLogin();
+    new MutationObserver(checkPostLogin).observe(document.body,{childList:true,subtree:true});
     window.addEventListener("resize",()=>{injectButtons();if(document.getElementById("chTutoOverlay")?.classList.contains("open"))showStep();});
-    try{ if(!localStorage.getItem(KEY)) setTimeout(()=>startTuto(0),900); }catch(e){}
   }
   if(document.readyState==="loading") window.addEventListener("DOMContentLoaded",boot); else boot();
 })();
