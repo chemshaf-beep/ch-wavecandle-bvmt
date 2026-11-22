@@ -5660,5 +5660,105 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }, true);
 })();
 </script>
+<script id="ch-candle-labels-toggle">
+(function(){
+  const LBL_KEY = "ch_wc_show_candle_labels_v1";
+  let showLabels = true;
+  try {
+    const saved = localStorage.getItem(LBL_KEY);
+    if (saved === "0") showLabels = false;
+  } catch(e){}
+
+  function applyLabelFilter(opt){
+    if(!opt || !Array.isArray(opt.series)) return;
+    opt.series.forEach(s => {
+      if(!s || typeof s !== "object") return;
+      const t = String(s.type || "").toLowerCase();
+      const nm = String(s.name || "").toLowerCase();
+      const isCandleSeries = t === "candlestick" || t === "custom" || nm.includes("bougie") || nm.includes("chandelier") || nm.includes("candle");
+      if(isCandleSeries){
+        if(!s.label) s.label = {};
+        s.label.show = showLabels;
+        if(s.emphasis && s.emphasis.label) s.emphasis.label.show = showLabels;
+      }
+    });
+  }
+
+  function refreshCharts(){
+    if(!window.echarts) return;
+    document.querySelectorAll("[_echarts_instance_]").forEach(el => {
+      try {
+        const inst = window.echarts.getInstanceByDom(el);
+        if(!inst) return;
+        const cur = inst.getOption();
+        if(!cur || !Array.isArray(cur.series)) return;
+        const patchSeries = cur.series.map(s => {
+          const t = String(s.type || "").toLowerCase();
+          const nm = String(s.name || "").toLowerCase();
+          const isCandleSeries = t === "candlestick" || t === "custom" || nm.includes("bougie") || nm.includes("chandelier") || nm.includes("candle");
+          if(!isCandleSeries) return {};
+          return { label: { show: showLabels }, emphasis: { label: { show: showLabels } } };
+        });
+        inst.setOption({ series: patchSeries });
+      } catch(e){}
+    });
+  }
+
+  function hookEchartsLabels(){
+    if(!window.echarts || window.echarts.__chLblHooked) return;
+    window.echarts.__chLblHooked = true;
+    const origInit = window.echarts.init.bind(window.echarts);
+    window.echarts.init = function(){
+      const inst = origInit.apply(null, arguments);
+      if(inst && typeof inst.setOption === "function" && !inst.__chLblSetOpt){
+        inst.__chLblSetOpt = true;
+        const origSet = inst.setOption.bind(inst);
+        inst.setOption = function(opt, notMerge, lazyUpdate){
+          try { applyLabelFilter(opt); } catch(e){}
+          return origSet(opt, notMerge, lazyUpdate);
+        };
+      }
+      return inst;
+    };
+  }
+
+  function injectToggleUI(){
+    if(document.getElementById("chCandleLblWrap")) return;
+    const resetBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "↺" || /reset|réinitialiser/i.test(b.title || ""));
+    const host = resetBtn ? resetBtn.parentElement : document.body;
+    if(!host) return;
+
+    const wrap = document.createElement("label");
+    wrap.id = "chCandleLblWrap";
+    wrap.title = "Afficher ou masquer les étiquettes des bougies et chandeliers";
+    wrap.style.cssText = resetBtn
+      ? "display:inline-flex;align-items:center;gap:4px;padding:2px 6px;margin-left:3px;border-radius:5px;background:rgba(15,23,42,0.85);border:1px solid #334155;color:#E2E8F0;font-size:10.5px;font-weight:700;cursor:pointer;user-select:none;white-space:nowrap;height:22px;box-sizing:border-box;"
+      : "position:fixed;top:32px;right:46px;z-index:46;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(15,23,42,0.88);border:1px solid #334155;color:#E2E8F0;font-size:11px;font-weight:700;cursor:pointer;user-select:none;";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = "chCandleLblCb";
+    cb.checked = showLabels;
+    cb.style.cssText = "margin:0;width:12px;height:12px;accent-color:#38BDF8;cursor:pointer;";
+
+    const txt = document.createElement("span");
+    txt.textContent = "Étiquettes";
+
+    cb.onchange = () => {
+      showLabels = cb.checked;
+      try { localStorage.setItem(LBL_KEY, showLabels ? "1" : "0"); } catch(e){}
+      refreshCharts();
+    };
+
+    wrap.appendChild(cb);
+    wrap.appendChild(txt);
+    host.appendChild(wrap);
+  }
+
+  hookEchartsLabels();
+  window.addEventListener("load", () => { hookEchartsLabels(); injectToggleUI(); setTimeout(injectToggleUI, 600); });
+  new MutationObserver(() => { hookEchartsLabels(); injectToggleUI(); }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
