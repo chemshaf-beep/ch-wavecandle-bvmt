@@ -2343,64 +2343,59 @@ os.makedirs(_CHAT_MEDIA_DIR, exist_ok=True)
 _CHAT_LOCK = threading.Lock()
 _CHAT_BOOT_SYNCED = False
 
-def _gh_chat_cfg():
-    tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
-    repo = (os.environ.get("GH_DATA_REPO", "").strip() or (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip() or globals().get("GH_REPO", "").strip()).replace("https://github.com", "").strip("/")
+def _hf_data_cfg():
+    tk = (os.environ.get("HF_TOKEN", "") or os.environ.get("HUGGINGFACEHUB_API_TOKEN", "")).strip()
+    repo = (os.environ.get("HF_DATA_REPO", "") or "HafDev/ch-wavecandle-data").strip()
     return tk, repo
 
 def _sync_chat_depuis_github():
-    global _CHAT_BOOT_SYNCED
+    global _CHAT_BOOT_SYNCED, _LAST_GH_SYNC_STATUS
     if _CHAT_BOOT_SYNCED:
         return
     _CHAT_BOOT_SYNCED = True
-    tk, repo = _gh_chat_cfg()
+    tk, repo = _hf_data_cfg()
     if not tk or not repo:
-        print("[!] Chat GitHub Sync désactivé : GH_TOKEN ou GH_DATA_REPO/GH_REPO manquant.")
+        _LAST_GH_SYNC_STATUS = "HF_TOKEN manquant"
         return
     try:
-        api_url = f"https://github.com{repo}/contents/chat_messages.json"
-        headers = {"Authorization": f"Bearer {tk}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT"}
-        with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=8) as r:
-            res = json.loads(r.read().decode("utf-8"))
-            raw = base64.b64decode(res.get("content", "")).decode("utf-8")
-            rem_msgs = json.loads(raw)
-            if isinstance(rem_msgs, list):
-                loc_msgs = []
-                if os.path.isfile(_CHAT_FILE):
-                    with open(_CHAT_FILE, "r", encoding="utf-8") as lf:
-                        loc_msgs = json.load(lf) or []
-                fusion = {str(m.get("id")): m for m in (rem_msgs + loc_msgs) if isinstance(m, dict) and m.get("id")}
-                merged = sorted(fusion.values(), key=lambda x: str(x.get("id", "")))[-500:]
-                with open(_CHAT_FILE, "w", encoding="utf-8") as wf:
-                    json.dump(merged, wf, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+        from huggingface_hub import hf_hub_download
+        dl_path = hf_hub_download(repo_id=repo, filename="chat_messages.json", repo_type="dataset", token=tk)
+        with open(dl_path, "r", encoding="utf-8") as rf:
+            rem_msgs = json.load(rf)
+        if isinstance(rem_msgs, list):
+            loc_msgs = []
+            if os.path.isfile(_CHAT_FILE):
+                with open(_CHAT_FILE, "r", encoding="utf-8") as lf:
+                    loc_msgs = json.load(lf) or []
+            fusion = {str(m.get("id")): m for m in (rem_msgs + loc_msgs) if isinstance(m, dict) and m.get("id")}
+            merged = sorted(fusion.values(), key=lambda x: str(x.get("id", "")))[-500:]
+            with open(_CHAT_FILE, "w", encoding="utf-8") as wf:
+                json.dump(merged, wf, ensure_ascii=False, indent=2)
+        _LAST_GH_SYNC_STATUS = "OK"
+    except Exception as e:
+        _LAST_GH_SYNC_STATUS = f"Init ({type(e).__name__})"
 
 def _push_fichier_gh(rel_gh_path: str, local_fp: str, commit_msg: str):
     def _worker():
+        global _LAST_GH_SYNC_STATUS
         try:
-            tk, repo = _gh_chat_cfg()
+            tk, repo = _hf_data_cfg()
             if not tk or not repo or not os.path.isfile(local_fp):
+                _LAST_GH_SYNC_STATUS = "HF_TOKEN manquant"
                 return
-            api_url = f"https://github.com{repo}/contents/{rel_gh_path}"
-            headers = {"Authorization": f"Bearer {tk}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT", "Content-Type": "application/json"}
-            sha = None
-            try:
-                with urllib.request.urlopen(urllib.request.Request(api_url, headers=headers), timeout=8) as r:
-                    sha = json.loads(r.read().decode("utf-8")).get("sha")
-            except urllib.error.HTTPError as he:
-                if he.code != 404:
-                    return
-            with open(local_fp, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("ascii")
-            payload = {"message": commit_msg, "content": b64}
-            if sha:
-                payload["sha"] = sha
-            urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
-        except Exception as ex_gh:
-            global _LAST_GH_SYNC_STATUS
-            _LAST_GH_SYNC_STATUS = f"ERR: {ex_gh}"
-            print(f"[!] Erreur Sync GitHub ({rel_gh_path}):", ex_gh)
+            from huggingface_hub import HfApi
+            api = HfApi(token=tk)
+            api.upload_file(
+                path_or_fileobj=local_fp,
+                path_in_repo=rel_gh_path,
+                repo_id=repo,
+                repo_type="dataset",
+                commit_message=commit_msg
+            )
+            _LAST_GH_SYNC_STATUS = "OK"
+        except Exception as ex_hf:
+            _LAST_GH_SYNC_STATUS = f"ERR: {ex_hf}"
+            print(f"[!] Erreur Sync HF Dataset ({rel_gh_path}):", ex_hf)
     threading.Thread(target=_worker, daemon=True).start()
 
 def _charger_messages_chat():
@@ -2473,15 +2468,12 @@ def _rpc_data(payload_json: str):
             mid = os.path.basename(str(b.get("media_id", "")).strip())
             fp_m = os.path.join(_CHAT_MEDIA_DIR, mid)
             if not os.path.isfile(fp_m):
-                tk_g, repo_g = _gh_chat_cfg()
+                tk_g, repo_g = _hf_data_cfg()
                 if tk_g and repo_g and mid:
                     try:
-                        api_m = f"https://github.com{repo_g}/contents/chat_media/{mid}"
-                        hdr_m = {"Authorization": f"Bearer {tk_g}", "Accept": "application/vnd.github+json", "User-Agent": "CH-WaveCandle-HFT"}
-                        with urllib.request.urlopen(urllib.request.Request(api_m, headers=hdr_m), timeout=10) as rm:
-                            jm = json.loads(rm.read().decode("utf-8"))
-                            with open(fp_m, "wb") as wf:
-                                wf.write(base64.b64decode(jm.get("content", "")))
+                        from huggingface_hub import hf_hub_download
+                        dl_m = hf_hub_download(repo_id=repo_g, filename=f"chat_media/{mid}", repo_type="dataset", token=tk_g)
+                        shutil.copyfile(dl_m, fp_m)
                     except Exception:
                         pass
             if os.path.isfile(fp_m):
@@ -2516,7 +2508,7 @@ def _rpc_data(payload_json: str):
         if cmd == "chat_list":
             salon = str(b.get("salon", "GENERAL")).strip().upper()
             msgs = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
-            tk_s, repo_s = _gh_chat_cfg(); return json.dumps({"status": 200, "messages": msgs[-120:], "sync_info": f"{repo_s or 'NON_CONFIG'} ({_LAST_GH_SYNC_STATUS})"})
+            tk_s, repo_s = _hf_data_cfg(); return json.dumps({"status": 200, "messages": msgs[-120:], "sync_info": f"{repo_s or 'NON_CONFIG'} ({_LAST_GH_SYNC_STATUS})"})
         if cmd == "chat_set_pseudo":
             nouv_pseudo = re.sub(r"[^a-zA-Z0-9_\-\.]", "", str(b.get("pseudo", "")).strip())[:24]
             if len(nouv_pseudo) < 3:
