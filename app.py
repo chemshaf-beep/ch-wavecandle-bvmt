@@ -2733,6 +2733,49 @@ def _rpc_data(payload_json: str):
         if tk not in _TOKENS_ACTIFS:
             return json.dumps({"status": 401, "err": "Authentification requise"})
         cmd = str(b.get("cmd", ""))
+        if cmd in ("save_user_preset", "list_user_presets", "delete_user_preset"):
+            u_info = _TOKENS_ACTIFS.get(tk)
+            u_login = str((u_info.get("login") or u_info.get("user") or u_info.get("username") or tk[:12]) if isinstance(u_info, dict) else str(u_info or tk[:12])).strip()
+            safe_u = "".join(c for c in u_login if c.isalnum() or c in ("_", "-", ".")) or "user"
+            p_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_presets")
+            os.makedirs(p_dir, exist_ok=True)
+            fp_u = os.path.join(p_dir, f"presets_{safe_u}.json")
+            if not os.path.isfile(fp_u):
+                tk_g, repo_g = _hf_data_cfg()
+                if tk_g and repo_g:
+                    try:
+                        from huggingface_hub import hf_hub_download
+                        dl_p = hf_hub_download(repo_id=repo_g, filename=f"user_presets/presets_{safe_u}.json", repo_type="dataset", token=tk_g)
+                        shutil.copyfile(dl_p, fp_u)
+                    except Exception:
+                        pass
+            presets = []
+            if os.path.isfile(fp_u):
+                try:
+                    with open(fp_u, "r", encoding="utf-8") as rf:
+                        presets = json.load(rf)
+                except Exception:
+                    presets = []
+            if cmd == "save_user_preset":
+                item = b.get("preset") or {}
+                pid = str(item.get("id") or f"pr_{int(time.time()*1000)}")
+                item["id"] = pid
+                item["updated_at"] = time.strftime("%d/%m/%Y %H:%M")
+                presets = [x for x in presets if str(x.get("id")) != pid]
+                presets.insert(0, item)
+                with open(fp_u, "w", encoding="utf-8") as wf:
+                    json.dump(presets[:100], wf, ensure_ascii=False, indent=2)
+                _push_fichier_gh(f"user_presets/presets_{safe_u}.json", fp_u, f"Preset prive {safe_u}")
+                return json.dumps({"status": 200, "presets": presets})
+            if cmd == "delete_user_preset":
+                pid = str(b.get("preset_id") or "")
+                presets = [x for x in presets if str(x.get("id")) != pid]
+                with open(fp_u, "w", encoding="utf-8") as wf:
+                    json.dump(presets, wf, ensure_ascii=False, indent=2)
+                _push_fichier_gh(f"user_presets/presets_{safe_u}.json", fp_u, f"Suppression preset {safe_u}")
+                return json.dumps({"status": 200, "presets": presets})
+            return json.dumps({"status": 200, "presets": presets})
+
         if cmd == "multi_agg":
             return json.dumps({"status": 200, "bougies": _calculer_multi_rapide(str(b.get("ticker", "")))})
         if cmd == "chat_upload_media":
