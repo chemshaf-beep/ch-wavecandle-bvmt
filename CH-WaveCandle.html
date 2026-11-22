@@ -6205,5 +6205,148 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+<script id="ch-support-res-and-keep">
+(function(){
+  let lastChosenLevelType = null; // "support" | "resistance" | null
+  let autoReloadCount = 0;
+
+  // 1. Diviser "Support / Résistance" en 2 options : "🟢 Support" (vert) et "🔴 Résistance" (rouge)
+  function splitSupportResistanceOptions(){
+    const sel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /tendance|support|r[eé]sistance/i.test(o.textContent || o.value || ""))
+    );
+    if(!sel) return;
+
+    const mixedOpt = Array.from(sel.options).find(o => /support/i.test(o.textContent || "") && /r[eé]sistance/i.test(o.textContent || ""));
+    if(mixedOpt && !sel.querySelector("option[value='ch_opt_support']")){
+      const baseVal = mixedOpt.value;
+      const optSup = document.createElement("option");
+      optSup.value = "ch_opt_support";
+      optSup.dataset.origVal = baseVal;
+      optSup.textContent = "🟢 Support";
+
+      const optRes = document.createElement("option");
+      optRes.value = "ch_opt_resistance";
+      optRes.dataset.origVal = baseVal;
+      optRes.textContent = "🔴 Résistance";
+
+      mixedOpt.insertAdjacentElement("beforebegin", optSup);
+      mixedOpt.insertAdjacentElement("beforebegin", optRes);
+      mixedOpt.remove();
+    }
+
+    if(!sel.__chSrSplitHooked){
+      sel.__chSrSplitHooked = true;
+      sel.addEventListener("change", function(){
+        const cur = sel.options.item(sel.selectedIndex);
+        if(!cur) return;
+        if(cur.value === "ch_opt_support" || /support/i.test(cur.textContent || "")){
+          lastChosenLevelType = "support";
+          if(cur.dataset.origVal){
+            // Propager la valeur native au moteur de dessin sans perdre l'affichage selectionne
+            sel.__chInternalMode = cur.dataset.origVal;
+          }
+        } else if(cur.value === "ch_opt_resistance" || /r[eé]sistance/i.test(cur.textContent || "")){
+          lastChosenLevelType = "resistance";
+          if(cur.dataset.origVal){
+            sel.__chInternalMode = cur.dataset.origVal;
+          }
+        } else if(/main/i.test(cur.textContent || "")){
+          // Conserver lastChosenLevelType quelques ms pour colorer le trace au moment du relachement
+          setTimeout(() => { lastChosenLevelType = null; }, 350);
+        }
+      }, true);
+    }
+  }
+
+  // Intercepte la lecture de sel.value par le moteur natif lorsque ch_opt_support ou ch_opt_resistance est choisi
+  const origSelValDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  if(origSelValDesc && origSelValDesc.get && !HTMLSelectElement.prototype.__chSrValPatched){
+    HTMLSelectElement.prototype.__chSrValPatched = true;
+    Object.defineProperty(HTMLSelectElement.prototype, "value", {
+      get: function(){
+        const v = origSelValDesc.get.call(this);
+        if(v === "ch_opt_support" || v === "ch_opt_resistance"){
+          const opt = this.options.item(this.selectedIndex);
+          return (opt && opt.dataset && opt.dataset.origVal) ? opt.dataset.origVal : "horizontal";
+        }
+        return v;
+      },
+      set: function(nv){
+        return origSelValDesc.set.call(this, nv);
+      }
+    });
+  }
+
+  // 2. Appliquer la couleur Verte (#10B981) pour Support et Rouge (#EF4444) pour Resistance sur les traces ECharts (graphic & markLine)
+  function recolorNode(obj, colorHex){
+    if(!obj || typeof obj !== "object") return;
+    if(Array.isArray(obj)){ obj.forEach(x => recolorNode(x, colorHex)); return; }
+    if(obj.style && typeof obj.style === "object"){
+      if(obj.style.stroke) obj.style.stroke = colorHex;
+      if(obj.style.fill && obj.type === "text") obj.style.fill = colorHex;
+    }
+    if(obj.lineStyle && typeof obj.lineStyle === "object" && obj.lineStyle.color){
+      obj.lineStyle.color = colorHex;
+    }
+    if(obj.label && typeof obj.label === "object" && obj.label.color){
+      obj.label.color = colorHex;
+    }
+    if(Array.isArray(obj.children)) obj.children.forEach(c => recolorNode(c, colorHex));
+    if(Array.isArray(obj.elements)) obj.elements.forEach(c => recolorNode(c, colorHex));
+  }
+
+  function hookEchartsColoring(){
+    if(!window.echarts) return;
+    document.querySelectorAll("[_echarts_instance_]").forEach(el => {
+      try {
+        const inst = window.echarts.getInstanceByDom(el);
+        if(!inst || inst.__chSrColorHooked) return;
+        inst.__chSrColorHooked = true;
+        const origSet = inst.setOption.bind(inst);
+        inst.setOption = function(opt, notMerge, lazyUpdate){
+          if(opt && lastChosenLevelType){
+            const col = lastChosenLevelType === "support" ? "#10B981" : "#EF4444";
+            if(opt.graphic) recolorNode(opt.graphic, col);
+            if(Array.isArray(opt.series)){
+              opt.series.forEach(s => {
+                if(s && s.markLine) recolorNode(s.markLine, col);
+              });
+            }
+          }
+          return origSet(opt, notMerge, lazyUpdate);
+        };
+      } catch(e){}
+    });
+  }
+
+  // 3. Empecher l'effacement automatique du graphique apres le demarrage (relance Charger si 0 ticks avant 08h30)
+  function guardChartAgainstEmptyOverwrite(){
+    const pw = Array.from(document.querySelectorAll("input[type='password']")).filter(el => el.offsetParent !== null && el.offsetHeight > 0);
+    if(pw.length > 0) return;
+
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+    const isBefore0830 = (d.getDay() === 0 || d.getDay() === 6 || (d.getHours() * 60 + d.getMinutes()) < 510);
+    if(!isBefore0830) return;
+
+    const bodyTxt = document.body.innerText || "";
+    const wasWipedToZero = bodyTxt.includes("Séance du 23/11/2026 - 1 vagues") || /TICKS TOTAUX[\s\r\n]+0\b/i.test(bodyTxt);
+    if(wasWipedToZero && autoReloadCount < 3){
+      autoReloadCount++;
+      const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
+      if(loadBtn) setTimeout(() => loadBtn.click(), 200);
+    }
+  }
+
+  function tick(){
+    splitSupportResistanceOptions();
+    hookEchartsColoring();
+    guardChartAgainstEmptyOverwrite();
+  }
+
+  window.addEventListener("load", () => { tick(); setTimeout(tick, 800); setTimeout(tick, 1800); });
+  new MutationObserver(tick).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
