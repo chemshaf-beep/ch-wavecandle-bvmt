@@ -5661,20 +5661,16 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 </script>
 
+
 <script id="ch-candle-labels-toggle">
 (function(){
-  const LBL_KEY = "ch_wc_show_candle_labels_v1";
   let showLabels = true;
-  try {
-    const saved = localStorage.getItem(LBL_KEY);
-    if (saved === "0") showLabels = false;
-  } catch(e){}
 
   function filterTextNodes(node){
     if(!node || typeof node !== "object") return node;
-    if(!showLabels && node.type === "text"){
-      node.ignore = true;
-      node.invisible = true;
+    if(node.type === "text"){
+      node.ignore = !showLabels;
+      node.invisible = !showLabels;
     }
     if(Array.isArray(node.children)){
       node.children.forEach(filterTextNodes);
@@ -5711,33 +5707,52 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const inst = window.echarts.getInstanceByDom(el);
         if(!inst) return;
         const cur = inst.getOption();
-        if(!cur || !Array.isArray(cur.series)) return;
-        cur.series.forEach(wrapSeriesItem);
-        inst.setOption({ series: cur.series });
+        if(cur && Array.isArray(cur.series)){
+          const partial = cur.series.map(s => {
+            const t = String(s.type || "").toLowerCase();
+            if(t === "pie") return {};
+            const obj = {};
+            if(s.label) obj.label = { show: showLabels };
+            if(typeof s.renderItem === "function"){
+              wrapSeriesItem(s);
+              obj.renderItem = s.renderItem;
+            }
+            return obj;
+          });
+          inst.setOption({ series: partial });
+        }
       } catch(e){}
     });
   }
 
-  function hookEchartsLabels(){
-    if(!window.echarts || window.echarts.__chLblHooked) return;
-    window.echarts.__chLblHooked = true;
-    const origInit = window.echarts.init.bind(window.echarts);
-    window.echarts.init = function(){
-      const inst = origInit.apply(null, arguments);
-      if(inst && typeof inst.setOption === "function" && !inst.__chLblSetOpt){
-        inst.__chLblSetOpt = true;
-        const origSet = inst.setOption.bind(inst);
-        inst.setOption = function(opt, notMerge, lazyUpdate){
-          try { applyLabelFilter(opt); } catch(e){}
-          return origSet(opt, notMerge, lazyUpdate);
-        };
-      }
-      return inst;
+  function patchInstance(inst){
+    if(!inst || inst.__chLblSetOpt || typeof inst.setOption !== "function") return inst;
+    inst.__chLblSetOpt = true;
+    const origSet = inst.setOption.bind(inst);
+    inst.setOption = function(opt, notMerge, lazyUpdate){
+      try { applyLabelFilter(opt); } catch(e){}
+      return origSet(opt, notMerge, lazyUpdate);
     };
+    return inst;
+  }
+
+  function hookEchartsLabels(){
+    if(!window.echarts) return;
+    if(!window.echarts.__chLblHooked){
+      window.echarts.__chLblHooked = true;
+      const origInit = window.echarts.init.bind(window.echarts);
+      window.echarts.init = function(){
+        return patchInstance(origInit.apply(null, arguments));
+      };
+    }
+    document.querySelectorAll("[_echarts_instance_]").forEach(el => {
+      try { patchInstance(window.echarts.getInstanceByDom(el)); } catch(e){}
+    });
   }
 
   function injectToggleUI(){
-    if(document.getElementById("chCandleLblWrap")) return;
+    const existing = document.getElementById("chCandleLblCb");
+    if(existing){ existing.checked = showLabels; return; }
     const resetBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "↺" || /reset|réinitialiser/i.test(b.title || ""));
     const host = resetBtn ? resetBtn.parentElement : document.body;
     if(!host) return;
@@ -5752,7 +5767,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.id = "chCandleLblCb";
-    cb.checked = showLabels;
+    cb.checked = true;
     cb.style.cssText = "margin:0;width:12px;height:12px;accent-color:#38BDF8;cursor:pointer;";
 
     const txt = document.createElement("span");
@@ -5760,7 +5775,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
     cb.onchange = () => {
       showLabels = cb.checked;
-      try { localStorage.setItem(LBL_KEY, showLabels ? "1" : "0"); } catch(e){}
       refreshCharts();
     };
 
@@ -5770,7 +5784,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }
 
   hookEchartsLabels();
-  window.addEventListener("load", () => { hookEchartsLabels(); injectToggleUI(); setTimeout(() => { injectToggleUI(); refreshCharts(); }, 700); });
+  window.addEventListener("load", () => { hookEchartsLabels(); injectToggleUI(); setTimeout(() => { hookEchartsLabels(); injectToggleUI(); }, 500); });
   new MutationObserver(() => { hookEchartsLabels(); injectToggleUI(); }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
