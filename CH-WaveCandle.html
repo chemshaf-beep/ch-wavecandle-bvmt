@@ -2479,6 +2479,14 @@ async function chargerDonnees(dateIso = "", ticker = "", strict = false) {
   const selT = document.getElementById('selTicker');
   if (selT.options.length === 0 && data.tickers) data.tickers.forEach(t => selT.add(new Option(t, t)));
   selT.value = data.ticker;
+  const _tnNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+  const _tnTodayFr = String(_tnNow.getDate()).padStart(2,"0") + "/" + String(_tnNow.getMonth()+1).padStart(2,"0") + "/" + _tnNow.getFullYear();
+  const _tnAvant0830 = (_tnNow.getDay() === 0 || _tnNow.getDay() === 6 || (_tnNow.getHours() * 60 + _tnNow.getMinutes()) < 510);
+  const _curInputDate = (document.getElementById('txtDateSeance')?.value || "").trim();
+  const _isDataEmptyToday = (data && data.date_fr === _tnTodayFr && (!data.vagues || data.vagues.length <= 1) && (!data.stats || Number(data.stats.total_ticks || 0) === 0));
+  if ((_tnAvant0830 && _isDataEmptyToday && globalData && globalData.date_fr && globalData.date_fr !== _tnTodayFr) || (_curInputDate && data && data.date_fr && _curInputDate !== data.date_fr && _isDataEmptyToday)) {
+    return;
+  }
   document.getElementById('txtDateSeance').value = data.date_fr;
   chart.clear();
   restaurerStatsGlobales();
@@ -3157,7 +3165,7 @@ async function demarrageAutomatiqueHttp() {
         seancesLocales = construireSeancesDepuisListe(locaux);
         if (seancesLocales.length > 0) {
           renduInitialFait = true;
-          const dern = seancesLocales.at(0);
+          const _tnD = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" })); const _tnFr = String(_tnD.getDate()).padStart(2,"0")+"/"+String(_tnD.getMonth()+1).padStart(2,"0")+"/"+_tnD.getFullYear(); const _av0830 = (_tnD.getDay()===0||_tnD.getDay()===6||(_tnD.getHours()*60+_tnD.getMinutes())<510); const dern = (_av0830 ? seancesLocales.find(s => s && s.date_fr !== _tnFr) : null) || seancesLocales;
           const inpDate = document.getElementById('txtDateSeance');
           if (inpDate && !inpDate.value) inpDate.value = dern.date_fr;
           const hInit = document.getElementById('selHorizon')?.value || 'SEANCE';
@@ -4671,7 +4679,7 @@ window.__chInjecterIndicateurs = function() {
       const isEncoreMulti = globalData && Array.isArray(globalData.bougies) && !globalData.vagues;
       const mauvValeur = globalData && globalData.ticker && globalData.ticker.toUpperCase() !== tk.toUpperCase();
       if ((isEncoreMulti || mauvValeur || !globalData) && typeof seancesLocales !== "undefined" && seancesLocales.length > 0) {
-        const dern = seancesLocales.at(0);
+        const _tnD = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" })); const _tnFr = String(_tnD.getDate()).padStart(2,"0")+"/"+String(_tnD.getMonth()+1).padStart(2,"0")+"/"+_tnD.getFullYear(); const _av0830 = (_tnD.getDay()===0||_tnD.getDay()===6||(_tnD.getHours()*60+_tnD.getMinutes())<510); const dern = (_av0830 ? seancesLocales.find(s => s && s.date_fr !== _tnFr) : null) || seancesLocales;
         if (typeof chargerDonnees === "function") {
           await chargerDonnees(dern.date_iso, tk, false);
           const st = document.getElementById("statusText");
