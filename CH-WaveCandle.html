@@ -983,6 +983,9 @@ body.theme-clair .statusbar {
 <style id="ch-tuto-css">
 #chTutoOverlay{display:none;position:fixed;inset:0;z-index:100200;pointer-events:auto;font-family:"Segoe UI",system-ui,sans-serif;}#chTutoOverlay.open{display:block;}#chTutoSpot{position:fixed;border:2px solid #38BDF8;border-radius:8px;box-shadow:0 0 0 9999px rgba(2,6,23,0.68),0 0 18px rgba(56,189,248,0.65);transition:all .25s ease;pointer-events:none;z-index:100201;}#chTutoCard{position:fixed;z-index:100202;width:min(350px,90vw);background:#0F172A;color:#F8FAFC;border:1px solid #38BDF8;border-radius:12px;padding:12px 14px;box-shadow:0 14px 38px rgba(0,0,0,0.8);font-size:12px;line-height:1.45;}#chTutoCard h4{margin:0 0 6px;font-size:13.5px;color:#38BDF8;display:flex;align-items:center;justify-content:space-between;}#chTutoCard p{margin:0 0 10px;color:#CBD5E1;font-size:11.5px;}.ch-tuto-actions{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;}.ch-tuto-btn{border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;min-height:26px!important;}.ch-tuto-btn-pri{background:#0284C7;color:#FFF;}.ch-tuto-btn-sec{background:#1E293B;color:#CBD5E1;border:1px solid #334155;}.ch-tuto-btn-lex{background:rgba(245,158,11,0.18);color:#FBBF24;border:1px solid rgba(245,158,11,0.5);}#chLexModal{display:none;position:fixed;inset:0;z-index:100210;background:rgba(2,6,23,0.88);align-items:center;justify-content:center;padding:14px;font-family:"Segoe UI",system-ui,sans-serif;}#chLexModal.open{display:flex;}.ch-lex-box{width:min(760px,96vw);max-height:88vh;background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.85);}.ch-lex-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1E293B;border-bottom:1px solid #334155;}.ch-lex-tabs{display:flex;gap:6px;padding:8px 12px;background:#0B1120;border-bottom:1px solid #1E293B;overflow-x:auto;}.ch-lex-tab{background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;height:auto!important;}.ch-lex-tab.active{background:#0284C7;color:#FFF;border-color:#38BDF8;}.ch-lex-body{padding:12px 14px;overflow-y:auto;font-size:12px;line-height:1.5;color:#CBD5E1;display:grid;gap:10px;}.ch-lex-item{background:#1E293B;border:1px solid #334155;border-radius:8px;padding:10px 12px;}.ch-lex-item strong{color:#38BDF8;display:block;margin-bottom:4px;font-size:12.5px;}.ch-lex-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:6px;}
 </style>
+<style id="ch-hand-cursor-css">
+body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] canvas { cursor: grab !important; } body.ch-mode-hand [_echarts_instance_]:active, body.ch-mode-hand [_echarts_instance_] canvas:active { cursor: grabbing !important; } body.ch-mode-draw [_echarts_instance_], body.ch-mode-draw [_echarts_instance_] canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://w3.org' width='24' height='24' viewBox='0 0 24 24'><path fill='%23FBBF24' stroke='%230F172A' stroke-width='1.5' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z'/></svg>") 2 22, crosshair !important; }
+</style>
 </head>
 <body>
 <style>
@@ -5877,6 +5880,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 
 </script>
+
 <script id="ch-cursor-horizon-fix">
 (function(){
   let clicksNeeded = 0;
@@ -5887,13 +5891,37 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       Array.from(s.options).some(o => /curseur|tendance|résistance|resistance|support/i.test((o.textContent||"") + " " + (o.value||"")))
     );
   }
-
   function getHorizonSelect(){
     return Array.from(document.querySelectorAll("select")).find(s =>
       Array.from(s.options).some(o => /horizon|séance|seance|ticks|multi/i.test((o.textContent||"") + " " + (o.value||"")))
     );
   }
-
+  function updateBodyCursorClass(isHand){
+    document.body.classList.toggle("ch-mode-hand", !!isHand);
+    document.body.classList.toggle("ch-mode-draw", !isHand);
+  }
+  function syncToolState(sel){
+    if(!sel) return;
+    const curOpt = sel.options.item(sel.selectedIndex);
+    const txt = ((curOpt ? curOpt.textContent : "") + " " + (sel.value || "")).toLowerCase();
+    if(txt.includes("main") || txt.includes("free_hand") || txt.includes("zoom") || txt.includes("navigation")){
+      clicksNeeded = 0;
+      clicksDone = 0;
+      updateBodyCursorClass(true);
+    } else if(txt.includes("support") || txt.includes("résistance") || txt.includes("resistance") || txt.includes("horizontal")){
+      clicksNeeded = 1;
+      clicksDone = 0;
+      updateBodyCursorClass(false);
+    } else if(txt.includes("tendance") || txt.includes("droite") || txt.includes("segment") || txt.includes("canal") || txt.includes("fibo")){
+      clicksNeeded = 2;
+      clicksDone = 0;
+      updateBodyCursorClass(false);
+    } else {
+      clicksNeeded = 1;
+      clicksDone = 0;
+      updateBodyCursorClass(false);
+    }
+  }
   function ensureFreeHandOption(){
     const sel = getCursorSelect();
     if(!sel) return null;
@@ -5908,27 +5936,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }
     if(!sel.__chAutoHandHooked){
       sel.__chAutoHandHooked = true;
-      sel.addEventListener("change", () => {
-        const curOpt = sel.options.item(sel.selectedIndex);
-        const txt = ((curOpt ? curOpt.textContent : "") + " " + (sel.value || "")).toLowerCase();
-        if(txt.includes("main") || txt.includes("free_hand") || txt.includes("zoom") || txt.includes("navigation")){
-          clicksNeeded = 0;
-          clicksDone = 0;
-        } else if(txt.includes("support") || txt.includes("résistance") || txt.includes("resistance") || txt.includes("horizontal")){
-          clicksNeeded = 1;
-          clicksDone = 0;
-        } else if(txt.includes("tendance") || txt.includes("droite") || txt.includes("segment") || txt.includes("canal") || txt.includes("fibo")){
-          clicksNeeded = 2;
-          clicksDone = 0;
-        } else {
-          clicksNeeded = 1;
-          clicksDone = 0;
-        }
-      });
+      sel.addEventListener("change", () => syncToolState(sel), true);
+      syncToolState(sel);
     }
     return { sel, handOpt };
   }
-
   function returnToFreeHand(){
     const info = ensureFreeHandOption();
     if(!info) return;
@@ -5936,24 +5948,23 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     info.sel.dispatchEvent(new Event("change", { bubbles: true }));
     clicksNeeded = 0;
     clicksDone = 0;
+    updateBodyCursorClass(true);
   }
 
-  function bindChartAutoReturn(){
-    if(!window.echarts) return;
-    const dom = document.querySelector("[_echarts_instance_]");
-    const inst = dom ? window.echarts.getInstanceByDom(dom) : null;
-    if(!inst || inst.__chHandZrBound) return;
-    inst.__chHandZrBound = true;
-    inst.getZr().on("click", function(params){
-      if(clicksNeeded <= 0) return;
-      const pt = new Array(params.offsetX, params.offsetY);
-      if(!inst.containPixel("grid", pt)) return;
-      clicksDone++;
-      if(clicksDone >= clicksNeeded){
-        setTimeout(returnToFreeHand, 90);
-      }
-    });
-  }
+  document.addEventListener("pointerup", function(e){
+    if(clicksNeeded <= 0) return;
+    const chartDom = e.target && e.target.closest && e.target.closest("[_echarts_instance_]");
+    if(!chartDom) return;
+    const rect = chartDom.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if(x < 10 || x > rect.width - 25 || y < 15 || y > rect.height - 20) return;
+    clicksDone++;
+    if(clicksDone >= clicksNeeded){
+      setTimeout(returnToFreeHand, 140);
+    }
+  }, true);
+
   function hookModeSelectHorizonLock(){
     const modeSel = Array.from(document.querySelectorAll("select")).find(s =>
       Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
@@ -5964,7 +5975,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const hSel = getHorizonSelect();
       if(!hSel) return;
       const savedHor = hSel.value;
-      [60, 180, 350].forEach(delay => {
+      new Array(60, 180, 400).forEach(delay => {
         setTimeout(() => {
           const curH = getHorizonSelect();
           if(curH && savedHor && curH.value !== savedHor){
@@ -5978,14 +5989,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
   function boot(){
     ensureFreeHandOption();
-    bindChartAutoReturn();
     hookModeSelectHorizonLock();
   }
-
   window.addEventListener("load", () => { boot(); setTimeout(boot, 600); });
   new MutationObserver(boot).observe(document.body, { childList: true, subtree: true });
 })();
-
 </script>
 </body>
 </html>
