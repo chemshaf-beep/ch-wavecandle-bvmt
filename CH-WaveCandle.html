@@ -5788,5 +5788,304 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   new MutationObserver(() => { hookEchartsLabels(); injectToggleUI(); }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+<script id="ch-user-presets">
+(function(){
+  const LOCAL_FALLBACK_KEY = "ch_wc_private_presets_v1";
+  let activeDrawTool = null;
+  let pendingPoint = null;
+  let currentDrawings = [];
+
+  function getActiveTicker(){
+    const sel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /delice|biat|sfbt|atb|bh|amen|tpr|sah|poulina/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+    if(sel && sel.options[sel.selectedIndex]) return (sel.options[sel.selectedIndex].textContent || sel.value || "VALEUR").trim();
+    const titleEl = Array.from(document.querySelectorAll("div,span,h1,h2")).find(el => el.offsetHeight > 14 && el.offsetHeight < 46 && /^[A-Z0-9 .-]{3,28}$/.test((el.textContent||"").trim()) && !/MENU|CHAT|MODE|CLAIR|SOMBRE/i.test(el.textContent||""));
+    return titleEl ? titleEl.textContent.trim() : "VALEUR";
+  }
+
+  function getModeSelect(){
+    return Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+  }
+
+  function getCheckedIndicators(){
+    const list = [];
+    document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+      if(!cb.checked || cb.id === "chCandleLblCb") return;
+      const lbl = cb.closest("label") || cb.parentElement;
+      const txt = lbl ? (lbl.textContent || "").trim() : "";
+      if(txt && txt.length < 48 && !/étiquettes/i.test(txt)) list.push(txt);
+    });
+    return list;
+  }
+
+  function getChartInstance(){
+    if(!window.echarts) return null;
+    const dom = document.querySelector("[_echarts_instance_]");
+    return dom ? window.echarts.getInstanceByDom(dom) : null;
+  }
+
+  function renderDrawingsOnChart(){
+    const inst = getChartInstance();
+    if(!inst) return;
+    const cur = inst.getOption();
+    if(!cur || !Array.isArray(cur.series) || cur.series.length === 0) return;
+
+    const markLines = [];
+    currentDrawings.forEach((d, idx) => {
+      if(d.type === "hline"){
+        markLines.push({
+          name: d.label || ("S/R #" + (idx+1)),
+          yAxis: Number(d.price),
+          lineStyle: { color: d.color || "#F59E0B", width: 2, type: "dashed" },
+          label: { show: true, formatter: (d.label || "S/R") + " : " + Number(d.price).toFixed(2), color: "#FBBF24", backgroundColor: "rgba(15,23,42,0.85)", padding:, borderRadius: 4 }
+        });
+      } else if(d.type === "trend" && Array.isArray(d.p1) && Array.isArray(d.p2)){
+        markLines.push([
+          { coord: d.p1, symbol: "circle", symbolSize: 6, lineStyle: { color: d.color || "#38BDF8", width: 2.2 } },
+          { coord: d.p2, symbol: "circle", symbolSize: 6 }
+        ]);
+      }
+    });
+
+    const patchSeries = cur.series.map((s, i) => i === 0 ? { markLine: { silent: false, data: markLines } } : {});
+    inst.setOption({ series: patchSeries });
+  }
+
+  function bindChartClickForDrawing(){
+    const inst = getChartInstance();
+    if(!inst || inst.__chDrawBound) return;
+    inst.__chDrawBound = true;
+    inst.getZr().on("click", function(params){
+      if(!activeDrawTool) return;
+      const pt = [params.offsetX, params.offsetY];
+      if(!inst.containPixel("grid", pt)) return;
+      const coord = inst.convertFromPixel({ seriesIndex: 0 }, pt);
+      if(!coord || coord.length < 2) return;
+      const price = Number(coord[1].toFixed(3));
+      const xVal = coord[0];
+
+      if(activeDrawTool === "hline"){
+        currentDrawings.push({ type: "hline", price: price, color: "#F59E0B", label: "S/R" });
+        activeDrawTool = null;
+        updateDrawToolBadge();
+        renderDrawingsOnChart();
+      } else if(activeDrawTool === "trend"){
+        if(!pendingPoint){
+          pendingPoint = [xVal, price];
+          updateDrawToolBadge("Cliquez sur le 2e point de la tendance...");
+        } else {
+          currentDrawings.push({ type: "trend", p1: pendingPoint, p2: [xVal, price], color: "#38BDF8" });
+          pendingPoint = null;
+          activeDrawTool = null;
+          updateDrawToolBadge();
+          renderDrawingsOnChart();
+        }
+      }
+    });
+  }
+
+  function updateDrawToolBadge(customMsg){
+    const st = document.getElementById("chDrawStatusMsg");
+    if(!st) return;
+    if(customMsg){ st.textContent = customMsg; st.style.display = "block"; return; }
+    if(activeDrawTool === "hline"){ st.textContent = "Cliquez sur le graphique pour placer un Support / Résistance"; st.style.display = "block"; }
+    else if(activeDrawTool === "trend"){ st.textContent = "Cliquez sur le 1er point de la ligne de tendance"; st.style.display = "block"; }
+    else { st.style.display = "none"; }
+  }
+
+  async function rpcCall(payload){
+    if(window.core && typeof window.core.rpc === "function") return await window.core.rpc(payload);
+    if(typeof window.__chCallRpc === "function") return await window.__chCallRpc(payload);
+    return null;
+  }
+
+  function loadLocalPresets(){
+    try { return JSON.parse(localStorage.getItem(LOCAL_FALLBACK_KEY) || "[]"); } catch(e){ return []; }
+  }
+  function saveLocalPresets(list){
+    try { localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(list)); } catch(e){}
+  }
+
+  async function fetchPresets(){
+    const res = await rpcCall({ cmd: "list_user_presets" });
+    if(res && res.status === 200 && Array.isArray(res.presets)){ saveLocalPresets(res.presets); return res.presets; }
+    return loadLocalPresets();
+  }
+  async function savePreset(presetObj){
+    const local = loadLocalPresets().filter(x => x.id !== presetObj.id);
+    local.unshift(presetObj);
+    saveLocalPresets(local);
+    const res = await rpcCall({ cmd: "save_user_preset", preset: presetObj });
+    if(res && res.status === 200 && Array.isArray(res.presets)){ saveLocalPresets(res.presets); return res.presets; }
+    return local;
+  }
+  async function deletePreset(pid){
+    const local = loadLocalPresets().filter(x => x.id !== pid);
+    saveLocalPresets(local);
+    const res = await rpcCall({ cmd: "delete_user_preset", preset_id: pid });
+    if(res && res.status === 200 && Array.isArray(res.presets)){ saveLocalPresets(res.presets); return res.presets; }
+    return local;
+  }
+  function applyPresetToChart(pr){
+    if(!pr) return;
+    const modeSel = getModeSelect();
+    if(modeSel && pr.mode){
+      const opt = Array.from(modeSel.options).find(o => (o.value === pr.mode) || ((o.textContent||"").trim() === pr.mode));
+      if(opt){
+        modeSel.value = opt.value;
+        modeSel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    if(Array.isArray(pr.indicators)){
+      document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+        if(cb.id === "chCandleLblCb") return;
+        const lbl = cb.closest("label") || cb.parentElement;
+        const txt = lbl ? (lbl.textContent || "").trim() : "";
+        if(!txt || txt.length >= 48) return;
+        const shouldCheck = pr.indicators.includes(txt);
+        if(cb.checked !== shouldCheck) cb.click();
+      });
+    }
+    currentDrawings = Array.isArray(pr.drawings) ? JSON.parse(JSON.stringify(pr.drawings)) : [];
+    setTimeout(() => { bindChartClickForDrawing(); renderDrawingsOnChart(); }, 250);
+  }
+
+  function ensureModal(){
+    if(document.getElementById("chPresetsModal")) return;
+    const m = document.createElement("div");
+    m.id = "chPresetsModal";
+    m.style.cssText = "display:none;position:fixed;inset:0;z-index:100230;background:rgba(2,6,23,0.88);align-items:center;justify-content:center;padding:14px;font-family:'Segoe UI',system-ui,sans-serif;";
+    m.innerHTML = "<div style='width:min(680px,96vw);max-height:88vh;background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.85);'>" +
+      "<div style='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1E293B;border-bottom:1px solid #334155;'>" +
+      "<span style='font-weight:800;font-size:13px;color:#38BDF8;'>💾 Espace Privé : Tracés & Indicateurs Enregistrés</span>" +
+      "<button id='chPrClose' type='button' style='background:#EF4444;color:#FFF;border:none;border-radius:6px;padding:4px 10px;font-weight:700;cursor:pointer;height:auto!important;'>✕ Fermer</button>" +
+      "</div>" +
+      "<div style='padding:12px 14px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;flex-direction:column;gap:8px;'>" +
+      "<div style='display:flex;gap:6px;flex-wrap:wrap;'>" +
+      "<button id='chToolHline' type='button' style='background:#1E293B;color:#FBBF24;border:1px solid rgba(245,158,11,0.5);border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>➖ Tracer Support / Résistance</button>" +
+      "<button id='chToolTrend' type='button' style='background:#1E293B;color:#38BDF8;border:1px solid rgba(56,189,248,0.5);border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>📈 Tracer Tendance</button>" +
+      "<button id='chToolClear' type='button' style='background:#1E293B;color:#F87171;border:1px solid #334155;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>🗑️ Effacer Tracés</button>" +
+      "</div>" +
+      "<div style='display:flex;gap:6px;flex-wrap:wrap;'>" +
+      "<input id='chPrNameInput' type='text' placeholder='Nom de l enregistrement (ex: Canal Haussier + VWAP)...' style='flex:1;min-width:200px;background:#1E293B;color:#F8FAFC;border:1px solid #334155;border-radius:6px;padding:7px 10px;font-size:12px;' />" +
+      "<button id='chPrSaveBtn' type='button' style='background:#10B981;color:#052E16;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;height:auto!important;'>💾 Enregistrer pour cette valeur</button>" +
+      "</div>" +
+      "<div id='chPrSummary' style='font-size:11px;color:#94A3B8;'></div>" +
+      "</div>" +
+      "<div id='chPrList' style='padding:12px 14px;overflow-y:auto;display:grid;gap:8px;'></div>" +
+      "</div>";
+    document.body.appendChild(m);
+    m.onclick = e => { if(e.target === m) m.style.display = "none"; };
+    document.getElementById("chPrClose").onclick = () => { m.style.display = "none"; };
+    document.getElementById("chToolHline").onclick = () => { m.style.display = "none"; activeDrawTool = "hline"; pendingPoint = null; bindChartClickForDrawing(); updateDrawToolBadge(); };
+    document.getElementById("chToolTrend").onclick = () => { m.style.display = "none"; activeDrawTool = "trend"; pendingPoint = null; bindChartClickForDrawing(); updateDrawToolBadge(); };
+    document.getElementById("chToolClear").onclick = () => { currentDrawings = []; renderDrawingsOnChart(); updateSummary(); };
+    document.getElementById("chPrSaveBtn").onclick = async () => {
+      const inp = document.getElementById("chPrNameInput");
+      const name = (inp.value || "").trim();
+      if(!name){ inp.focus(); inp.style.borderColor = "#EF4444"; return; }
+      inp.style.borderColor = "#334155";
+      const ticker = getActiveTicker();
+      const modeSel = getModeSelect();
+      const modeTxt = modeSel && modeSel.options[modeSel.selectedIndex] ? (modeSel.options[modeSel.selectedIndex].textContent || "").trim() : "";
+      const inds = getCheckedIndicators();
+      const preset = {
+        id: "pr_" + Date.now(),
+        name: name,
+        ticker: ticker,
+        mode: modeTxt,
+        indicators: inds,
+        drawings: currentDrawings,
+        updated_at: new Date().toLocaleString("fr-FR")
+      };
+      const updated = await savePreset(preset);
+      inp.value = "";
+      renderPresetList(updated);
+    };
+  }
+
+  function updateSummary(){
+    const sum = document.getElementById("chPrSummary");
+    if(!sum) return;
+    const ticker = getActiveTicker();
+    const inds = getCheckedIndicators();
+    sum.textContent = "Valeur : " + ticker + " • " + currentDrawings.length + " tracé(s) • " + (inds.length ? ("Indicateurs : " + inds.join(", ")) : "Aucun indicateur coché");
+  }
+
+  function renderPresetList(list){
+    const box = document.getElementById("chPrList");
+    if(!box) return;
+    const curTicker = getActiveTicker();
+    if(!Array.isArray(list) || list.length === 0){
+      box.innerHTML = "<div style='color:#94A3B8;font-size:12px;text-align:center;padding:18px;'>Aucun espace enregistré pour le moment. Tracez vos lignes et donnez un nom ci-dessus.</div>";
+      return;
+    }
+    box.innerHTML = "";
+    list.forEach(pr => {
+      const isSameTicker = (pr.ticker || "").toUpperCase() === curTicker.toUpperCase();
+      const row = document.createElement("div");
+      row.style.cssText = "background:#1E293B;border:1px solid " + (isSameTicker ? "#38BDF8" : "#334155") + ";border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;";
+      const info = document.createElement("div");
+      info.style.cssText = "flex:1;min-width:180px;";
+      info.innerHTML = "<div style='font-weight:800;color:#F8FAFC;font-size:12.5px;'>" + pr.name + " <span style='background:#0284C722;color:#38BDF8;border:1px solid #38BDF855;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px;'>" + (pr.ticker || "VALEUR") + "</span></div>" +
+        "<div style='font-size:11px;color:#94A3B8;margin-top:3px;'>Mode : " + (pr.mode || "Standard") + " • " + ((pr.drawings||[]).length) + " tracé(s) • " + ((pr.indicators||[]).length ? pr.indicators.join(", ") : "Sans indicateur") + "</div>";
+      const btns = document.createElement("div");
+      btns.style.cssText = "display:flex;gap:6px;";
+      const bApply = document.createElement("button");
+      bApply.type = "button";
+      bApply.textContent = "▶ Appliquer";
+      bApply.style.cssText = "background:#0284C7;color:#FFF;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
+      bApply.onclick = () => { applyPresetToChart(pr); document.getElementById("chPresetsModal").style.display = "none"; };
+      const bDel = document.createElement("button");
+      bDel.type = "button";
+      bDel.textContent = "✕";
+      bDel.style.cssText = "background:#334155;color:#F87171;border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
+      bDel.onclick = async () => { const up = await deletePreset(pr.id); renderPresetList(up); };
+      btns.appendChild(bApply);
+      btns.appendChild(bDel);
+      row.appendChild(info);
+      row.appendChild(btns);
+      box.appendChild(row);
+    });
+  }
+
+  async function openPresetsModal(){
+    ensureModal();
+    updateSummary();
+    document.getElementById("chPresetsModal").style.display = "flex";
+    const list = await fetchPresets();
+    renderPresetList(list);
+  }
+
+  function injectLauncher(){
+    if(!document.getElementById("chDrawStatusMsg")){
+      const st = document.createElement("div");
+      st.id = "chDrawStatusMsg";
+      st.style.cssText = "display:none;position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:100220;background:#0284C7;color:#FFF;padding:6px 14px;border-radius:20px;font-size:11.5px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.5);";
+      document.body.appendChild(st);
+    }
+    const indBtn = Array.from(document.querySelectorAll("button")).find(b => /indicateurs/i.test(b.textContent || ""));
+    if(indBtn && !document.getElementById("chMyPresetsBtn")){
+      const pb = document.createElement("button");
+      pb.id = "chMyPresetsBtn";
+      pb.type = "button";
+      pb.className = indBtn.className;
+      pb.textContent = "💾 Mes Analyses";
+      pb.title = "Enregistrer ou appliquer vos tracés de tendance, résistances et indicateurs";
+      pb.style.cssText = "margin-left:6px;background:#1E293B;color:#38BDF8;border:1px solid #38BDF8;border-radius:6px;padding:4px 10px;font-weight:700;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;";
+      pb.onclick = e => { e.stopPropagation(); openPresetsModal(); };
+      indBtn.insertAdjacentElement("afterend", pb);
+    }
+    bindChartClickForDrawing();
+  }
+
+  window.addEventListener("load", () => { injectLauncher(); setTimeout(injectLauncher, 700); });
+  new MutationObserver(() => { injectLauncher(); }).observe(document.body, { childList: true, subtree: true });
+})();
+
+</script>
 </body>
 </html>
