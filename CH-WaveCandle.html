@@ -6021,24 +6021,103 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   new MutationObserver(boot).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
 })();
 </script>
+
 <script id="ch-last-session-and-pencil">
 (function(){
-  // A. Verrouillage absolu du curseur crayon sur <canvas> pendant le dessin
-  const origCursorDesc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, "cursor");
-  if(origCursorDesc && origCursorDesc.set && !CSSStyleDeclaration.prototype.__chCursorPatched){
-    CSSStyleDeclaration.prototype.__chCursorPatched = true;
-    Object.defineProperty(CSSStyleDeclaration.prototype, "cursor", {
-      get: function(){ return origCursorDesc.get.call(this); },
-      set: function(val){
-        if(document.body && document.body.classList.contains("ch-mode-draw") && val !== "grab" && val !== "grabbing" && !String(val).includes("data:image/svg+xml")){
-          return;
-        }
-        return origCursorDesc.set.call(this, val);
-      }
-    });
+  // 1. Curseur Crayon flottant infaillible pendant le dessin (contourne toutes les limites CSS/ECharts)
+  function ensureFloatingPencil(){
+    let pen = document.getElementById("chFloatingPencil");
+    if(!pen){
+      pen = document.createElement("div");
+      pen.id = "chFloatingPencil";
+      pen.style.cssText = "display:none;position:fixed;left:0;top:0;width:26px;height:26px;pointer-events:none;z-index:100999;transform:translate(-2px,-24px);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.65));";
+      pen.innerHTML = '<svg xmlns="http://w3.org" width="26" height="26" viewBox="0 0 24 24"><path fill="#FBBF24" stroke="#0F172A" stroke-width="1.6" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.42l-2.34-2.34a1 1 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>';
+      document.body.appendChild(pen);
+    }
+    return pen;
   }
 
-  // B. Ouverture automatique de la derniere seance disponible hors seance en direct
+  document.addEventListener("pointermove", function(e){
+    const pen = ensureFloatingPencil();
+    const isDraw = document.body && document.body.classList.contains("ch-mode-draw");
+    const overChart = e.target && e.target.closest && e.target.closest("[_echarts_instance_]");
+    if(isDraw && overChart){
+      pen.style.left = e.clientX + "px";
+      pen.style.top = e.clientY + "px";
+      pen.style.display = "block";
+      overChart.style.setProperty("cursor", "none", "important");
+      const cvs = overChart.querySelector("canvas");
+      if(cvs) cvs.style.setProperty("cursor", "none", "important");
+    } else {
+      pen.style.display = "none";
+    }
+  }, true);
+
+  document.addEventListener("pointerup", function(){
+    const pen = document.getElementById("chFloatingPencil");
+    if(pen) pen.style.display = "none";
+    setTimeout(colorizeSupportsAndResistances, 160);
+  }, true);
+
+  // 2. Coloration automatique : Resistance = Rouge (#EF4444), Support = Vert (#10B981)
+  function getLastPrice(){
+    const m = (document.body.innerText || "").match(/DERNIER COURS[\s\S]{0,40}?(\d+[.,]\d+)/i);
+    if(m) return Number(m.at(1).replace(",", "."));
+    return null;
+  }
+
+  function colorizeSupportsAndResistances(){
+    if(!window.echarts) return;
+    const dom = document.querySelector("[_echarts_instance_]");
+    const inst = dom ? window.echarts.getInstanceByDom(dom) : null;
+    if(!inst) return;
+    const opt = inst.getOption() || {};
+    if(!Array.isArray(opt.series)) return;
+
+    const lastPx = getLastPrice();
+    let changed = false;
+
+    const patchSeries = opt.series.map(s => {
+      if(!s || !s.markLine || !Array.isArray(s.markLine.data) || s.markLine.data.length === 0) return {};
+      const newData = s.markLine.data.map(item => {
+        if(!item || Array.isArray(item) || item.yAxis === undefined) return item;
+        const lvl = Number(item.yAxis);
+        const rawLabel = String((item.label && item.label.formatter) || item.name || "");
+        let isRes = /r[eé]sistance/i.test(rawLabel);
+        let isSup = /support/i.test(rawLabel);
+        if(!isRes && !isSup && lastPx !== null && !isNaN(lvl)){
+          isRes = lvl >= lastPx;
+          isSup = lvl < lastPx;
+        }
+        const col = isRes ? "#EF4444" : "#10B981";
+        const tag = isRes ? "Résistance" : "Support";
+        const curCol = item.lineStyle && item.lineStyle.color;
+        if(curCol !== col || !rawLabel.includes(tag)){
+          changed = true;
+          return Object.assign({}, item, {
+            name: tag + " " + lvl.toFixed(2),
+            lineStyle: Object.assign({}, item.lineStyle || {}, { color: col, width: 2, type: "dashed" }),
+            label: Object.assign({}, item.label || {}, {
+              show: true,
+              formatter: tag + " : " + lvl.toFixed(2) + " TND",
+              color: "#FFFFFF",
+              backgroundColor: col,
+              padding: 4,
+              borderRadius: 4
+            })
+          });
+        }
+        return item;
+      });
+      return { markLine: { data: newData } };
+    });
+
+    if(changed){
+      inst.setOption({ series: patchSeries });
+    }
+  }
+
+  // 3. Ouverture automatique de la derniere seance executee disponible hors seance en direct
   let sessionChecked = false;
   function parseFrDate(str){
     const m = String(str || "").match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -6050,14 +6129,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     if(sessionChecked) return;
     const pw = Array.from(document.querySelectorAll("input[type='password']")).filter(el => el.offsetParent !== null && el.offsetHeight > 0);
     if(pw.length > 0) return;
-
     const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
     if(!loadBtn) return;
 
     const bodyTxt = document.body.innerText || "";
     const noTicksYet = bodyTxt.includes("0 vagues") || bodyTxt.includes("TICKS TOTAUX\n0") || bodyTxt.includes("Aucune donnée") || bodyTxt.includes("Aucune séance");
 
-    // 1. Cas ou la date est un <select> d'historique
     const dateSel = Array.from(document.querySelectorAll("select")).find(s =>
       Array.from(s.options).some(o => /\d{2}\/\d{2}\/\d{4}/.test(o.textContent || o.value || ""))
     );
@@ -6075,35 +6152,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         }
       }
     }
-
-    // 2. Cas ou la date est un <input type="date"> ou texte DD/MM/YYYY hors jour de bourse (ex: week-end)
-    const dateInp = Array.from(document.querySelectorAll("input")).find(i => i.type === "date" || /\d{2}\/\d{2}\/\d{4}/.test(i.value || ""));
-    if(dateInp && noTicksYet){
-      const now = new Date();
-      const day = now.getDay(); // 0 = Dimanche, 6 = Samedi
-      let lastTrading = new Date(now);
-      if(day === 0) lastTrading.setDate(now.getDate() - 2);
-      else if(day === 6) lastTrading.setDate(now.getDate() - 1);
-      else if(now.getHours() < 9) lastTrading.setDate(day === 1 ? now.getDate() - 3 : now.getDate() - 1);
-
-      const dd = String(lastTrading.getDate()).padStart(2, "0");
-      const mm = String(lastTrading.getMonth() + 1).padStart(2, "0");
-      const yyyy = lastTrading.getFullYear();
-      const targetVal = dateInp.type === "date" ? (yyyy + "-" + mm + "-" + dd) : (dd + "/" + mm + "/" + yyyy);
-
-      if(dateInp.value !== targetVal){
-        sessionChecked = true;
-        dateInp.value = targetVal;
-        dateInp.dispatchEvent(new Event("input", { bubbles: true }));
-        dateInp.dispatchEvent(new Event("change", { bubbles: true }));
-        setTimeout(() => loadBtn.click(), 120);
-      }
-    }
   }
 
   window.addEventListener("load", () => {
+    ensureFloatingPencil();
     setTimeout(autoSelectLatestExecutedSession, 900);
-    setTimeout(autoSelectLatestExecutedSession, 2000);
+    setTimeout(colorizeSupportsAndResistances, 1200);
   });
   new MutationObserver(() => {
     if(!sessionChecked) setTimeout(autoSelectLatestExecutedSession, 500);
