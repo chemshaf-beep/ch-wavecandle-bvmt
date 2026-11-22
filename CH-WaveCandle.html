@@ -5575,159 +5575,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 
 </script>
-<script id="ch-step2a-presets">
-(function(){
-  const LOCAL_KEY = "ch_wc_private_presets_v2";
-  let activeTool = null, pendingPt = null, drawings = [];
 
-  function getActiveTicker(){
-    const sel = Array.from(document.querySelectorAll("select")).find(s =>
-      Array.from(s.options).some(o => /delice|biat|sfbt|atb|bh|amen|tpr|sah|poulina/i.test((o.textContent||"") + " " + (o.value||"")))
-    );
-    if(sel && sel.options.item(sel.selectedIndex)) return (sel.options.item(sel.selectedIndex).textContent || sel.value || "VALEUR").trim();
-    return "DELICE HOLDING";
-  }
-  function getModeSelect(){
-    return Array.from(document.querySelectorAll("select")).find(s =>
-      Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
-    );
-  }
-  function getCheckedIndicators(){
-    const out = [];
-    document.querySelectorAll("input[type='checkbox']").forEach(cb => {
-      if(!cb.checked || cb.id === "chCandleLblCb") return;
-      const lbl = cb.closest("label") || cb.parentElement;
-      const txt = lbl ? (lbl.textContent || "").trim() : "";
-      if(txt && txt.length < 48 && !/étiquettes/i.test(txt)) out.push(txt);
-    });
-    return out;
-  }
-  function getChart(){
-    if(!window.echarts) return null;
-    const dom = document.querySelector("[_echarts_instance_]");
-    return dom ? window.echarts.getInstanceByDom(dom) : null;
-  }
-  function drawAll(){
-    const inst = getChart(); if(!inst) return;
-    const cur = inst.getOption(); if(!cur || !Array.isArray(cur.series) || !cur.series.length) return;
-    const lines = [];
-    drawings.forEach((d, idx) => {
-      if(d.type === "hline"){
-        lines.push({ name: d.label || ("S/R #" + (idx + 1)), yAxis: Number(d.price), lineStyle: { color: "#F59E0B", width: 2, type: "dashed" }, label: { show: true, formatter: "S/R : " + Number(d.price).toFixed(2), color: "#FBBF24", backgroundColor: "rgba(15,23,42,0.88)", padding: 4, borderRadius: 4 } });
-      } else if(d.type === "trend" && d.p1 && d.p2){
-        lines.push(new Array({ coord: d.p1, symbol: "circle", symbolSize: 6, lineStyle: { color: "#38BDF8", width: 2.2 } }, { coord: d.p2, symbol: "circle", symbolSize: 6 }));
-      }
-    });
-    inst.setOption({ series: cur.series.map((s, i) => i === 0 ? { markLine: { silent: false, data: lines } } : {}) });
-  }
-  function setStatus(msg){
-    const el = document.getElementById("chDrawStatusMsg"); if(!el) return;
-    el.style.display = msg ? "block" : "none"; if(msg) el.textContent = msg;
-  }
-  function bindClick(){
-    const inst = getChart(); if(!inst || inst.__chPrBound) return;
-    inst.__chPrBound = true;
-    inst.getZr().on("click", function(params){
-      if(!activeTool) return;
-      const pt = new Array(params.offsetX, params.offsetY);
-      if(!inst.containPixel("grid", pt)) return;
-      const coord = inst.convertFromPixel({ seriesIndex: 0 }, pt);
-      if(!coord || coord.length < 2) return;
-      const xVal = coord.at(0), price = Number(Number(coord.at(1)).toFixed(3));
-      if(activeTool === "hline"){ drawings.push({ type: "hline", price: price, label: "S/R" }); activeTool = null; setStatus(""); drawAll(); }
-      else if(activeTool === "trend"){
-        if(!pendingPt){ pendingPt = new Array(xVal, price); setStatus("Cliquez sur le 2e point de la ligne de tendance..."); }
-        else { drawings.push({ type: "trend", p1: pendingPt, p2: new Array(xVal, price) }); pendingPt = null; activeTool = null; setStatus(""); drawAll(); }
-      }
-    });
-  }
-  async function rpc(p){ return (window.core && typeof window.core.rpc === "function") ? await window.core.rpc(p) : null; }
-  function getLocal(){ try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch(e){ return new Array(); } }
-  function setLocal(l){ try { localStorage.setItem(LOCAL_KEY, JSON.stringify(l)); } catch(e){} }
-  async function loadPresets(){ const r = await rpc({ cmd: "list_user_presets" }); if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; } return getLocal(); }
-  async function savePreset(o){ const l = getLocal().filter(x => x.id !== o.id); l.unshift(o); setLocal(l); const r = await rpc({ cmd: "save_user_preset", preset: o }); if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; } return l; }
-  async function delPreset(id){ const l = getLocal().filter(x => x.id !== id); setLocal(l); const r = await rpc({ cmd: "delete_user_preset", preset_id: id }); if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; } return l; }
-  function applyPreset(pr){
-    if(!pr) return;
-    const ms = getModeSelect();
-    if(ms && pr.mode){
-      const opt = Array.from(ms.options).find(o => o.value === pr.mode || (o.textContent||"").trim() === pr.mode);
-      if(opt){ ms.value = opt.value; ms.dispatchEvent(new Event("change", { bubbles: true })); }
-    }
-    if(Array.isArray(pr.indicators)){
-      document.querySelectorAll("input[type='checkbox']").forEach(cb => {
-        if(cb.id === "chCandleLblCb") return;
-        const lbl = cb.closest("label") || cb.parentElement;
-        const txt = lbl ? (lbl.textContent || "").trim() : "";
-        if(!txt || txt.length >= 48) return;
-        if(cb.checked !== pr.indicators.includes(txt)) cb.click();
-      });
-    }
-    drawings = Array.isArray(pr.drawings) ? JSON.parse(JSON.stringify(pr.drawings)) : new Array();
-    setTimeout(() => { bindClick(); drawAll(); }, 250);
-  }
-  function renderList(list){
-    const box = document.getElementById("chPrList"); if(!box) return;
-    const tk = getActiveTicker();
-    if(!Array.isArray(list) || !list.length){ box.innerHTML = "<div style='color:#94A3B8;font-size:12px;text-align:center;padding:16px;'>Aucun espace enregistré.</div>"; return; }
-    box.innerHTML = "";
-    list.forEach(pr => {
-      const same = (pr.ticker || "").toUpperCase() === tk.toUpperCase();
-      const row = document.createElement("div");
-      row.style.cssText = "background:#1E293B;border:1px solid " + (same ? "#38BDF8" : "#334155") + ";border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;";
-      const info = document.createElement("div"); info.style.cssText = "flex:1;min-width:180px;";
-      info.innerHTML = "<div style='font-weight:800;color:#F8FAFC;font-size:12.5px;'>" + pr.name + " <span style='background:#0284C722;color:#38BDF8;border:1px solid #38BDF855;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px;'>" + (pr.ticker || "VALEUR") + "</span></div><div style='font-size:11px;color:#94A3B8;margin-top:3px;'>Mode : " + (pr.mode || "Standard") + " • " + ((pr.drawings||new Array()).length) + " tracé(s) • " + ((pr.indicators||new Array()).length ? pr.indicators.join(", ") : "Sans indicateur") + "</div>";
-      const btns = document.createElement("div"); btns.style.cssText = "display:flex;gap:6px;";
-      const bApp = document.createElement("button"); bApp.type = "button"; bApp.textContent = "Appliquer"; bApp.style.cssText = "background:#0284C7;color:#FFF;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
-      bApp.onclick = () => { applyPreset(pr); document.getElementById("chPresetsModal").style.display = "none"; };
-      const bDel = document.createElement("button"); bDel.type = "button"; bDel.textContent = "X"; bDel.style.cssText = "background:#334155;color:#F87171;border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
-      bDel.onclick = async () => renderList(await delPreset(pr.id));
-      btns.appendChild(bApp); btns.appendChild(bDel); row.appendChild(info); row.appendChild(btns); box.appendChild(row);
-    });
-  }
-  async function openModal(){
-    let m = document.getElementById("chPresetsModal");
-    if(!m){
-      m = document.createElement("div"); m.id = "chPresetsModal";
-      m.style.cssText = "display:none;position:fixed;inset:0;z-index:100230;background:rgba(2,6,23,0.88);align-items:center;justify-content:center;padding:14px;font-family:'Segoe UI',system-ui,sans-serif;";
-      m.innerHTML = "<div style='width:min(660px,96vw);max-height:88vh;background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;'><div style='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1E293B;border-bottom:1px solid #334155;'><span style='font-weight:800;font-size:13px;color:#38BDF8;'>Espace Privé : Tracés & Indicateurs</span><button id='chPrClose' type='button' style='background:#EF4444;color:#FFF;border:none;border-radius:6px;padding:4px 10px;font-weight:700;cursor:pointer;height:auto!important;'>Fermer</button></div><div style='padding:12px 14px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;flex-direction:column;gap:8px;'><div style='display:flex;gap:6px;flex-wrap:wrap;'><button id='chToolHline' type='button' style='background:#1E293B;color:#FBBF24;border:1px solid rgba(245,158,11,0.5);border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>Tracer Support / Résistance</button><button id='chToolTrend' type='button' style='background:#1E293B;color:#38BDF8;border:1px solid rgba(56,189,248,0.5);border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>Tracer Tendance</button><button id='chToolClear' type='button' style='background:#1E293B;color:#F87171;border:1px solid #334155;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>Effacer Tracés</button></div><div style='display:flex;gap:6px;flex-wrap:wrap;'><input id='chPrNameInput' type='text' placeholder='Nom (ex: Canal Haussier + VWAP)...' style='flex:1;min-width:190px;background:#1E293B;color:#F8FAFC;border:1px solid #334155;border-radius:6px;padding:7px 10px;font-size:12px;' /><button id='chPrSaveBtn' type='button' style='background:#10B981;color:#052E16;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;height:auto!important;'>Enregistrer</button></div><div id='chPrSummary' style='font-size:11px;color:#94A3B8;'></div></div><div id='chPrList' style='padding:12px 14px;overflow-y:auto;display:grid;gap:8px;'></div></div>";
-      document.body.appendChild(m);
-      m.onclick = e => { if(e.target === m) m.style.display = "none"; };
-      document.getElementById("chPrClose").onclick = () => { m.style.display = "none"; };
-      document.getElementById("chToolHline").onclick = () => { m.style.display = "none"; activeTool = "hline"; pendingPt = null; bindClick(); setStatus("Cliquez sur le graphique pour placer un Support / Résistance"); };
-      document.getElementById("chToolTrend").onclick = () => { m.style.display = "none"; activeTool = "trend"; pendingPt = null; bindClick(); setStatus("Cliquez sur le 1er point de la ligne de tendance"); };
-      document.getElementById("chToolClear").onclick = () => { drawings = new Array(); drawAll(); document.getElementById("chPrSummary").textContent = "Tracés effacés."; };
-      document.getElementById("chPrSaveBtn").onclick = async () => {
-        const inp = document.getElementById("chPrNameInput"), nm = (inp.value || "").trim(); if(!nm){ inp.focus(); return; }
-        const ms = getModeSelect(), modeTxt = ms && ms.options.item(ms.selectedIndex) ? (ms.options.item(ms.selectedIndex).textContent || "").trim() : "";
-        const up = await savePreset({ id: "pr_" + Date.now(), name: nm, ticker: getActiveTicker(), mode: modeTxt, indicators: getCheckedIndicators(), drawings: drawings });
-        inp.value = ""; renderList(up);
-      };
-    }
-    const inds = getCheckedIndicators();
-    document.getElementById("chPrSummary").textContent = "Valeur : " + getActiveTicker() + " • " + drawings.length + " tracé(s) • " + (inds.length ? inds.join(", ") : "Aucun indicateur");
-    m.style.display = "flex"; renderList(await loadPresets());
-  }
-  function inject(){
-    if(!document.getElementById("chDrawStatusMsg")){
-      const st = document.createElement("div"); st.id = "chDrawStatusMsg";
-      st.style.cssText = "display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100220;background:#0284C7;color:#FFF;padding:6px 14px;border-radius:20px;font-size:11.5px;font-weight:700;";
-      document.body.appendChild(st);
-    }
-    const chatBtn = Array.from(document.querySelectorAll("button")).find(b => /\bChat\b/i.test(b.textContent || ""));
-    if(chatBtn && !document.getElementById("chMyPresetsBtn")){
-      const pb = document.createElement("button"); pb.id = "chMyPresetsBtn"; pb.type = "button"; pb.className = chatBtn.className; pb.textContent = "Mes Analyses";
-      pb.style.cssText = "margin-left:6px;background:#1E293B;color:#38BDF8;border:1px solid #38BDF8;border-radius:6px;padding:4px 10px;font-weight:700;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;";
-      pb.onclick = e => { e.stopPropagation(); openModal(); };
-      chatBtn.insertAdjacentElement("afterend", pb);
-    }
-    bindClick();
-  }
-  window.addEventListener("load", () => { inject(); setTimeout(inject, 600); });
-  new MutationObserver(inject).observe(document.body, { childList: true, subtree: true });
-})();
-
-</script>
 <script id="ch-step2b-tuto">
 (function(){
   const KEY = "ch_wc_tuto_v6";
@@ -5829,66 +5677,205 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 
 </script>
-<script id="ch-quick-save-bar">
+
+<script id="ch-step2a-presets">
 (function(){
-  function injectQuickDrawTools(){
-    const mpBtn = document.getElementById("chMyPresetsBtn");
-    if(!mpBtn || document.getElementById("chQuickHlineBtn")) return;
+  const LOCAL_KEY = "ch_wc_private_presets_v3";
 
-    const mkBtn = (id, txt, col, title) => {
-      const b = document.createElement("button");
-      b.id = id; b.type = "button"; b.className = mpBtn.className; b.textContent = txt; b.title = title;
-      b.style.cssText = "margin-left:4px;background:#1E293B;color:" + col + ";border:1px solid " + col + "66;border-radius:6px;padding:4px 8px;font-weight:700;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;";
-      return b;
-    };
-
-    const bSr = mkBtn("chQuickHlineBtn", "➖ S/R", "#FBBF24", "Tracer un Support / Résistance sur le graphique");
-    const bTr = mkBtn("chQuickTrendBtn", "📈 Tendance", "#38BDF8", "Tracer une ligne de tendance (2 clics)");
-    bSr.onclick = e => { e.stopPropagation(); document.getElementById("chMyPresetsBtn")?.click(); setTimeout(() => document.getElementById("chToolHline")?.click(), 40); };
-    bTr.onclick = e => { e.stopPropagation(); document.getElementById("chMyPresetsBtn")?.click(); setTimeout(() => document.getElementById("chToolTrend")?.click(), 40); };
-
-    mpBtn.insertAdjacentElement("beforebegin", bTr);
-    mpBtn.insertAdjacentElement("beforebegin", bSr);
-    mpBtn.textContent = "💾 Mes Analyses";
+  function getActiveTicker(){
+    const sel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /delice|biat|sfbt|atb|bh|amen|tpr|sah|poulina/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+    if(sel && sel.options.item(sel.selectedIndex)) return (sel.options.item(sel.selectedIndex).textContent || sel.value || "VALEUR").trim();
+    return "DELICE HOLDING";
   }
 
-  function showSavePrompt(){
-    let bar = document.getElementById("chAskSaveBar");
-    if(!bar){
-      bar = document.createElement("div");
-      bar.id = "chAskSaveBar";
-      bar.style.cssText = "display:none;position:fixed;bottom:26px;right:14px;z-index:100225;background:#0F172A;color:#F8FAFC;border:1px solid #38BDF8;border-radius:10px;padding:8px 12px;box-shadow:0 8px 28px rgba(0,0,0,0.75);font-family:'Segoe UI',system-ui,sans-serif;font-size:11.5px;align-items:center;gap:8px;";
-      bar.innerHTML = "<span>Représentation modifiée. Enregistrer ?</span>" +
-        "<button id='chAskSaveYes' type='button' style='background:#10B981;color:#052E16;border:none;border-radius:6px;padding:4px 10px;font-weight:800;cursor:pointer;height:auto!important;'>💾 Oui, nommer</button>" +
-        "<button id='chAskSaveNo' type='button' style='background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:6px;padding:4px 8px;font-weight:600;cursor:pointer;height:auto!important;'>Non</button>";
-      document.body.appendChild(bar);
-      document.getElementById("chAskSaveNo").onclick = () => { bar.style.display = "none"; };
-      document.getElementById("chAskSaveYes").onclick = () => {
-        bar.style.display = "none";
-        document.getElementById("chMyPresetsBtn")?.click();
-        setTimeout(() => document.getElementById("chPrNameInput")?.focus(), 80);
-      };
-    }
-    bar.style.display = "flex";
+  function getModeSelect(){
+    return Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
   }
 
-  window.addEventListener("load", () => {
-    injectQuickDrawTools();
-    new MutationObserver(injectQuickDrawTools).observe(document.body, { childList: true, subtree: true });
+  function getCheckedIndicators(){
+    const out = [];
+    document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+      if(!cb.checked || cb.id === "chCandleLblCb") return;
+      const lbl = cb.closest("label") || cb.parentElement;
+      const txt = lbl ? (lbl.textContent || "").trim() : "";
+      if(txt && txt.length < 48 && !/étiquettes/i.test(txt)) out.push(txt);
+    });
+    return out;
+  }
+
+  function captureNativeChartDrawings(){
+    if(!window.echarts) return { markLines: [], customSeries: [] };
     const dom = document.querySelector("[_echarts_instance_]");
-    if(dom){
-      dom.addEventListener("click", () => {
-        const st = document.getElementById("chDrawStatusMsg");
-        if(st && st.style.display === "block"){
-          setTimeout(() => {
-            const stAfter = document.getElementById("chDrawStatusMsg");
-            if(!stAfter || stAfter.style.display === "none") showSavePrompt();
-          }, 120);
+    const inst = dom ? window.echarts.getInstanceByDom(dom) : null;
+    if(!inst) return { markLines: [], customSeries: [] };
+    const opt = inst.getOption() || {};
+    const markLines = [];
+    const customSeries = [];
+    if(Array.isArray(opt.series)){
+      opt.series.forEach((s, idx) => {
+        if(s && s.markLine && Array.isArray(s.markLine.data) && s.markLine.data.length > 0){
+          markLines.push({ seriesIndex: idx, data: JSON.parse(JSON.stringify(s.markLine.data)) });
+        }
+        const nm = String(s && s.name || "").toLowerCase();
+        if(nm.includes("tendance") || nm.includes("support") || nm.includes("résistance") || nm.includes("resistance") || nm.includes("trace") || nm.includes("droite")){
+          customSeries.push(JSON.parse(JSON.stringify(s)));
         }
       });
     }
-  });
+    return { markLines: markLines, customSeries: customSeries };
+  }
+
+  function restoreNativeChartDrawings(captured){
+    if(!captured || !window.echarts) return;
+    const dom = document.querySelector("[_echarts_instance_]");
+    const inst = dom ? window.echarts.getInstanceByDom(dom) : null;
+    if(!inst) return;
+    const cur = inst.getOption() || {};
+    if(Array.isArray(captured.markLines) && captured.markLines.length > 0 && Array.isArray(cur.series)){
+      const patch = cur.series.map((s, idx) => {
+        const found = captured.markLines.find(m => m.seriesIndex === idx);
+        return found ? { markLine: { data: found.data } } : {};
+      });
+      inst.setOption({ series: patch });
+    }
+    if(Array.isArray(captured.customSeries) && captured.customSeries.length > 0){
+      inst.setOption({ series: captured.customSeries });
+    }
+  }
+  async function rpc(p){ return (window.core && typeof window.core.rpc === "function") ? await window.core.rpc(p) : null; }
+  function getLocal(){ try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch(e){ return new Array(); } }
+  function setLocal(l){ try { localStorage.setItem(LOCAL_KEY, JSON.stringify(l)); } catch(e){} }
+
+  async function loadPresets(){
+    const r = await rpc({ cmd: "list_user_presets" });
+    if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; }
+    return getLocal();
+  }
+  async function savePreset(obj){
+    const l = getLocal().filter(x => x.id !== obj.id);
+    l.unshift(obj); setLocal(l);
+    const r = await rpc({ cmd: "save_user_preset", preset: obj });
+    if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; }
+    return l;
+  }
+  async function delPreset(id){
+    const l = getLocal().filter(x => x.id !== id);
+    setLocal(l);
+    const r = await rpc({ cmd: "delete_user_preset", preset_id: id });
+    if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; }
+    return l;
+  }
+
+  function applyPreset(pr){
+    if(!pr) return;
+    const ms = getModeSelect();
+    if(ms && pr.mode){
+      const opt = Array.from(ms.options).find(o => o.value === pr.mode || (o.textContent||"").trim() === pr.mode);
+      if(opt){ ms.value = opt.value; ms.dispatchEvent(new Event("change", { bubbles: true })); }
+    }
+    if(Array.isArray(pr.indicators)){
+      document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+        if(cb.id === "chCandleLblCb") return;
+        const lbl = cb.closest("label") || cb.parentElement;
+        const txt = lbl ? (lbl.textContent || "").trim() : "";
+        if(!txt || txt.length >= 48) return;
+        const want = pr.indicators.includes(txt);
+        if(cb.checked !== want) cb.click();
+      });
+    }
+    setTimeout(() => restoreNativeChartDrawings(pr.captured), 280);
+  }
+
+  function renderList(list){
+    const box = document.getElementById("chPrList");
+    if(!box) return;
+    const tk = getActiveTicker();
+    if(!Array.isArray(list) || !list.length){
+      box.innerHTML = "<div style='color:#94A3B8;font-size:12px;text-align:center;padding:16px;'>Aucune représentation enregistrée pour le moment.</div>";
+      return;
+    }
+    box.innerHTML = "";
+    list.forEach(pr => {
+      const same = (pr.ticker || "").toUpperCase() === tk.toUpperCase();
+      const nbTraces = pr.captured && Array.isArray(pr.captured.markLines) ? pr.captured.markLines.reduce((acc, m) => acc + (m.data ? m.data.length : 0), 0) : 0;
+      const row = document.createElement("div");
+      row.style.cssText = "background:#1E293B;border:1px solid " + (same ? "#38BDF8" : "#334155") + ";border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;";
+      const info = document.createElement("div"); info.style.cssText = "flex:1;min-width:180px;";
+      info.innerHTML = "<div style='font-weight:800;color:#F8FAFC;font-size:12.5px;'>" + pr.name + " <span style='background:#0284C722;color:#38BDF8;border:1px solid #38BDF855;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px;'>" + (pr.ticker || "VALEUR") + "</span></div>" +
+        "<div style='font-size:11px;color:#94A3B8;margin-top:3px;'>Mode : " + (pr.mode || "Standard") + " • " + nbTraces + " tracé(s) • " + ((pr.indicators||new Array()).length ? pr.indicators.join(", ") : "Sans indicateur") + "</div>";
+      const btns = document.createElement("div"); btns.style.cssText = "display:flex;gap:6px;";
+      const bApp = document.createElement("button"); bApp.type = "button"; bApp.textContent = "Appliquer";
+      bApp.style.cssText = "background:#0284C7;color:#FFF;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
+      bApp.onclick = () => { applyPreset(pr); document.getElementById("chPresetsModal").style.display = "none"; };
+      const bDel = document.createElement("button"); bDel.type = "button"; bDel.textContent = "X";
+      bDel.style.cssText = "background:#334155;color:#F87171;border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
+      bDel.onclick = async () => renderList(await delPreset(pr.id));
+      btns.appendChild(bApp); btns.appendChild(bDel);
+      row.appendChild(info); row.appendChild(btns); box.appendChild(row);
+    });
+  }
+
+  async function openModal(){
+    let m = document.getElementById("chPresetsModal");
+    if(!m){
+      m = document.createElement("div"); m.id = "chPresetsModal";
+      m.style.cssText = "display:none;position:fixed;inset:0;z-index:100230;background:rgba(2,6,23,0.88);align-items:center;justify-content:center;padding:14px;font-family:'Segoe UI',system-ui,sans-serif;";
+      m.innerHTML = "<div style='width:min(620px,96vw);max-height:86vh;background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;'>" +
+        "<div style='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1E293B;border-bottom:1px solid #334155;'>" +
+        "<span style='font-weight:800;font-size:13px;color:#38BDF8;'>💾 Enregistrer / Charger la Représentation</span>" +
+        "<button id='chPrClose' type='button' style='background:#EF4444;color:#FFF;border:none;border-radius:6px;padding:4px 10px;font-weight:700;cursor:pointer;height:auto!important;'>Fermer</button></div>" +
+        "<div style='padding:12px 14px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;flex-direction:column;gap:8px;'>" +
+        "<div id='chPrSummary' style='font-size:11.5px;color:#CBD5E1;'></div>" +
+        "<div style='display:flex;gap:6px;flex-wrap:wrap;'>" +
+        "<input id='chPrNameInput' type='text' placeholder='Donnez un nom à cette vue (ex: Support 19.60 + VWAP)...' style='flex:1;min-width:200px;background:#1E293B;color:#F8FAFC;border:1px solid #334155;border-radius:6px;padding:7px 10px;font-size:12px;' />" +
+        "<button id='chPrSaveBtn' type='button' style='background:#10B981;color:#052E16;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;height:auto!important;'>💾 Enregistrer</button></div></div>" +
+        "<div id='chPrList' style='padding:12px 14px;overflow-y:auto;display:grid;gap:8px;'></div></div>";
+      document.body.appendChild(m);
+      m.onclick = e => { if(e.target === m) m.style.display = "none"; };
+      document.getElementById("chPrClose").onclick = () => { m.style.display = "none"; };
+      document.getElementById("chPrSaveBtn").onclick = async () => {
+        const inp = document.getElementById("chPrNameInput"), nm = (inp.value || "").trim();
+        if(!nm){ inp.focus(); return; }
+        const ms = getModeSelect();
+        const modeTxt = ms && ms.options.item(ms.selectedIndex) ? (ms.options.item(ms.selectedIndex).textContent || "").trim() : "";
+        const up = await savePreset({
+          id: "pr_" + Date.now(),
+          name: nm,
+          ticker: getActiveTicker(),
+          mode: modeTxt,
+          indicators: getCheckedIndicators(),
+          captured: captureNativeChartDrawings()
+        });
+        inp.value = "";
+        renderList(up);
+      };
+    }
+    const cap = captureNativeChartDrawings();
+    const nbTraces = cap.markLines.reduce((acc, m) => acc + (m.data ? m.data.length : 0), 0);
+    const inds = getCheckedIndicators();
+    document.getElementById("chPrSummary").textContent = "Configuration actuelle détectée (" + getActiveTicker() + ") : " + nbTraces + " tracé(s) • " + (inds.length ? inds.join(", ") : "Aucun indicateur");
+    m.style.display = "flex";
+    renderList(await loadPresets());
+  }
+
+  function inject(){
+    const chatBtn = Array.from(document.querySelectorAll("button")).find(b => /\bChat\b/i.test(b.textContent || ""));
+    if(chatBtn && !document.getElementById("chMyPresetsBtn")){
+      const pb = document.createElement("button");
+      pb.id = "chMyPresetsBtn"; pb.type = "button"; pb.className = chatBtn.className; pb.textContent = "💾 Mes Analyses";
+      pb.style.cssText = "margin-left:6px;background:#1E293B;color:#38BDF8;border:1px solid #38BDF8;border-radius:6px;padding:4px 10px;font-weight:700;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;";
+      pb.onclick = e => { e.stopPropagation(); openModal(); };
+      chatBtn.insertAdjacentElement("afterend", pb);
+    }
+  }
+  window.addEventListener("load", () => { inject(); setTimeout(inject, 600); });
+  new MutationObserver(inject).observe(document.body, { childList: true, subtree: true });
 })();
+
 </script>
 </body>
 </html>
