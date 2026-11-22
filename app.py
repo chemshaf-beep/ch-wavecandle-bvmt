@@ -2398,7 +2398,112 @@ def _push_fichier_gh(rel_gh_path: str, local_fp: str, commit_msg: str):
             print(f"[!] Erreur Sync HF Dataset ({rel_gh_path}):", ex_hf)
     threading.Thread(target=_worker, daemon=True).start()
 
+_PG_READY = False
+_PG_INIT_DONE = False
+_CHAT_RAM_CACHE = {}
+
+def _get_pg_conn():
+    db_url = os.environ.get("DATABASE_URL", "").strip()
+    if not db_url:
+        return None
+    import psycopg2
+    return psycopg2.connect(db_url, connect_timeout=6)
+
+def _init_pg_tables():
+    global _PG_READY, _PG_INIT_DONE
+    if _PG_INIT_DONE:
+        return _PG_READY
+    _PG_INIT_DONE = True
+    try:
+        conn = _get_pg_conn()
+        if not conn:
+            return False
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS ch_users (
+                        email TEXT PRIMARY KEY,
+                        data_json TEXT NOT NULL,
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS ch_messages (
+                        id TEXT PRIMARY KEY,
+                        salon TEXT NOT NULL,
+                        data_json TEXT NOT NULL,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                """)
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_ch_messages_salon_id ON ch_messages (salon, id);")
+        conn.close()
+        _PG_READY = True
+        print("[OK] Base PostgreSQL Neon connectée et tables ch_users / ch_messages prêtes !")
+    except Exception as e:
+        print("[!] PostgreSQL Neon indisponible (repli fichier/HF actif):", e)
+        _PG_READY = False
+    return _PG_READY
+
+def _pg_charger_messages():
+    if not _init_pg_tables():
+        return None
+    try:
+        conn = _get_pg_conn()
+        with conn.cursor() as cur:
+            cur.execute("SELECT data_json FROM ch_messages ORDER BY id ASC LIMIT 1000;")
+            rows = cur.fetchall()
+        conn.close()
+        return [json.loads(r.pop(0)) for r in rows]
+    except Exception as e:
+        print("[!] Erreur lecture PG messages:", e)
+        return None
+
+def _pg_sauver_messages(msgs):
+    if not _init_pg_tables():
+        return False
+    try:
+        conn = _get_pg_conn()
+        ids_actuels = [str(m.get("id")) for m in msgs if m.get("id")]
+        with conn:
+            with conn.cursor() as cur:
+                if ids_actuels:
+                    cur.execute("DELETE FROM ch_messages WHERE NOT (id = ANY(%s));", (ids_actuels,))
+                else:
+                    cur.execute("DELETE FROM ch_messages;")
+                for m in msgs[-1000:]:
+                    mid = str(m.get("id") or "")
+                    if not mid:
+                        continue
+                    salon = str(m.get("salon") or "GENERAL").upper()
+                    cur.execute("""
+                        INSERT INTO ch_messages (id, salon, data_json)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (id) DO UPDATE SET salon = EXCLUDED.salon, data_json = EXCLUDED.data_json;
+                    """, (mid, salon, json.dumps(m, ensure_ascii=False)))
+        conn.close()
+        _CHAT_RAM_CACHE.clear()
+        return True
+    except Exception as e:
+        print("[!] Erreur écriture PG messages:", e)
+        return False
+
 def _charger_messages_chat():
+    pg_msgs = _pg_charger_messages()
+    if pg_msgs is not None:
+        if len(pg_msgs) > 0:
+            return pg_msgs
+        # Si PostgreSQL est vide au 1er démarrage, migrer l'historique existant depuis HF Dataset
+        _sync_chat_depuis_github()
+        if os.path.isfile(_CHAT_FILE):
+            try:
+                with open(_CHAT_FILE, "r", encoding="utf-8") as f:
+                    seed = json.load(f) or []
+                if seed:
+                    _pg_sauver_messages(seed)
+                    return seed
+            except Exception:
+                pass
+        return []
     _sync_chat_depuis_github()
     try:
         if os.path.isfile(_CHAT_FILE):
@@ -2416,6 +2521,7 @@ _ADMIN_EMAILS = {"chemshaf@gmail.com"}
 
 def _sauver_messages_chat(msgs):
     global _CHAT_SYNC_TIMER
+    _pg_sauver_messages(msgs)
     try:
         tmp = _CHAT_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
