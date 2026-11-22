@@ -4281,7 +4281,7 @@ window.__CH_CHAT_CORE = {
       const sentiment = document.getElementById("selChatSentiment")?.value || "NEUTRE";
       inp.value = "";
       document.getElementById("chEmojiBar")?.classList.remove("show");
-      const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), text: txt });
+      const _mUrl = window.__CH_PENDING_MEDIA_URL || ""; window.__CH_PENDING_MEDIA_URL = ""; const res = await core.rpc({ cmd: "chat_post", salon: core.salon, sentiment, quote: core.quote, ticker_tag: core.tickerTag, pseudo_client: getPs(), media_data_url: _mUrl, text: txt });
       core.quote = ""; core.tickerTag = "";
       document.getElementById("chChatReplyPreview").style.display = "none";
       if (res && res.status === 200) {
