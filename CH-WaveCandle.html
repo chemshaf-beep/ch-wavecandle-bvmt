@@ -5569,9 +5569,9 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       indBtn.insertAdjacentElement("afterend", wrap);
     }
   }
-  // safe mode
-  window.addEventListener("load", () => { // safe mode injectTopBarItems(); setTimeout(() => { // safe mode injectTopBarItems(); }, 600); });
-  new MutationObserver(() => { // safe mode injectTopBarItems(); }).observe(document.body, { childList: true, subtree: true });
+  void 0;
+  window.addEventListener("load", () => { void 0; injectTopBarItems(); setTimeout(() => { void 0; injectTopBarItems(); }, 600); });
+  new MutationObserver(() => { void 0; injectTopBarItems(); }).observe(document.body, { childList: true, subtree: true });
 })();
 
 </script>
@@ -5828,6 +5828,67 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   window.addEventListener("load", () => { ui(); check(); new MutationObserver(check).observe(document.body, { childList: true, subtree: true }); });
 })();
 
+</script>
+<script id="ch-quick-save-bar">
+(function(){
+  function injectQuickDrawTools(){
+    const mpBtn = document.getElementById("chMyPresetsBtn");
+    if(!mpBtn || document.getElementById("chQuickHlineBtn")) return;
+
+    const mkBtn = (id, txt, col, title) => {
+      const b = document.createElement("button");
+      b.id = id; b.type = "button"; b.className = mpBtn.className; b.textContent = txt; b.title = title;
+      b.style.cssText = "margin-left:4px;background:#1E293B;color:" + col + ";border:1px solid " + col + "66;border-radius:6px;padding:4px 8px;font-weight:700;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;";
+      return b;
+    };
+
+    const bSr = mkBtn("chQuickHlineBtn", "➖ S/R", "#FBBF24", "Tracer un Support / Résistance sur le graphique");
+    const bTr = mkBtn("chQuickTrendBtn", "📈 Tendance", "#38BDF8", "Tracer une ligne de tendance (2 clics)");
+    bSr.onclick = e => { e.stopPropagation(); document.getElementById("chMyPresetsBtn")?.click(); setTimeout(() => document.getElementById("chToolHline")?.click(), 40); };
+    bTr.onclick = e => { e.stopPropagation(); document.getElementById("chMyPresetsBtn")?.click(); setTimeout(() => document.getElementById("chToolTrend")?.click(), 40); };
+
+    mpBtn.insertAdjacentElement("beforebegin", bTr);
+    mpBtn.insertAdjacentElement("beforebegin", bSr);
+    mpBtn.textContent = "💾 Mes Analyses";
+  }
+
+  function showSavePrompt(){
+    let bar = document.getElementById("chAskSaveBar");
+    if(!bar){
+      bar = document.createElement("div");
+      bar.id = "chAskSaveBar";
+      bar.style.cssText = "display:none;position:fixed;bottom:26px;right:14px;z-index:100225;background:#0F172A;color:#F8FAFC;border:1px solid #38BDF8;border-radius:10px;padding:8px 12px;box-shadow:0 8px 28px rgba(0,0,0,0.75);font-family:'Segoe UI',system-ui,sans-serif;font-size:11.5px;align-items:center;gap:8px;";
+      bar.innerHTML = "<span>Représentation modifiée. Enregistrer ?</span>" +
+        "<button id='chAskSaveYes' type='button' style='background:#10B981;color:#052E16;border:none;border-radius:6px;padding:4px 10px;font-weight:800;cursor:pointer;height:auto!important;'>💾 Oui, nommer</button>" +
+        "<button id='chAskSaveNo' type='button' style='background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:6px;padding:4px 8px;font-weight:600;cursor:pointer;height:auto!important;'>Non</button>";
+      document.body.appendChild(bar);
+      document.getElementById("chAskSaveNo").onclick = () => { bar.style.display = "none"; };
+      document.getElementById("chAskSaveYes").onclick = () => {
+        bar.style.display = "none";
+        document.getElementById("chMyPresetsBtn")?.click();
+        setTimeout(() => document.getElementById("chPrNameInput")?.focus(), 80);
+      };
+    }
+    bar.style.display = "flex";
+  }
+
+  window.addEventListener("load", () => {
+    injectQuickDrawTools();
+    new MutationObserver(injectQuickDrawTools).observe(document.body, { childList: true, subtree: true });
+    const dom = document.querySelector("[_echarts_instance_]");
+    if(dom){
+      dom.addEventListener("click", () => {
+        const st = document.getElementById("chDrawStatusMsg");
+        if(st && st.style.display === "block"){
+          setTimeout(() => {
+            const stAfter = document.getElementById("chDrawStatusMsg");
+            if(!stAfter || stAfter.style.display === "none") showSavePrompt();
+          }, 120);
+        }
+      });
+    }
+  });
+})();
 </script>
 </body>
 </html>
