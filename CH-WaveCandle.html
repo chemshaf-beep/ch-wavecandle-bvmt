@@ -5002,10 +5002,10 @@ window.__chInjecterIndicateurs = function() {
             let dUrl = _MEDIA_CACHE.get(m.media_id);
             if (!dUrl) {
               const r = await core.rpc({ cmd: "chat_get_media", media_id: m.media_id });
-              if (r && r.status === 200 && r.data_url) { dUrl = r.data_url; _MEDIA_CACHE.set(m.media_id, dUrl); }
+              if (r && r.status === 200 && r.data_url) { dUrl = r.data_url; _MEDIA_CACHE.set(m.media_id, dUrl); if (r.rows) _MEDIA_CACHE.set(m.media_id + "_rows", r.rows); }
             }
             if (dUrl && typeof window.__chOuvrirDocumentForum === "function") {
-              window.__chOuvrirDocumentForum(dUrl, m.media_name || m.media_id);
+              window.__chOuvrirDocumentForum(dUrl, m.media_name || m.media_id, _MEDIA_CACHE.get(m.media_id + "_rows"));
             }
           };
           card.appendChild(docCard);
@@ -5095,7 +5095,7 @@ window.__chInjecterIndicateurs = function() {
 </div>
 
 <script>
-window.__chOuvrirDocumentForum = async function(dataUrl, fileName) {
+window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows) {
   const modal = document.getElementById("chDocModal");
   const body = document.getElementById("chDocBody");
   const title = document.getElementById("chDocTitle");
@@ -5139,18 +5139,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName) {
       body.innerHTML = "";
       body.appendChild(tbl);
     } else if (low.endsWith(".xlsx")) {
-      if (typeof XLSX === "undefined") {
-        await new Promise((res, rej) => {
-          const sc = document.createElement("script");
-          sc.src = "https://jsdelivr.net";
-          sc.onload = res; sc.onerror = rej;
-          document.head.appendChild(sc);
-        });
-      }
-      const b64 = dataUrl.split(",").pop();
-      const wb = XLSX.read(b64, { type: "base64" });
-      const firstSheet = wb.SheetNames.at(0);
-      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1 }).slice(0, 300);
+      const aoa = Array.isArray(preloadedRows) ? preloadedRows : new Array();
       const tbl = document.createElement("table");
       tbl.className = "ch-doc-tbl";
       aoa.forEach((r, idx) => {

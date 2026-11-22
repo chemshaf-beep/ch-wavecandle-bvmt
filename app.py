@@ -2471,6 +2471,44 @@ def _email_depuis_token(tk_val):
         return u.strip().lower()
     return ""
 
+def _lire_xlsx_table(fp_xlsx, max_rows=300):
+    import zipfile, xml.etree.ElementTree as ET
+    rows_out = []
+    with zipfile.ZipFile(fp_xlsx, "r") as zf:
+        shared = []
+        if "xl/sharedStrings.xml" in zf.namelist():
+            root_ss = ET.fromstring(zf.read("xl/sharedStrings.xml"))
+            for si in root_ss.iter():
+                if si.tag.endswith("}si"):
+                    txt_parts = [t.text or "" for t in si.iter() if t.tag.endswith("}t")]
+                    shared.append("".join(txt_parts))
+        sheets = sorted([n for n in zf.namelist() if n.startswith("xl/worksheets/sheet") and n.endswith(".xml")])
+        if not sheets:
+            return []
+        root_sh = ET.fromstring(zf.read(sheets.pop(0)))
+        for row_el in root_sh.iter():
+            if row_el.tag.endswith("}row"):
+                r_vals = []
+                for c_el in row_el:
+                    if c_el.tag.endswith("}c"):
+                        ctype = c_el.attrib.get("t", "")
+                        val_str = ""
+                        for child in c_el:
+                            if child.tag.endswith("}v") and child.text is not None:
+                                if ctype == "s":
+                                    idx_s = int(child.text)
+                                    val_str = shared[idx_s] if 0 <= idx_s < len(shared) else child.text
+                                else:
+                                    val_str = child.text
+                            elif child.tag.endswith("}is"):
+                                val_str = "".join([t.text or "" for t in child.iter() if t.tag.endswith("}t")])
+                        r_vals.append(val_str)
+                if any(v != "" for v in r_vals):
+                    rows_out.append(r_vals)
+                if len(rows_out) >= max_rows:
+                    break
+    return rows_out
+
 def _rpc_data(payload_json: str):
     try:
         b = json.loads(payload_json)
@@ -2510,7 +2548,7 @@ def _rpc_data(payload_json: str):
                 mime = "application/pdf" if mid.endswith(".pdf") else ("text/csv" if mid.endswith(".csv") else ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if mid.endswith(".xlsx") else ("image/jpeg" if mid.endswith(".jpg") else "image/png")))
                 with open(fp_m, "rb") as rf:
                     b64_out = base64.b64encode(rf.read()).decode("ascii")
-                return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}"})
+                xlsx_rows = _lire_xlsx_table(fp_m) if mid.endswith(".xlsx") else None; return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}", "rows": xlsx_rows})
             return json.dumps({"status": 404, "err": "Média introuvable"})
 
         if cmd == "chat_edit":
