@@ -2713,7 +2713,10 @@ def _generer_miniature_pdf_b64(mid):
                     import fitz as _mupdf
                 doc = _mupdf.open(fp_pdf)
                 if len(doc) > 0:
-                    pix = doc.load_page(0).get_pixmap(matrix=_mupdf.Matrix(0.85, 0.85), alpha=False)
+                    page = doc.load_page(0)
+                    rect = page.rect
+                    zoom = min(1.0, 420.0 / max(1.0, rect.width))
+                    pix = page.get_pixmap(matrix=_mupdf.Matrix(zoom, zoom), clip=rect, alpha=False)
                     pix.save(fp_png)
                 doc.close()
         if os.path.isfile(fp_png):
