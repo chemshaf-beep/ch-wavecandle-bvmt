@@ -951,6 +951,25 @@ body.theme-clair .statusbar {
   }
 </style>
 <!-- CH_UNIVERSAL_FS_CSS_END -->
+<style id="ch-pdf-scroll-fix-css">
+  .ch-doc-thumb-card img, .ch-doc-thumb-card canvas {
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 360px !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto !important;
+    background: #FFFFFF !important;
+  }
+  #chChatMessages img:not(.ch-emoji) {
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 360px !important;
+    object-fit: contain !important;
+  }
+</style>
 </head>
 <body>
 <style>
@@ -4171,7 +4190,7 @@ window.__CH_CHAT_CORE = {
         return;
       }
       msgs.forEach(m => feed.appendChild(this.renderCard(m)));
-      feed.scrollTop = feed.scrollHeight;
+      if (!window._CH_USER_SCROLLED_UP) { if (!window._CH_USER_SCROLLED_UP) { feed.scrollTop = feed.scrollHeight; } }
     } catch (_) {}
   }
 };
@@ -5033,18 +5052,66 @@ window.__chInjecterIndicateurs = function() {
             pWrap.innerHTML = "<div class='ch-pdf-thumb-body'><div style='width:42px;height:52px;border-radius:6px;background:rgba(220,38,38,0.16);border:1px solid #DC2626;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;'>📕</div><div style='font-size:11.5px;line-height:1.4;'><div style='font-weight:700;color:#F87171;'>Document PDF</div><div style='color:#94A3B8;font-size:10.5px;'>Cliquez sur la carte pour ouvrir ou télécharger le PDF</div></div></div>";
             docCard.appendChild(pWrap);
 
-            const afficherImgPdf = (thUrl) => {
-              if (!thUrl || !pWrap.isConnected) return;
-              pWrap.innerHTML = "";
-              const pImg = document.createElement("img");
-              pImg.src = thUrl;
-              pImg.alt = "Aperçu page 1 PDF";
-              pImg.style.cssText = "width:auto !important;max-width:100% !important;height:auto !important;max-height:320px !important;object-fit:contain !important;background:#FFFFFF !important;display:block !important;margin:0 auto !important;";
-              pWrap.appendChild(pImg);
+            const afficherImgPdf = (thUrl, rawPdfUrl) => {
+              if (!pWrap) return;
+              if (thUrl && thUrl.startsWith("data:image")) {
+                pWrap.innerHTML = "";
+                const pImg = document.createElement("img");
+                pImg.src = thUrl;
+                pImg.alt = "Aperçu page 1 PDF";
+                pWrap.appendChild(pImg);
+                return;
+              }
+              if (rawPdfUrl && rawPdfUrl.startsWith("data:application/pdf")) {
+                const rendreViaPdfJs = () => {
+                  const lib = window.pdfjsLib;
+                  if (!lib) return;
+                  lib.GlobalWorkerOptions.workerSrc = "https://cloudflare.com";
+                  const b64 = rawPdfUrl.split(",")[1];
+                  const bin = atob(b64);
+                  const bytes = new Uint8Array(bin.length);
+                  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                  lib.getDocument({ data: bytes }).promise.then(pdf => pdf.getPage(1)).then(page => {
+                    const vp = page.getViewport({ scale: 1.1 });
+                    const cvs = document.createElement("canvas");
+                    cvs.width = vp.width;
+                    cvs.height = vp.height;
+                    return page.render({ canvasContext: cvs.getContext("2d"), viewport: vp }).promise.then(() => {
+                      const dataPng = cvs.toDataURL("image/png");
+                      _MEDIA_CACHE.set(m.media_id + "_thumb", dataPng);
+                      pWrap.innerHTML = "";
+                      const pImg = document.createElement("img");
+                      pImg.src = dataPng;
+                      pImg.alt = "Aperçu page 1 PDF";
+                      pWrap.appendChild(pImg);
+                    });
+                  }).catch(() => {});
+                };
+                if (window.pdfjsLib) {
+                  rendreViaPdfJs();
+                } else if (!document.getElementById("ch-pdfjs-cdn")) {
+                  const sc = document.createElement("script");
+                  sc.id = "ch-pdfjs-cdn";
+                  sc.src = "https://cloudflare.com";
+                  sc.onload = rendreViaPdfJs;
+                  document.head.appendChild(sc);
+                } else {
+                  setTimeout(rendreViaPdfJs, 600);
+                }
+              }
             };
 
-            if (m.pdf_thumb) { _MEDIA_CACHE.set(m.media_id + "_thumb", m.pdf_thumb); } if (_MEDIA_CACHE.has(m.media_id + "_thumb")) {
-              afficherImgPdf(_MEDIA_CACHE.get(m.media_id + "_thumb"));
+            if (m.pdf_thumb) _MEDIA_CACHE.set(m.media_id + "_thumb", m.pdf_thumb);
+            if (_MEDIA_CACHE.has(m.media_id + "_thumb") || _MEDIA_CACHE.has(m.media_id)) {
+              afficherImgPdf(_MEDIA_CACHE.get(m.media_id + "_thumb"), _MEDIA_CACHE.get(m.media_id));
+            } else {
+              core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
+                if (r && r.status === 200) {
+                  if (r.data_url) _MEDIA_CACHE.set(m.media_id, r.data_url);
+                  if (r.pdf_thumb) _MEDIA_CACHE.set(m.media_id + "_thumb", r.pdf_thumb);
+                  afficherImgPdf(r.pdf_thumb, r.data_url);
+                }
+              });
             } else {
               core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
                 if (r && r.status === 200) {
@@ -5282,5 +5349,18 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 };
 </script>
 <!-- CH_DOC_VIEWER_END -->
+<script id="ch-scroll-guard">
+(function(){
+  window._CH_USER_SCROLLED_UP = false;
+  document.addEventListener("scroll", function(e){
+    const el = e.target;
+    if (!el || !el.scrollHeight || el === document) return;
+    if ((el.id && el.id.toLowerCase().includes("chat")) || (el.className && String(el.className).toLowerCase().includes("chat"))) {
+      const distBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      window._CH_USER_SCROLLED_UP = distBottom > 90;
+    }
+  }, true);
+})();
+</script>
 </body>
 </html>
