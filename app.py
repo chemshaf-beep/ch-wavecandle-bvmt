@@ -2453,7 +2453,7 @@ def _pg_charger_messages():
             cur.execute("SELECT data_json FROM ch_messages ORDER BY id ASC LIMIT 1000;")
             rows = cur.fetchall()
         conn.close()
-        return [json.loads(r.pop(0)) for r in rows]
+        return [json.loads(list(r).pop(0)) for r in rows]
     except Exception as e:
         print("[!] Erreur lecture PG messages:", e)
         return None

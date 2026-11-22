@@ -3993,7 +3993,7 @@ window.addEventListener('load', () => {
   .ch-chat-tab { flex:1; padding:5px 6px; font-size:11px; font-weight:700; border-radius:5px; border:1px solid #334155; background:#1E293B; color:#94A3B8; cursor:pointer; text-align:center; }
   .ch-chat-tab.active { background:#0284C7; color:#FFF; border-color:#38BDF8; }
   #chChatFeed { flex:1; overflow-y:auto; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
-  .ch-msg-card { background:#1E293B; border:1px solid #334155; border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.4; }
+  .ch-msg-card { background:#1E293B; border:1px solid #334155; border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.4; overflow:hidden; min-width:0; max-width:100%; box-sizing:border-box; }
   .ch-msg-meta { display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:4px; }
   .ch-msg-author { font-weight:700; color:#38BDF8; }
   .ch-tag-bull { background:rgba(16,185,129,0.2); color:#34D399; border:1px solid #059669; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700; }
@@ -4811,19 +4811,30 @@ window.__chInjecterIndicateurs = function() {
   window.__CH_PENDING_MEDIA_NAME = "";
   window.__CH_CHAT_LIMIT = 40;
 
-  function compresserImageLegere(rawUrl, maxW = 880, quality = 0.70) {
+  function compresserImageLegere(rawUrl, maxW = 920, quality = 0.74) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         let w = img.width, h = img.height;
-        if (w > maxW) { h = Math.round(h * (maxW / w)); w = maxW; }
+        if (w > maxW || h > maxW) {
+          const ratio = Math.min(maxW / w, maxW / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
         const cv = document.createElement("canvas");
         cv.width = w; cv.height = h;
         const ctx = cv.getContext("2d");
         ctx.fillStyle = "#0F172A";
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(cv.toDataURL("image/jpeg", quality));
+        let q = quality;
+        let out = cv.toDataURL("image/jpeg", q);
+        // Réduire progressivement si l'image dépasse encore ~160 Ko (220 000 caractères base64)
+        while (out.length > 220000 && q > 0.38) {
+          q -= 0.12;
+          out = cv.toDataURL("image/jpeg", q);
+        }
+        resolve(out);
       };
       img.onerror = () => resolve(rawUrl);
       img.src = rawUrl;
@@ -4875,8 +4886,9 @@ window.__chInjecterIndicateurs = function() {
     if (e.target && e.target.id === "inpChatFile") {
       const f = e.target.files && e.target.files.item(0);
       if (!f) return;
-      if (f.size > 2000000) {
-        alert("Fichier trop volumineux (maximum 2 Mo).");
+      const isImgFile = f.type && f.type.startsWith("image/");
+      if ((isImgFile && f.size > 15000000) || (!isImgFile && f.size > 2000000)) {
+        alert(isImgFile ? "Image trop volumineuse (maximum 15 Mo)." : "Document trop volumineux (maximum 2 Mo).");
         e.target.value = "";
         return;
       }
