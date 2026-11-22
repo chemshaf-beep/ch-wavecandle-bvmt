@@ -2427,7 +2427,10 @@ def _enregistrer_media_direct(raw_url):
         s = str(raw_url or "").strip()
         if not s or len(s) > 2_500_000:
             return ""
-        b64_part = s.split(",", 1).pop() if "," in s else s
+        if "," in s:
+            b64_part = s.split(",", 1).pop()
+        else:
+            b64_part = s
         if not b64_part:
             return ""
         ext = "jpg" if ("jpeg" in s[:40].lower() or "jpg" in s[:40].lower()) else "png"
