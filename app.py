@@ -2757,7 +2757,7 @@ def _rpc_data(payload_json: str):
                 mime = "application/pdf" if mid.endswith(".pdf") else ("text/csv" if mid.endswith(".csv") else ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if mid.endswith(".xlsx") else ("image/jpeg" if mid.endswith(".jpg") else "image/png")))
                 with open(fp_m, "rb") as rf:
                     b64_out = base64.b64encode(rf.read()).decode("ascii")
-                xlsx_rows = _lire_xlsx_table(fp_m) if mid.endswith(".xlsx") else None; return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}", "rows": xlsx_rows})
+                xlsx_rows = _lire_xlsx_table(fp_m) if mid.endswith(".xlsx") else None; pdf_th = _generer_miniature_pdf_b64(mid) if mid.endswith(".pdf") else None; return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}", "rows": xlsx_rows, "pdf_thumb": pdf_th})
             return json.dumps({"status": 404, "err": "Média introuvable"})
 
         if cmd == "chat_edit":
@@ -2817,7 +2817,7 @@ def _rpc_data(payload_json: str):
                 mc = dict(m)
                 owner = str(mc.pop("owner_email", "") or "").strip().lower()
                 mc["can_manage"] = bool(is_admin or (owner and owner == req_email))
-                if mc.get("media_id") and mc["media_id"].endswith(".pdf"): mc["pdf_thumb"] = _generer_miniature_pdf_b64(mc["media_id"])
+                if mc.get("media_id") and mc["media_id"].endswith(".pdf"): mc["has_pdf_thumb"] = True
                 if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx")):
                     mc["preview_rows"] = _extraire_mini_apercu(mc["media_id"])
                 out_msgs.append(mc)

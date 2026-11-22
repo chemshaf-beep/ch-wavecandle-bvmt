@@ -5030,17 +5030,29 @@ window.__chInjecterIndicateurs = function() {
           docCard.appendChild(top);
 
           if (isPdf) {
-            if (m.pdf_thumb) {
+            const pWrap = document.createElement("div");
+            pWrap.innerHTML = "<div class='ch-pdf-thumb-body'><div style='width:42px;height:52px;border-radius:6px;background:rgba(220,38,38,0.16);border:1px solid #DC2626;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;'>📕</div><div style='font-size:11.5px;line-height:1.4;'><div style='font-weight:700;color:#F87171;'>Document PDF</div><div style='color:#94A3B8;font-size:10.5px;'>Chargement de l'aperçu de la page 1...</div></div></div>";
+            docCard.appendChild(pWrap);
+
+            const afficherImgPdf = (thUrl) => {
+              if (!thUrl || !pWrap.isConnected) return;
+              pWrap.innerHTML = "";
               const pImg = document.createElement("img");
-              pImg.src = m.pdf_thumb;
+              pImg.src = thUrl;
               pImg.alt = "Aperçu page 1 PDF";
-              pImg.style.cssText = "width:100%;max-height:210px;object-fit:contain;background:#FFFFFF;display:block;border-top:1px solid #334155;";
-              docCard.appendChild(pImg);
+              pImg.style.cssText = "width:100%;max-height:220px;object-fit:contain;background:#FFFFFF;display:block;";
+              pWrap.appendChild(pImg);
+            };
+
+            if (_MEDIA_CACHE.has(m.media_id + "_thumb")) {
+              afficherImgPdf(_MEDIA_CACHE.get(m.media_id + "_thumb"));
             } else {
-              const pBody = document.createElement("div");
-              pBody.className = "ch-pdf-thumb-body";
-              pBody.innerHTML = "<div style='width:42px;height:52px;border-radius:6px;background:rgba(220,38,38,0.16);border:1px solid #DC2626;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;'>📕</div><div style='font-size:11.5px;line-height:1.4;'><div style='font-weight:700;color:#F87171;'>Document PDF</div><div style='color:#94A3B8;font-size:10.5px;'>Cliquez pour ouvrir ou télécharger</div></div>";
-              docCard.appendChild(pBody);
+              core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
+                if (r && r.status === 200) {
+                  if (r.data_url) _MEDIA_CACHE.set(m.media_id, r.data_url);
+                  if (r.pdf_thumb) { _MEDIA_CACHE.set(m.media_id + "_thumb", r.pdf_thumb); afficherImgPdf(r.pdf_thumb); }
+                }
+              });
             }
           } else if (Array.isArray(m.preview_rows) && m.preview_rows.length > 0) {
             const mTbl = document.createElement("table");
