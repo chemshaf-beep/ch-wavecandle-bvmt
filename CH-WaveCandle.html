@@ -5004,11 +5004,8 @@ window.__chInjecterIndicateurs = function() {
               const r = await core.rpc({ cmd: "chat_get_media", media_id: m.media_id });
               if (r && r.status === 200 && r.data_url) { dUrl = r.data_url; _MEDIA_CACHE.set(m.media_id, dUrl); }
             }
-            if (dUrl) {
-              const a = document.createElement("a");
-              a.href = dUrl;
-              a.download = m.media_name || m.media_id;
-              a.click();
+            if (dUrl && typeof window.__chOuvrirDocumentForum === "function") {
+              window.__chOuvrirDocumentForum(dUrl, m.media_name || m.media_id);
             }
           };
           card.appendChild(docCard);
@@ -5028,7 +5025,7 @@ window.__chInjecterIndicateurs = function() {
             imgEl.src = _MEDIA_CACHE.get(m.media_id);
           } else {
             core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
-              if (r && r.status === 200 && r.data_url) {
+              if (r && r.status === 200 && r.data_url && imgEl.isConnected) {
                 _MEDIA_CACHE.set(m.media_id, r.data_url);
                 imgEl.src = r.data_url;
               }
@@ -5044,5 +5041,135 @@ window.__chInjecterIndicateurs = function() {
 })();
 </script>
 <!-- CH_CHAT_RENDER_OPT_END -->
+<!-- CH_DOC_VIEWER_START -->
+<style id="ch-doc-viewer-css">
+  #chDocModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.92);
+    z-index: 100060;
+    flex-direction: column;
+    padding: 14px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  #chDocModal.open { display: flex; }
+  .ch-doc-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1E293B;
+    color: #F8FAFC;
+    padding: 10px 14px;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid #334155;
+  }
+  #chDocBody {
+    flex: 1;
+    background: #0F172A;
+    border: 1px solid #334155;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: auto;
+    color: #E2E8F0;
+  }
+  #chDocBody iframe { width: 100%; height: 100%; border: none; background: #FFF; }
+  .ch-doc-tbl { width: 100%; border-collapse: collapse; font-size: 12px; font-family: 'Consolas', monospace; }
+  .ch-doc-tbl th { position: sticky; top: 0; background: #1E293B; color: #FFD700; text-align: left; padding: 7px 10px; border-bottom: 1px solid #475569; }
+  .ch-doc-tbl td { padding: 6px 10px; border-bottom: 1px solid #1E293B; white-space: nowrap; }
+  .ch-doc-tbl tr:hover td { background: rgba(56, 189, 248, 0.08); }
+  body.theme-clair #chDocBody, body.light-mode #chDocBody { background: #FFFFFF; color: #0F172A; }
+  body.theme-clair .ch-doc-tbl th, body.light-mode .ch-doc-tbl th { background: #F1F5F9; color: #92400E; border-bottom-color: #CBD5E1; }
+  body.theme-clair .ch-doc-tbl td, body.light-mode .ch-doc-tbl td { border-bottom-color: #E2E8F0; }
+</style>
+
+<div id="chDocModal">
+  <div class="ch-doc-hdr">
+    <strong id="chDocTitle" style="font-size:13px;color:#38BDF8;">📄 Aperçu du document</strong>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a id="chDocDownloadBtn" href="#" download="" class="btn-action" style="padding:3px 10px;font-size:11px;text-decoration:none;border-color:#10B981;color:#10B981;">⬇️ Télécharger</a>
+      <button type="button" onclick="document.getElementById('chDocModal').classList.remove('open');document.getElementById('chDocBody').innerHTML='';" class="btn-action" style="padding:3px 10px;font-size:11px;">✕ Fermer</button>
+    </div>
+  </div>
+  <div id="chDocBody"></div>
+</div>
+
+<script>
+window.__chOuvrirDocumentForum = async function(dataUrl, fileName) {
+  const modal = document.getElementById("chDocModal");
+  const body = document.getElementById("chDocBody");
+  const title = document.getElementById("chDocTitle");
+  const dlBtn = document.getElementById("chDocDownloadBtn");
+  if (!modal || !body) return;
+
+  title.textContent = "📄 " + (fileName || "Document");
+  dlBtn.href = dataUrl;
+  dlBtn.download = fileName || "document";
+  body.innerHTML = "<div style='padding:24px;text-align:center;color:#94A3B8;'>Chargement de l'aperçu...</div>";
+  modal.classList.add("open");
+
+  const low = String(fileName || "").toLowerCase();
+  try {
+    if (low.endsWith(".pdf") || dataUrl.startsWith("data:application/pdf")) {
+      const b64 = dataUrl.split(",").pop();
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blobUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      body.innerHTML = "";
+      const ifr = document.createElement("iframe");
+      ifr.src = blobUrl;
+      body.appendChild(ifr);
+    } else if (low.endsWith(".csv")) {
+      const b64 = dataUrl.split(",").pop();
+      const txt = new TextDecoder("utf-8").decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+      const sep = txt.includes(";") ? ";" : ",";
+      const rows = txt.split(String.fromCharCode(10)).filter(r => r.trim().length > 0).slice(0, 300);
+      const tbl = document.createElement("table");
+      tbl.className = "ch-doc-tbl";
+      rows.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+        r.split(sep).forEach(cell => {
+          const el = document.createElement(idx === 0 ? "th" : "td");
+          el.textContent = cell.replace(/^"|"$/g, "").trim();
+          tr.appendChild(el);
+        });
+        tbl.appendChild(tr);
+      });
+      body.innerHTML = "";
+      body.appendChild(tbl);
+    } else if (low.endsWith(".xlsx")) {
+      if (typeof XLSX === "undefined") {
+        await new Promise((res, rej) => {
+          const sc = document.createElement("script");
+          sc.src = "https://jsdelivr.net";
+          sc.onload = res; sc.onerror = rej;
+          document.head.appendChild(sc);
+        });
+      }
+      const b64 = dataUrl.split(",").pop();
+      const wb = XLSX.read(b64, { type: "base64" });
+      const firstSheet = wb.SheetNames.at(0);
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1 }).slice(0, 300);
+      const tbl = document.createElement("table");
+      tbl.className = "ch-doc-tbl";
+      aoa.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+        (r || new Array()).forEach(cell => {
+          const el = document.createElement(idx === 0 ? "th" : "td");
+          el.textContent = cell === undefined || cell === null ? "" : String(cell);
+          tr.appendChild(el);
+        });
+        tbl.appendChild(tr);
+      });
+      body.innerHTML = "";
+      body.appendChild(tbl);
+    }
+  } catch (err) {
+    body.innerHTML = "<div style='padding:24px;color:#F87171;'>Aperçu indisponible. Utilisez le bouton Télécharger en haut à droite.</div>";
+  }
+};
+</script>
+<!-- CH_DOC_VIEWER_END -->
 </body>
 </html>
