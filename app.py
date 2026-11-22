@@ -2765,7 +2765,25 @@ def _rpc_data(payload_json: str):
                 mime = "application/pdf" if mid.endswith(".pdf") else ("text/csv" if mid.endswith(".csv") else ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if mid.endswith(".xlsx") else ("image/jpeg" if mid.endswith(".jpg") else "image/png")))
                 with open(fp_m, "rb") as rf:
                     b64_out = base64.b64encode(rf.read()).decode("ascii")
-                xlsx_rows = _lire_xlsx_table(fp_m) if mid.endswith(".xlsx") else None; pdf_th = _generer_miniature_pdf_b64(mid) if mid.endswith(".pdf") else None; return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}", "rows": xlsx_rows, "pdf_thumb": pdf_th})
+                xlsx_rows = _lire_xlsx_table(fp_m) if mid.endswith(".xlsx") else None
+                pdf_th = _generer_miniature_pdf_b64(mid) if mid.endswith(".pdf") else None
+                pdf_pages = []
+                if mid.endswith(".pdf"):
+                    try:
+                        try:
+                            import pymupdf as _mupdf
+                        except ImportError:
+                            import fitz as _mupdf
+                        _doc_p = _mupdf.open(fp_m)
+                        for _pno in range(min(len(_doc_p), 30)):
+                            _pg = _doc_p.load_page(_pno)
+                            _zm = min(1.8, 900.0 / max(1.0, _pg.rect.width))
+                            _px = _pg.get_pixmap(matrix=_mupdf.Matrix(_zm, _zm), clip=_pg.rect, alpha=False)
+                            pdf_pages.append("data:image/png;base64," + base64.b64encode(_px.tobytes("png")).decode("ascii"))
+                        _doc_p.close()
+                    except Exception as _ep:
+                        print("[!] Erreur rendu pages PDF:", _ep)
+                return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}", "rows": xlsx_rows, "pdf_thumb": pdf_th, "pages": pdf_pages})
             return json.dumps({"status": 404, "err": "Média introuvable"})
 
         if cmd == "chat_edit":
