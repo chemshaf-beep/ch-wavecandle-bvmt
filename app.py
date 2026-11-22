@@ -2434,7 +2434,7 @@ def _enregistrer_media_direct(raw_url):
         if not b64_part:
             return ""
         ext = "jpg" if ("jpeg" in s[:40].lower() or "jpg" in s[:40].lower()) else "png"
-        mid = f"media_{int(time.time() * 1000)}_{secrets.token_hex(3)}.{ext}"
+        mid = f"media_{int(time.time() * 1000)}_{os.urandom(3).hex()}.{ext}"
         fp = os.path.join(_CHAT_MEDIA_DIR, mid)
         with open(fp, "wb") as f:
             f.write(base64.b64decode(b64_part))
@@ -2460,7 +2460,7 @@ def _rpc_data(payload_json: str):
             if "," in b64_data:
                 b64_data = b64_data.split(",", 1).pop()[2]
             ext = "jpg" if "jpeg" in str(b.get("data_url", "")).lower() or "jpg" in str(b.get("data_url", "")).lower() else "png"
-            media_id = f"media_{int(time.time() * 1000)}_{secrets.token_hex(3)}.{ext}"
+            media_id = f"media_{int(time.time() * 1000)}_{os.urandom(3).hex()}.{ext}"
             fp_m = os.path.join(_CHAT_MEDIA_DIR, media_id)
             with open(fp_m, "wb") as fm:
                 fm.write(base64.b64decode(b64_data))
