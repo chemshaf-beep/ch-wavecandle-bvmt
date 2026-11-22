@@ -5572,5 +5572,259 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 
 </script>
+<script id="ch-step2a-presets">
+(function(){
+  const LOCAL_KEY = "ch_wc_private_presets_v2";
+  let activeTool = null, pendingPt = null, drawings = [];
+
+  function getActiveTicker(){
+    const sel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /delice|biat|sfbt|atb|bh|amen|tpr|sah|poulina/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+    if(sel && sel.options.item(sel.selectedIndex)) return (sel.options.item(sel.selectedIndex).textContent || sel.value || "VALEUR").trim();
+    return "DELICE HOLDING";
+  }
+  function getModeSelect(){
+    return Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+  }
+  function getCheckedIndicators(){
+    const out = [];
+    document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+      if(!cb.checked || cb.id === "chCandleLblCb") return;
+      const lbl = cb.closest("label") || cb.parentElement;
+      const txt = lbl ? (lbl.textContent || "").trim() : "";
+      if(txt && txt.length < 48 && !/étiquettes/i.test(txt)) out.push(txt);
+    });
+    return out;
+  }
+  function getChart(){
+    if(!window.echarts) return null;
+    const dom = document.querySelector("[_echarts_instance_]");
+    return dom ? window.echarts.getInstanceByDom(dom) : null;
+  }
+  function drawAll(){
+    const inst = getChart(); if(!inst) return;
+    const cur = inst.getOption(); if(!cur || !Array.isArray(cur.series) || !cur.series.length) return;
+    const lines = [];
+    drawings.forEach((d, idx) => {
+      if(d.type === "hline"){
+        lines.push({ name: d.label || ("S/R #" + (idx + 1)), yAxis: Number(d.price), lineStyle: { color: "#F59E0B", width: 2, type: "dashed" }, label: { show: true, formatter: "S/R : " + Number(d.price).toFixed(2), color: "#FBBF24", backgroundColor: "rgba(15,23,42,0.88)", padding: 4, borderRadius: 4 } });
+      } else if(d.type === "trend" && d.p1 && d.p2){
+        lines.push(new Array({ coord: d.p1, symbol: "circle", symbolSize: 6, lineStyle: { color: "#38BDF8", width: 2.2 } }, { coord: d.p2, symbol: "circle", symbolSize: 6 }));
+      }
+    });
+    inst.setOption({ series: cur.series.map((s, i) => i === 0 ? { markLine: { silent: false, data: lines } } : {}) });
+  }
+  function setStatus(msg){
+    const el = document.getElementById("chDrawStatusMsg"); if(!el) return;
+    el.style.display = msg ? "block" : "none"; if(msg) el.textContent = msg;
+  }
+  function bindClick(){
+    const inst = getChart(); if(!inst || inst.__chPrBound) return;
+    inst.__chPrBound = true;
+    inst.getZr().on("click", function(params){
+      if(!activeTool) return;
+      const pt = new Array(params.offsetX, params.offsetY);
+      if(!inst.containPixel("grid", pt)) return;
+      const coord = inst.convertFromPixel({ seriesIndex: 0 }, pt);
+      if(!coord || coord.length < 2) return;
+      const xVal = coord.at(0), price = Number(Number(coord.at(1)).toFixed(3));
+      if(activeTool === "hline"){ drawings.push({ type: "hline", price: price, label: "S/R" }); activeTool = null; setStatus(""); drawAll(); }
+      else if(activeTool === "trend"){
+        if(!pendingPt){ pendingPt = new Array(xVal, price); setStatus("Cliquez sur le 2e point de la ligne de tendance..."); }
+        else { drawings.push({ type: "trend", p1: pendingPt, p2: new Array(xVal, price) }); pendingPt = null; activeTool = null; setStatus(""); drawAll(); }
+      }
+    });
+  }
+  async function rpc(p){ return (window.core && typeof window.core.rpc === "function") ? await window.core.rpc(p) : null; }
+  function getLocal(){ try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch(e){ return new Array(); } }
+  function setLocal(l){ try { localStorage.setItem(LOCAL_KEY, JSON.stringify(l)); } catch(e){} }
+  async function loadPresets(){ const r = await rpc({ cmd: "list_user_presets" }); if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; } return getLocal(); }
+  async function savePreset(o){ const l = getLocal().filter(x => x.id !== o.id); l.unshift(o); setLocal(l); const r = await rpc({ cmd: "save_user_preset", preset: o }); if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; } return l; }
+  async function delPreset(id){ const l = getLocal().filter(x => x.id !== id); setLocal(l); const r = await rpc({ cmd: "delete_user_preset", preset_id: id }); if(r && r.status === 200 && Array.isArray(r.presets)){ setLocal(r.presets); return r.presets; } return l; }
+  function applyPreset(pr){
+    if(!pr) return;
+    const ms = getModeSelect();
+    if(ms && pr.mode){
+      const opt = Array.from(ms.options).find(o => o.value === pr.mode || (o.textContent||"").trim() === pr.mode);
+      if(opt){ ms.value = opt.value; ms.dispatchEvent(new Event("change", { bubbles: true })); }
+    }
+    if(Array.isArray(pr.indicators)){
+      document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+        if(cb.id === "chCandleLblCb") return;
+        const lbl = cb.closest("label") || cb.parentElement;
+        const txt = lbl ? (lbl.textContent || "").trim() : "";
+        if(!txt || txt.length >= 48) return;
+        if(cb.checked !== pr.indicators.includes(txt)) cb.click();
+      });
+    }
+    drawings = Array.isArray(pr.drawings) ? JSON.parse(JSON.stringify(pr.drawings)) : new Array();
+    setTimeout(() => { bindClick(); drawAll(); }, 250);
+  }
+  function renderList(list){
+    const box = document.getElementById("chPrList"); if(!box) return;
+    const tk = getActiveTicker();
+    if(!Array.isArray(list) || !list.length){ box.innerHTML = "<div style='color:#94A3B8;font-size:12px;text-align:center;padding:16px;'>Aucun espace enregistré.</div>"; return; }
+    box.innerHTML = "";
+    list.forEach(pr => {
+      const same = (pr.ticker || "").toUpperCase() === tk.toUpperCase();
+      const row = document.createElement("div");
+      row.style.cssText = "background:#1E293B;border:1px solid " + (same ? "#38BDF8" : "#334155") + ";border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;";
+      const info = document.createElement("div"); info.style.cssText = "flex:1;min-width:180px;";
+      info.innerHTML = "<div style='font-weight:800;color:#F8FAFC;font-size:12.5px;'>" + pr.name + " <span style='background:#0284C722;color:#38BDF8;border:1px solid #38BDF855;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px;'>" + (pr.ticker || "VALEUR") + "</span></div><div style='font-size:11px;color:#94A3B8;margin-top:3px;'>Mode : " + (pr.mode || "Standard") + " • " + ((pr.drawings||new Array()).length) + " tracé(s) • " + ((pr.indicators||new Array()).length ? pr.indicators.join(", ") : "Sans indicateur") + "</div>";
+      const btns = document.createElement("div"); btns.style.cssText = "display:flex;gap:6px;";
+      const bApp = document.createElement("button"); bApp.type = "button"; bApp.textContent = "Appliquer"; bApp.style.cssText = "background:#0284C7;color:#FFF;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
+      bApp.onclick = () => { applyPreset(pr); document.getElementById("chPresetsModal").style.display = "none"; };
+      const bDel = document.createElement("button"); bDel.type = "button"; bDel.textContent = "X"; bDel.style.cssText = "background:#334155;color:#F87171;border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;height:auto!important;";
+      bDel.onclick = async () => renderList(await delPreset(pr.id));
+      btns.appendChild(bApp); btns.appendChild(bDel); row.appendChild(info); row.appendChild(btns); box.appendChild(row);
+    });
+  }
+  async function openModal(){
+    let m = document.getElementById("chPresetsModal");
+    if(!m){
+      m = document.createElement("div"); m.id = "chPresetsModal";
+      m.style.cssText = "display:none;position:fixed;inset:0;z-index:100230;background:rgba(2,6,23,0.88);align-items:center;justify-content:center;padding:14px;font-family:'Segoe UI',system-ui,sans-serif;";
+      m.innerHTML = "<div style='width:min(660px,96vw);max-height:88vh;background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;'><div style='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1E293B;border-bottom:1px solid #334155;'><span style='font-weight:800;font-size:13px;color:#38BDF8;'>Espace Privé : Tracés & Indicateurs</span><button id='chPrClose' type='button' style='background:#EF4444;color:#FFF;border:none;border-radius:6px;padding:4px 10px;font-weight:700;cursor:pointer;height:auto!important;'>Fermer</button></div><div style='padding:12px 14px;background:#0B1120;border-bottom:1px solid #1E293B;display:flex;flex-direction:column;gap:8px;'><div style='display:flex;gap:6px;flex-wrap:wrap;'><button id='chToolHline' type='button' style='background:#1E293B;color:#FBBF24;border:1px solid rgba(245,158,11,0.5);border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>Tracer Support / Résistance</button><button id='chToolTrend' type='button' style='background:#1E293B;color:#38BDF8;border:1px solid rgba(56,189,248,0.5);border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>Tracer Tendance</button><button id='chToolClear' type='button' style='background:#1E293B;color:#F87171;border:1px solid #334155;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;height:auto!important;'>Effacer Tracés</button></div><div style='display:flex;gap:6px;flex-wrap:wrap;'><input id='chPrNameInput' type='text' placeholder='Nom (ex: Canal Haussier + VWAP)...' style='flex:1;min-width:190px;background:#1E293B;color:#F8FAFC;border:1px solid #334155;border-radius:6px;padding:7px 10px;font-size:12px;' /><button id='chPrSaveBtn' type='button' style='background:#10B981;color:#052E16;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;height:auto!important;'>Enregistrer</button></div><div id='chPrSummary' style='font-size:11px;color:#94A3B8;'></div></div><div id='chPrList' style='padding:12px 14px;overflow-y:auto;display:grid;gap:8px;'></div></div>";
+      document.body.appendChild(m);
+      m.onclick = e => { if(e.target === m) m.style.display = "none"; };
+      document.getElementById("chPrClose").onclick = () => { m.style.display = "none"; };
+      document.getElementById("chToolHline").onclick = () => { m.style.display = "none"; activeTool = "hline"; pendingPt = null; bindClick(); setStatus("Cliquez sur le graphique pour placer un Support / Résistance"); };
+      document.getElementById("chToolTrend").onclick = () => { m.style.display = "none"; activeTool = "trend"; pendingPt = null; bindClick(); setStatus("Cliquez sur le 1er point de la ligne de tendance"); };
+      document.getElementById("chToolClear").onclick = () => { drawings = new Array(); drawAll(); document.getElementById("chPrSummary").textContent = "Tracés effacés."; };
+      document.getElementById("chPrSaveBtn").onclick = async () => {
+        const inp = document.getElementById("chPrNameInput"), nm = (inp.value || "").trim(); if(!nm){ inp.focus(); return; }
+        const ms = getModeSelect(), modeTxt = ms && ms.options.item(ms.selectedIndex) ? (ms.options.item(ms.selectedIndex).textContent || "").trim() : "";
+        const up = await savePreset({ id: "pr_" + Date.now(), name: nm, ticker: getActiveTicker(), mode: modeTxt, indicators: getCheckedIndicators(), drawings: drawings });
+        inp.value = ""; renderList(up);
+      };
+    }
+    const inds = getCheckedIndicators();
+    document.getElementById("chPrSummary").textContent = "Valeur : " + getActiveTicker() + " • " + drawings.length + " tracé(s) • " + (inds.length ? inds.join(", ") : "Aucun indicateur");
+    m.style.display = "flex"; renderList(await loadPresets());
+  }
+  function inject(){
+    if(!document.getElementById("chDrawStatusMsg")){
+      const st = document.createElement("div"); st.id = "chDrawStatusMsg";
+      st.style.cssText = "display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100220;background:#0284C7;color:#FFF;padding:6px 14px;border-radius:20px;font-size:11.5px;font-weight:700;";
+      document.body.appendChild(st);
+    }
+    const chatBtn = Array.from(document.querySelectorAll("button")).find(b => /\bChat\b/i.test(b.textContent || ""));
+    if(chatBtn && !document.getElementById("chMyPresetsBtn")){
+      const pb = document.createElement("button"); pb.id = "chMyPresetsBtn"; pb.type = "button"; pb.className = chatBtn.className; pb.textContent = "Mes Analyses";
+      pb.style.cssText = "margin-left:6px;background:#1E293B;color:#38BDF8;border:1px solid #38BDF8;border-radius:6px;padding:4px 10px;font-weight:700;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;";
+      pb.onclick = e => { e.stopPropagation(); openModal(); };
+      chatBtn.insertAdjacentElement("afterend", pb);
+    }
+    bindClick();
+  }
+  window.addEventListener("load", () => { inject(); setTimeout(inject, 600); });
+  new MutationObserver(inject).observe(document.body, { childList: true, subtree: true });
+})();
+
+</script>
+<script id="ch-step2b-tuto">
+(function(){
+  const KEY = "ch_wc_tuto_v6";
+  const LEX = {
+    vagues: [
+      {b:"VAGUE POLYGONALE",c:"#10B981",t:"Anatomie Exacte d une Vague Polygonale (Verte / Rouge)",d:"Chaque polygone represente une vague directionnelle de ticks de meme nature. Sa hauteur indique l amplitude des quantites executees, la base de sa position le cours d execution qui peut evoluer (ex: 19.55 -> 19.80 TND), et sa largeur la duree des ticks de meme nature dans cette vague."},
+      {b:"GROS BLOCS",c:"#F59E0B",t:"Detection des Gros Blocs Institutionnels",d:"Identifie automatiquement les transactions unitaires ou rafales exceptionnelles depassant le seuil normal de volume de la seance (ex: 6 gros blocs >= 1 208 titres)."},
+      {b:"FIXINGS",c:"#A855F7",t:"Transactions Neutres / Fixings",d:"Volume execute au prix d equilibre sans agression directe d un cote du carnet d ordres."}
+    ],
+    indicateurs: [
+      {b:"VWAP / CMP",c:"#10B981",t:"VWAP & Cours Moyen Pondere par le Volume",d:"Courbe de reference calculant le prix moyen pondere par les volumes cumules depuis l ouverture."},
+      {b:"EMA / SMA",c:"#38BDF8",t:"Moyennes Mobiles Exponentielles & Simples",d:"Lissent l evolution des cours d execution pour identifier la tendance sous-jacente."},
+      {b:"RSI & MACD",c:"#F59E0B",t:"Oscillateurs de Force Relative & Momentum",d:"Mesurent la vitesse de variation des prix et signalent les zones de surachat/survente ou retournements."},
+      {b:"BOLLINGER",c:"#A855F7",t:"Bandes de Volatilite de Bollinger",d:"Encadrent l ecart-type autour de la moyenne mobile pour detecter les phases de compression et d expansion."}
+    ],
+    carnet: [
+      {b:"ACHATS / VENTES",c:"#38BDF8",t:"Achats Cumules vs Ventes Cumulees",d:"Compare les volumes executes a l initiative des acheteurs face aux vendeurs et calcule l Ecart Net Titres."},
+      {b:"CAMEMBERT AUTO",c:"#10B981",t:"Repartition Volumetrique & Agressivite Achat",d:"Synthetise le ratio Achats/Ventes avec leurs CMP respectifs et le taux d Agressivite Achat (ex: 94%)."}
+    ],
+    instruments: [
+      {b:"PLAGES X / Y",c:"#38BDF8",t:"Selecteurs de Plage Horaire (X) & Prix (Y)",d:"La barre fine du bas isole une fenetre horaire (09:00 -> 15:00) et le curseur vertical de droite dilate l echelle des cours."},
+      {b:"MES ANALYSES",c:"#10B981",t:"Traces de Tendance, Resistances & Sauvegarde Privee",d:"Tracez vos supports/resistances et droites de tendance et enregistrez-les sous un nom avec vos indicateurs pour chaque valeur."}
+    ]
+  };
+  const STEPS = [
+    {t:"1/5 - Bienvenue sur CH-WaveCandle HFT",d:"Station d analyse tick-by-tick. Decouvrez la lecture des vagues polygonales, les indicateurs et vos espaces d analyse prives.",g:()=>document.querySelector("[_echarts_instance_]")},
+    {t:"2/5 - Anatomie d une Vague Polygonale",d:"Chaque polygone represente une vague directionnelle de ticks : sa hauteur indique l amplitude des quantites executees, sa base le cours d execution evolutif (ex: 19.55 -> 19.80 TND) et sa largeur la duree des ticks de meme nature.",g:()=>document.querySelector("[_echarts_instance_]")},
+    {t:"3/5 - Indicateurs & Modes Bougies / Chandeliers 3D",d:"Activez vos indicateurs (VWAP, Moyennes, RSI, MACD, Bollinger) en mode Bougies Japonaises ou Chandeliers-CH 3D, et masquez/affichez les Etiquettes en un clic.",g:()=>Array.from(document.querySelectorAll("button")).find(b=>/indicateurs/i.test(b.textContent||""))},
+    {t:"4/5 - Espace Prive Mes Analyses",d:"Tracez vos supports/resistances et tendances sur le graphique puis enregistrez-les sous un nom pour chaque valeur.",g:()=>document.getElementById("chMyPresetsBtn")},
+    {t:"5/5 - Centre d Aide & Lexique Visuel HFT",d:"Consultez a tout moment le Lexique HFT pour les explications detaillees sur les vagues, indicateurs, volumes et instruments.",g:()=>null}
+  ];
+  let step = 0;
+  function isLoggedIn(){
+    const pw = Array.from(document.querySelectorAll("input[type='password']")).filter(el => el.offsetParent !== null && el.offsetHeight > 0);
+    if(pw.length > 0) return false;
+    return Array.from(document.querySelectorAll("button")).some(b => /d[eé]connexion|quitter/i.test(b.textContent || "")) && !!document.querySelector("[_echarts_instance_]");
+  }
+  function ui(){
+    if(!document.getElementById("chTutoOverlay")){
+      const ov = document.createElement("div"); ov.id = "chTutoOverlay";
+      ov.innerHTML = "<div id='chTutoSpot'></div><div id='chTutoCard'><h4><span id='chTutoTitle'></span><button class='ch-tuto-btn ch-tuto-btn-sec' id='chTutoClose' style='padding:2px 7px;'>X</button></h4><p id='chTutoText'></p><div class='ch-tuto-actions'><button class='ch-tuto-btn ch-tuto-btn-lex' id='chTutoOpenLex'>Lexique & Aide</button><div style='display:flex;gap:6px;'><button class='ch-tuto-btn ch-tuto-btn-sec' id='chTutoPrev'><</button><button class='ch-tuto-btn ch-tuto-btn-pri' id='chTutoNext'>Suivant ></button></div></div></div>";
+      document.body.appendChild(ov);
+      document.getElementById("chTutoClose").onclick = () => { ov.classList.remove("open"); try{ localStorage.setItem(KEY,"1"); }catch(e){} };
+      document.getElementById("chTutoPrev").onclick = () => { if(step > 0){ step--; showStep(); } };
+      document.getElementById("chTutoNext").onclick = () => { if(step < STEPS.length - 1){ step++; showStep(); } else { ov.classList.remove("open"); try{ localStorage.setItem(KEY,"1"); }catch(e){} } };
+      document.getElementById("chTutoOpenLex").onclick = () => { ov.classList.remove("open"); try{ localStorage.setItem(KEY,"1"); }catch(e){} openLex("vagues"); };
+    }
+    if(!document.getElementById("chLexModal")){
+      const lm = document.createElement("div"); lm.id = "chLexModal";
+      lm.innerHTML = "<div class='ch-lex-box'><div class='ch-lex-hdr'><span style='font-weight:800;font-size:13px;color:#38BDF8;'>Centre d Aide & Lexique Visuel CH-WaveCandle</span><div style='display:flex;gap:6px;'><button class='ch-tuto-btn ch-tuto-btn-pri' id='chLexRestart'>Visite guidee</button><button class='ch-tuto-btn' id='chLexClose' style='background:#EF4444;color:#FFF;'>Fermer</button></div></div><div class='ch-lex-tabs'><button class='ch-lex-tab active' data-c='vagues'>Vagues & Blocs</button><button class='ch-lex-tab' data-c='indicateurs'>Indicateurs</button><button class='ch-lex-tab' data-c='carnet'>Flux & Camembert</button><button class='ch-lex-tab' data-c='instruments'>Instruments</button></div><div class='ch-lex-body' id='chLexBody'></div></div>";
+      document.body.appendChild(lm);
+      document.getElementById("chLexClose").onclick = () => lm.classList.remove("open");
+      document.getElementById("chLexRestart").onclick = () => { lm.classList.remove("open"); step = 0; showStep(); };
+      lm.onclick = e => { if(e.target === lm) lm.classList.remove("open"); };
+      lm.querySelectorAll(".ch-lex-tab").forEach(tb => {
+        tb.onclick = () => { lm.querySelectorAll(".ch-lex-tab").forEach(x => x.classList.remove("active")); tb.classList.add("active"); renderLex(tb.dataset.c); };
+      });
+    }
+  }
+  function renderLex(c){
+    const b = document.getElementById("chLexBody"); if(!b) return;
+    b.innerHTML = (LEX[c] || LEX.vagues).map(i => "<div class='ch-lex-item'><strong><span class='ch-lex-badge' style='background:"+i.c+"22;color:"+i.c+";border:1px solid "+i.c+"66;'>"+i.b+"</span>"+i.t+"</strong><div>"+i.d+"</div></div>").join("");
+  }
+  function openLex(c){ ui(); renderLex(c || "vagues"); document.getElementById("chLexModal").classList.add("open"); }
+  function showStep(){
+    if(!isLoggedIn()) return;
+    ui();
+    const ov = document.getElementById("chTutoOverlay"), sp = document.getElementById("chTutoSpot"), cd = document.getElementById("chTutoCard"), st = STEPS.at(step);
+    document.getElementById("chTutoTitle").textContent = st.t; document.getElementById("chTutoText").textContent = st.d;
+    document.getElementById("chTutoPrev").style.display = step === 0 ? "none" : "inline-block";
+    document.getElementById("chTutoNext").textContent = step === STEPS.length - 1 ? "Terminer" : "Suivant >";
+    ov.classList.add("open");
+    const el = st.g ? st.g() : null, vw = window.innerWidth, vh = window.innerHeight;
+    if(el && el.getBoundingClientRect && el.offsetWidth > 0){
+      const r = el.getBoundingClientRect(), full = r.width > vw * 0.8 && r.height > vh * 0.65;
+      sp.style.cssText = full ? ("left:10px;top:"+Math.max(32,r.top+8)+"px;width:"+(vw-20)+"px;height:"+(r.height-28)+"px;") : ("left:"+Math.max(2,r.left-4)+"px;top:"+Math.max(2,r.top-4)+"px;width:"+(r.width+8)+"px;height:"+(r.height+8)+"px;");
+      const cW = Math.min(340, vw * 0.9); let top = r.bottom + 10;
+      if(full || top + 165 > vh) top = Math.max(36, (vh - 170) / 2);
+      cd.style.left = Math.min(Math.max(10, r.left), vw - cW - 10) + "px"; cd.style.top = top + "px";
+    } else {
+      sp.style.cssText = "left:"+(vw/2)+"px;top:"+(vh/2)+"px;width:0;height:0;box-shadow:0 0 0 9999px rgba(2,6,23,0.72);";
+      cd.style.left = Math.max(10, (vw - Math.min(340, vw * 0.9)) / 2) + "px"; cd.style.top = Math.max(24, (vh - 175) / 2) + "px";
+    }
+  }
+  function injectHelp(){
+    const anchor = document.getElementById("chMyPresetsBtn") || Array.from(document.querySelectorAll("button")).find(b => /\bChat\b/i.test(b.textContent || ""));
+    if(!anchor || document.getElementById("chTopHelpBtn")) return;
+    const hb = document.createElement("button"); hb.id = "chTopHelpBtn"; hb.type = "button"; hb.className = anchor.className; hb.textContent = "Aide & Lexique";
+    hb.style.cssText = "margin-left:6px;background:#0284C7;color:#FFF;border:1px solid #38BDF8;border-radius:6px;padding:4px 10px;font-weight:700;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;";
+    hb.onclick = e => { e.stopPropagation(); step = 0; showStep(); };
+    anchor.insertAdjacentElement("afterend", hb);
+  }
+  let checked = false;
+  function check(){
+    injectHelp();
+    if(!checked && isLoggedIn()){ checked = true; try { if(!localStorage.getItem(KEY)) setTimeout(() => { step = 0; showStep(); }, 800); } catch(e){} }
+  }
+  window.addEventListener("load", () => { ui(); check(); new MutationObserver(check).observe(document.body, { childList: true, subtree: true }); });
+})();
+
+</script>
 </body>
 </html>
