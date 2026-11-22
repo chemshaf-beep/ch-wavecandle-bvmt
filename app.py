@@ -2526,16 +2526,27 @@ def _extraire_mini_apercu(mid):
             rows = _lire_xlsx_table(fp, max_rows=5)
             return [r[:5] for r in rows[:4]]
         if mid.endswith(".csv"):
-            with open(fp, "r", encoding="utf-8", errors="replace") as f:
-                lines = [ln.strip() for ln in f.readlines()[:4] if ln.strip()]
-            if not lines:
+            with open(fp, "r", encoding="utf-8-sig", errors="replace") as f:
+                raw_lines = [ln.strip() for ln in f.read().splitlines() if ln.strip()][:4]
+            if not raw_lines:
                 return None
-            sep = ";" if ";" in lines.pop(0) else ","
-            f.seek(0)
-            lines = [ln.strip() for ln in f.readlines()[:4] if ln.strip()]
-            return [[c.strip().strip('"') for c in ln.split(sep)[:5]] for ln in lines]
-    except Exception:
-        pass
+            first_ln = raw_lines.copy().pop(0)
+            sep = ";" if ";" in first_ln else ("\t" if "\t" in first_ln else ",")
+            return [[c.strip().strip('"') for c in ln.split(sep)[:5]] for ln in raw_lines]
+        if mid.endswith(".pdf"):
+            try:
+                import fitz
+                doc = fitz.open(fp)
+                txt = doc.load_page(0).get_text("text").strip() if len(doc) > 0 else ""
+                lines = [ln.strip() for ln in txt.splitlines() if ln.strip()][:5]
+                return [[f"Page 1 / {len(doc)}"]] + [[ln[:90]] for ln in lines] if lines else [[f"Document PDF ({len(doc)} page(s))"]]
+            except Exception:
+                with open(fp, "rb") as fb:
+                    raw_b = fb.read(120000)
+                nb_pages = raw_b.count(b"/Type /Page") - raw_b.count(b"/Type /Pages")
+                return [[f"Document PDF ({max(1, nb_pages)} page(s))"], ["Cliquez pour ouvrir ou télécharger le document"]]
+    except Exception as e:
+        print("[!] Erreur mini apercu:", e)
     return None
 
 def _rpc_data(payload_json: str):
@@ -2637,7 +2648,7 @@ def _rpc_data(payload_json: str):
                 mc = dict(m)
                 owner = str(mc.pop("owner_email", "") or "").strip().lower()
                 mc["can_manage"] = bool(is_admin or (owner and owner == req_email))
-                if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx")):
+                if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx") or mc["media_id"].endswith(".pdf")):
                     mc["preview_rows"] = _extraire_mini_apercu(mc["media_id"])
                 out_msgs.append(mc)
             tk_s, repo_s = _hf_data_cfg()

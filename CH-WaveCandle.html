@@ -5018,37 +5018,13 @@ window.__chInjecterIndicateurs = function() {
           docCard.appendChild(top);
 
           if (isPdf) {
-            const pWrap = document.createElement("div");
-            pWrap.style.cssText = "position:relative;height:165px;background:#1E293B;overflow:hidden;";
-            const pOverlay = document.createElement("div");
-            pOverlay.style.cssText = "position:absolute;inset:0;z-index:2;background:linear-gradient(to top, rgba(15,23,42,0.82) 0%, transparent 45%);display:flex;align-items:flex-end;padding:8px 10px;font-size:11px;color:#F8FAFC;font-weight:700;";
-            pOverlay.textContent = "📖 Cliquer pour lire le PDF en plein écran";
-            pWrap.appendChild(pOverlay);
-            docCard.appendChild(pWrap);
-
-            const monterMiniPdf = (dUrl) => {
-              if (!pWrap.isConnected) return;
-              const b64 = dUrl.split(",").pop();
-              const bin = atob(b64);
-              const bytes = new Uint8Array(bin.length);
-              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-              const bUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })) + "#toolbar=0&navpanes=0&scrollbar=0&view=FitH";
-              const ifr = document.createElement("iframe");
-              ifr.src = bUrl;
-              ifr.style.cssText = "width:100%;height:220px;border:none;pointer-events:none;background:#FFF;";
-              pWrap.insertBefore(ifr, pOverlay);
-            };
-
-            if (_MEDIA_CACHE.has(m.media_id)) {
-              monterMiniPdf(_MEDIA_CACHE.get(m.media_id));
-            } else {
-              core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
-                if (r && r.status === 200 && r.data_url) {
-                  _MEDIA_CACHE.set(m.media_id, r.data_url);
-                  monterMiniPdf(r.data_url);
-                }
-              });
-            }
+            const pBody = document.createElement("div");
+            pBody.className = "ch-pdf-thumb-body";
+            const lignesPdf = Array.isArray(m.preview_rows) ? m.preview_rows.map(r => (r && r.at(0)) ? String(r.at(0)) : "").filter(Boolean) : new Array();
+            const titrePdf = lignesPdf.length > 0 ? lignesPdf.at(0) : "Document PDF";
+            const extraitPdf = lignesPdf.length > 1 ? lignesPdf.slice(1).join(" • ") : "Cliquez sur la carte pour consulter ou télécharger le PDF";
+            pBody.innerHTML = "<div style='width:42px;height:52px;border-radius:6px;background:rgba(220,38,38,0.16);border:1px solid #DC2626;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;'>📕</div><div style='font-size:11.5px;line-height:1.4;overflow:hidden;'><div style='font-weight:700;color:#F87171;'>" + titrePdf + "</div><div style='color:#94A3B8;font-size:10.5px;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;'>" + extraitPdf + "</div></div>";
+            docCard.appendChild(pBody);
           } else if (Array.isArray(m.preview_rows) && m.preview_rows.length > 0) {
             const mTbl = document.createElement("table");
             mTbl.className = "ch-mini-tbl";
