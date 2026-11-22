@@ -5877,5 +5877,115 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 
 </script>
+<script id="ch-cursor-horizon-fix">
+(function(){
+  let clicksNeeded = 0;
+  let clicksDone = 0;
+
+  function getCursorSelect(){
+    return Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /curseur|tendance|résistance|resistance|support/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+  }
+
+  function getHorizonSelect(){
+    return Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /horizon|séance|seance|ticks|multi/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+  }
+
+  function ensureFreeHandOption(){
+    const sel = getCursorSelect();
+    if(!sel) return null;
+    let handOpt = Array.from(sel.options).find(o => /main|zoom|navigation|libre|aucun|défaut/i.test((o.textContent||"") + " " + (o.value||"")));
+    if(!handOpt){
+      handOpt = document.createElement("option");
+      handOpt.value = "free_hand_nav";
+      handOpt.textContent = "✋ Main libre";
+      sel.insertBefore(handOpt, sel.firstChild);
+    } else if(!handOpt.textContent.includes("Main")){
+      handOpt.textContent = "✋ Main libre";
+    }
+    if(!sel.__chAutoHandHooked){
+      sel.__chAutoHandHooked = true;
+      sel.addEventListener("change", () => {
+        const curOpt = sel.options.item(sel.selectedIndex);
+        const txt = ((curOpt ? curOpt.textContent : "") + " " + (sel.value || "")).toLowerCase();
+        if(txt.includes("main") || txt.includes("free_hand") || txt.includes("zoom") || txt.includes("navigation")){
+          clicksNeeded = 0;
+          clicksDone = 0;
+        } else if(txt.includes("support") || txt.includes("résistance") || txt.includes("resistance") || txt.includes("horizontal")){
+          clicksNeeded = 1;
+          clicksDone = 0;
+        } else if(txt.includes("tendance") || txt.includes("droite") || txt.includes("segment") || txt.includes("canal") || txt.includes("fibo")){
+          clicksNeeded = 2;
+          clicksDone = 0;
+        } else {
+          clicksNeeded = 1;
+          clicksDone = 0;
+        }
+      });
+    }
+    return { sel, handOpt };
+  }
+
+  function returnToFreeHand(){
+    const info = ensureFreeHandOption();
+    if(!info) return;
+    info.sel.value = info.handOpt.value;
+    info.sel.dispatchEvent(new Event("change", { bubbles: true }));
+    clicksNeeded = 0;
+    clicksDone = 0;
+  }
+
+  function bindChartAutoReturn(){
+    if(!window.echarts) return;
+    const dom = document.querySelector("[_echarts_instance_]");
+    const inst = dom ? window.echarts.getInstanceByDom(dom) : null;
+    if(!inst || inst.__chHandZrBound) return;
+    inst.__chHandZrBound = true;
+    inst.getZr().on("click", function(params){
+      if(clicksNeeded <= 0) return;
+      const pt = new Array(params.offsetX, params.offsetY);
+      if(!inst.containPixel("grid", pt)) return;
+      clicksDone++;
+      if(clicksDone >= clicksNeeded){
+        setTimeout(returnToFreeHand, 90);
+      }
+    });
+  }
+  function hookModeSelectHorizonLock(){
+    const modeSel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+    if(!modeSel || modeSel.__chHorLock) return;
+    modeSel.__chHorLock = true;
+    modeSel.addEventListener("change", () => {
+      const hSel = getHorizonSelect();
+      if(!hSel) return;
+      const savedHor = hSel.value;
+      [60, 180, 350].forEach(delay => {
+        setTimeout(() => {
+          const curH = getHorizonSelect();
+          if(curH && savedHor && curH.value !== savedHor){
+            curH.value = savedHor;
+            curH.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        }, delay);
+      });
+    }, true);
+  }
+
+  function boot(){
+    ensureFreeHandOption();
+    bindChartAutoReturn();
+    hookModeSelectHorizonLock();
+  }
+
+  window.addEventListener("load", () => { boot(); setTimeout(boot, 600); });
+  new MutationObserver(boot).observe(document.body, { childList: true, subtree: true });
+})();
+
+</script>
 </body>
 </html>
