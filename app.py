@@ -2444,6 +2444,43 @@ def _init_pg_tables():
         _PG_READY = False
     return _PG_READY
 
+def _pg_charger_users():
+    if not _init_pg_tables():
+        return None
+    try:
+        conn = _get_pg_conn()
+        with conn.cursor() as cur:
+            cur.execute("SELECT email, data_json FROM ch_users;")
+            rows = cur.fetchall()
+        conn.close()
+        out = {}
+        for r in rows:
+            rl = list(r)
+            out[rl.pop(0)] = json.loads(rl.pop(0))
+        return out
+    except Exception as e:
+        print("[!] Erreur lecture PG users:", e)
+        return None
+
+def _pg_sauver_users(db_dict):
+    if not _init_pg_tables():
+        return False
+    try:
+        conn = _get_pg_conn()
+        with conn:
+            with conn.cursor() as cur:
+                for em, info in (db_dict or {}).items():
+                    cur.execute("""
+                        INSERT INTO ch_users (email, data_json, updated_at)
+                        VALUES (%s, %s, NOW())
+                        ON CONFLICT (email) DO UPDATE SET data_json = EXCLUDED.data_json, updated_at = NOW();
+                    """, (str(em).lower().strip(), json.dumps(info, ensure_ascii=False)))
+        conn.close()
+        return True
+    except Exception as e:
+        print("[!] Erreur écriture PG users:", e)
+        return False
+
 def _pg_charger_messages():
     if not _init_pg_tables():
         return None
