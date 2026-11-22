@@ -2268,11 +2268,31 @@ def _construire_index():
                 "Mtime": int(os.path.getmtime(fp) * 1000)
             })
     lf.sort(key=lambda x: x["Mtime"], reverse=True)
+    tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+    now_tn = datetime.datetime.now(tz_tn)
+    today_tn = now_tn.strftime("%d%m%Y")
+    avant_0830 = (now_tn.weekday() >= 5) or ((now_tn.hour * 60 + now_tn.minute) < 510)
+    date_active = today_tn
+    has_today_ticks = any(today_tn in k and v.get("size", 0) > 400 for k, v in hmeta.items()) or any(today_tn in x.get("Name", "") and x.get("Length", 0) > 400 for x in lf)
+    if avant_0830 or not has_today_ticks:
+        dates_exec = []
+        for k, v in hmeta.items():
+            if "bourse_historique_reel_" in k and v.get("size", 0) > 400:
+                m_d = re.search(r"(\d{8})", os.path.basename(k))
+                if m_d and (not avant_0830 or m_d.group(1) != today_tn):
+                    try:
+                        dates_exec.append((datetime.datetime.strptime(m_d.group(1), "%d%m%Y"), m_d.group(1)))
+                    except Exception:
+                        pass
+        if dates_exec:
+            dates_exec.sort(key=lambda t: t[0], reverse=True)
+            date_active = dates_exec[0][1]
+
     return {
         "hist": sorted(hf),
         "hist_meta": hmeta,
         "live": lf,
-        "server_date": date_jour,
+        "server_date": date_active,
         "py": True,
         "url": globals().get("URL_SBE", "https://macsa.com.tn"),
         "err": ""

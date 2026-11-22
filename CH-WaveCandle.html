@@ -6022,9 +6022,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 </script>
 
-<script id="ch-last-session-and-pencil">
+
+
+
+<script id="ch-date-lock-fix">
 (function(){
-  // 1. Curseur Crayon flottant infaillible pendant le dessin (contourne toutes les limites CSS/ECharts)
+  // === 1. CRAYON FLOTTANT INFAILLIBLE PENDANT LE DESSIN ===
   function ensureFloatingPencil(){
     let pen = document.getElementById("chFloatingPencil");
     if(!pen){
@@ -6059,13 +6062,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     setTimeout(colorizeSupportsAndResistances, 160);
   }, true);
 
-  // 2. Coloration automatique : Resistance = Rouge (#EF4444), Support = Vert (#10B981)
+  // === 2. RESISTANCE = ROUGE (#EF4444), SUPPORT = VERT (#10B981) ===
   function getLastPrice(){
     const m = (document.body.innerText || "").match(/DERNIER COURS[\s\S]{0,40}?(\d+[.,]\d+)/i);
-    if(m) return Number(m.at(1).replace(",", "."));
-    return null;
+    return m ? Number(m.at(1).replace(",", ".")) : null;
   }
-
   function colorizeSupportsAndResistances(){
     if(!window.echarts) return;
     const dom = document.querySelector("[_echarts_instance_]");
@@ -6073,94 +6074,134 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     if(!inst) return;
     const opt = inst.getOption() || {};
     if(!Array.isArray(opt.series)) return;
-
     const lastPx = getLastPrice();
     let changed = false;
-
     const patchSeries = opt.series.map(s => {
-      if(!s || !s.markLine || !Array.isArray(s.markLine.data) || s.markLine.data.length === 0) return {};
+      if(!s || !s.markLine || !Array.isArray(s.markLine.data) || !s.markLine.data.length) return {};
       const newData = s.markLine.data.map(item => {
         if(!item || Array.isArray(item) || item.yAxis === undefined) return item;
         const lvl = Number(item.yAxis);
         const rawLabel = String((item.label && item.label.formatter) || item.name || "");
         let isRes = /r[eé]sistance/i.test(rawLabel);
         let isSup = /support/i.test(rawLabel);
-        if(!isRes && !isSup && lastPx !== null && !isNaN(lvl)){
-          isRes = lvl >= lastPx;
-          isSup = lvl < lastPx;
-        }
+        if(!isRes && !isSup && lastPx !== null && !isNaN(lvl)){ isRes = lvl >= lastPx; isSup = lvl < lastPx; }
         const col = isRes ? "#EF4444" : "#10B981";
         const tag = isRes ? "Résistance" : "Support";
-        const curCol = item.lineStyle && item.lineStyle.color;
-        if(curCol !== col || !rawLabel.includes(tag)){
+        if((item.lineStyle && item.lineStyle.color) !== col || !rawLabel.includes(tag)){
           changed = true;
           return Object.assign({}, item, {
             name: tag + " " + lvl.toFixed(2),
             lineStyle: Object.assign({}, item.lineStyle || {}, { color: col, width: 2, type: "dashed" }),
-            label: Object.assign({}, item.label || {}, {
-              show: true,
-              formatter: tag + " : " + lvl.toFixed(2) + " TND",
-              color: "#FFFFFF",
-              backgroundColor: col,
-              padding: 4,
-              borderRadius: 4
-            })
+            label: Object.assign({}, item.label || {}, { show: true, formatter: tag + " : " + lvl.toFixed(2) + " TND", color: "#FFFFFF", backgroundColor: col, padding: 4, borderRadius: 4 })
           });
         }
         return item;
       });
       return { markLine: { data: newData } };
     });
+    if(changed) inst.setOption({ series: patchSeries });
+  }
 
-    if(changed){
-      inst.setOption({ series: patchSeries });
+  // === 3. DEMARRAGE SUR DERNIERE SEANCE EXECUTEE + VERROUILLAGE DATE CONTRE LE RETOUR SUR 23/11/2026 ===
+  function getLastExecutedDates(){
+    const d = new Date();
+    const day = d.getDay(); // 0=Dim, 1=Lun, 6=Sam
+    if(day === 0) d.setDate(d.getDate() - 2);
+    else if(day === 6) d.setDate(d.getDate() - 1);
+    else if((d.getHours() * 60 + d.getMinutes()) < 510) d.setDate(day === 1 ? d.getDate() - 3 : d.getDate() - 1);
+    return {
+      fr: String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0") + "/" + d.getFullYear(),
+      iso: d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0")
+    };
+  }
+  function getTodayDates(){
+    const d = new Date();
+    return {
+      fr: String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0") + "/" + d.getFullYear(),
+      iso: d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0")
+    };
+  }
+
+  let lockedDateValue = null;
+  let initialSwitchTriggered = false;
+
+  function findDateInputNearCharger(){
+    const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
+    if(!loadBtn || !loadBtn.parentElement) return null;
+    const prev = loadBtn.previousElementSibling;
+    if(prev && (prev.tagName === "INPUT" || prev.tagName === "SELECT")) return { el: prev, btn: loadBtn };
+    const candidate = Array.from(loadBtn.parentElement.querySelectorAll("input, select")).find(el =>
+      el.type === "date" || /\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2}/.test(el.value || el.innerText || "")
+    );
+    return candidate ? { el: candidate, btn: loadBtn } : null;
+  }
+
+  function installValueGuard(el){
+    if(!el || el.__chValGuarded) return;
+    el.__chValGuarded = true;
+    const proto = el.tagName === "SELECT" ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+    const desc = Object.getOwnPropertyDescriptor(proto, "value");
+    if(desc && desc.set && desc.get){
+      Object.defineProperty(el, "value", {
+        get: function(){ return desc.get.call(this); },
+        set: function(newVal){
+          const today = getTodayDates();
+          const now = new Date();
+          const marketClosed = (now.getDay() === 0 || now.getDay() === 6 || (now.getHours() * 60 + now.getMinutes()) < 510);
+          // Bloquer toute reecriture automatique vers aujourd'hui (23/11/2026) quand la bourse est fermee ou qu'une date est verrouillee
+          if(lockedDateValue && (newVal === today.iso || newVal === today.fr) && lockedDateValue !== newVal){
+            return desc.set.call(this, lockedDateValue);
+          }
+          if(marketClosed && (newVal === today.iso || newVal === today.fr)){
+            const last = getLastExecutedDates();
+            const fallback = el.type === "date" ? last.iso : last.fr;
+            lockedDateValue = fallback;
+            return desc.set.call(this, fallback);
+          }
+          return desc.set.call(this, newVal);
+        }
+      });
     }
+    el.addEventListener("change", () => {
+      if(el.value) lockedDateValue = el.value;
+    }, true);
   }
 
-  // 3. Ouverture automatique de la derniere seance executee disponible hors seance en direct
-  let sessionChecked = false;
-  function parseFrDate(str){
-    const m = String(str || "").match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if(!m) return null;
-    return new Date(Number(m.at(3)), Number(m.at(2)) - 1, Number(m.at(1)));
-  }
-
-  function autoSelectLatestExecutedSession(){
-    if(sessionChecked) return;
+  function checkAndLoadLatestSession(){
     const pw = Array.from(document.querySelectorAll("input[type='password']")).filter(el => el.offsetParent !== null && el.offsetHeight > 0);
     if(pw.length > 0) return;
-    const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
-    if(!loadBtn) return;
 
-    const bodyTxt = document.body.innerText || "";
-    const noTicksYet = bodyTxt.includes("0 vagues") || bodyTxt.includes("TICKS TOTAUX\n0") || bodyTxt.includes("Aucune donnée") || bodyTxt.includes("Aucune séance");
+    const found = findDateInputNearCharger();
+    if(!found) return;
+    const el = found.el, btn = found.btn;
+    installValueGuard(el);
 
-    const dateSel = Array.from(document.querySelectorAll("select")).find(s =>
-      Array.from(s.options).some(o => /\d{2}\/\d{2}\/\d{4}/.test(o.textContent || o.value || ""))
-    );
-    if(dateSel && dateSel.options.length > 0){
-      const opts = Array.from(dateSel.options).filter(o => /\d{2}\/\d{2}\/\d{4}/.test(o.textContent || o.value || ""));
-      if(opts.length > 0){
-        opts.sort((a, b) => (parseFrDate(b.textContent || b.value) || 0) - (parseFrDate(a.textContent || a.value) || 0));
-        const latestOpt = opts.at(0);
-        if(latestOpt && (noTicksYet || dateSel.value !== latestOpt.value)){
-          sessionChecked = true;
-          dateSel.value = latestOpt.value;
-          dateSel.dispatchEvent(new Event("change", { bubbles: true }));
-          setTimeout(() => loadBtn.click(), 120);
-          return;
-        }
+    const today = getTodayDates();
+    const last = getLastExecutedDates();
+    const now = new Date();
+    const marketClosed = (now.getDay() === 0 || now.getDay() === 6 || (now.getHours() * 60 + now.getMinutes()) < 510);
+
+    if(!initialSwitchTriggered && marketClosed){
+      const target = el.type === "date" ? last.iso : last.fr;
+      lockedDateValue = target;
+      if(el.value === today.iso || el.value === today.fr || el.value !== target){
+        initialSwitchTriggered = true;
+        el.value = target;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        setTimeout(() => btn.click(), 180);
       }
     }
   }
 
   window.addEventListener("load", () => {
     ensureFloatingPencil();
-    setTimeout(autoSelectLatestExecutedSession, 900);
-    setTimeout(colorizeSupportsAndResistances, 1200);
+    setTimeout(checkAndLoadLatestSession, 500);
+    setTimeout(checkAndLoadLatestSession, 1300);
+    setTimeout(colorizeSupportsAndResistances, 1500);
   });
   new MutationObserver(() => {
-    if(!sessionChecked) setTimeout(autoSelectLatestExecutedSession, 500);
+    checkAndLoadLatestSession();
   }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
