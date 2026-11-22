@@ -2515,6 +2515,12 @@ def _extraire_mini_apercu(mid):
             return None
         fp = os.path.join(_CHAT_MEDIA_DIR, mid)
         if not os.path.isfile(fp):
+            tk_g, repo_g = _hf_data_cfg()
+            if tk_g and repo_g:
+                from huggingface_hub import hf_hub_download
+                dl = hf_hub_download(repo_id=repo_g, filename=f"chat_media/{mid}", repo_type="dataset", token=tk_g)
+                shutil.copyfile(dl, fp)
+        if not os.path.isfile(fp):
             return None
         if mid.endswith(".xlsx"):
             rows = _lire_xlsx_table(fp, max_rows=5)
@@ -2631,6 +2637,8 @@ def _rpc_data(payload_json: str):
                 mc = dict(m)
                 owner = str(mc.pop("owner_email", "") or "").strip().lower()
                 mc["can_manage"] = bool(is_admin or (owner and owner == req_email))
+                if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx")):
+                    mc["preview_rows"] = _extraire_mini_apercu(mc["media_id"])
                 out_msgs.append(mc)
             tk_s, repo_s = _hf_data_cfg()
             return json.dumps({
