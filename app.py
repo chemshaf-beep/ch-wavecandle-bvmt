@@ -2549,6 +2549,32 @@ def _extraire_mini_apercu(mid):
         print("[!] Erreur mini apercu:", e)
     return None
 
+def _generer_miniature_pdf_b64(mid):
+    try:
+        if not mid or not mid.endswith(".pdf"):
+            return ""
+        fp_pdf = os.path.join(_CHAT_MEDIA_DIR, mid)
+        fp_png = os.path.join(_CHAT_MEDIA_DIR, f"thumb_{mid}.png")
+        if not os.path.isfile(fp_png):
+            if not os.path.isfile(fp_pdf):
+                tk_g, repo_g = _hf_data_cfg()
+                if tk_g and repo_g:
+                    from huggingface_hub import hf_hub_download
+                    dl = hf_hub_download(repo_id=repo_g, filename=f"chat_media/{mid}", repo_type="dataset", token=tk_g)
+                    shutil.copyfile(dl, fp_pdf)
+            if os.path.isfile(fp_pdf):
+                import fitz
+                doc = fitz.open(fp_pdf)
+                if len(doc) > 0:
+                    pix = doc.load_page(0).get_pixmap(matrix=fitz.Matrix(0.75, 0.75), alpha=False)
+                    pix.save(fp_png)
+        if os.path.isfile(fp_png):
+            with open(fp_png, "rb") as f:
+                return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+    except Exception as e:
+        print("[!] Erreur miniature PDF:", e)
+    return ""
+
 def _rpc_data(payload_json: str):
     try:
         b = json.loads(payload_json)
@@ -2648,7 +2674,8 @@ def _rpc_data(payload_json: str):
                 mc = dict(m)
                 owner = str(mc.pop("owner_email", "") or "").strip().lower()
                 mc["can_manage"] = bool(is_admin or (owner and owner == req_email))
-                if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx") or mc["media_id"].endswith(".pdf")):
+                if mc.get("media_id") and mc["media_id"].endswith(".pdf"): mc["pdf_thumb"] = _generer_miniature_pdf_b64(mc["media_id"])
+                if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx")):
                     mc["preview_rows"] = _extraire_mini_apercu(mc["media_id"])
                 out_msgs.append(mc)
             tk_s, repo_s = _hf_data_cfg()
