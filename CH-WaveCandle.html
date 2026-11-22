@@ -5039,7 +5039,7 @@ window.__chInjecterIndicateurs = function() {
               const pImg = document.createElement("img");
               pImg.src = thUrl;
               pImg.alt = "Aperçu page 1 PDF";
-              pImg.style.cssText = "width:100%;max-height:220px;object-fit:contain;background:#FFFFFF;display:block;";
+              pImg.style.cssText = "width:auto !important;max-width:100% !important;height:auto !important;max-height:320px !important;object-fit:contain !important;background:#FFFFFF !important;display:block !important;margin:0 auto !important;";
               pWrap.appendChild(pImg);
             };
 
@@ -5161,6 +5161,17 @@ window.__chInjecterIndicateurs = function() {
   .ch-mini-tbl th { background: rgba(56,189,248,0.1); color: #FFD700; padding: 4px 7px; text-align: left; border-bottom: 1px solid #1E293B; }
   .ch-mini-tbl td { padding: 3px 7px; border-bottom: 1px solid rgba(51,65,85,0.45); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ch-pdf-thumb-body { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+  .ch-doc-thumb-card img {
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 360px !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto !important;
+    background: #FFFFFF !important;
+    border-radius: 0 !important;
+  }
   body.theme-clair .ch-doc-thumb-card, body.light-mode .ch-doc-thumb-card { width: 100%; box-sizing: border-box; background: #F8FAFC; border-color: #CBD5E1; }
   body.theme-clair .ch-doc-thumb-top, body.light-mode .ch-doc-thumb-top { background: #E2E8F0; border-bottom-color: #CBD5E1; color: #0F172A; }
   body.theme-clair .ch-mini-tbl, body.light-mode .ch-mini-tbl { color: #334155; }
