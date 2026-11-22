@@ -2825,7 +2825,7 @@ def _rpc_data(payload_json: str):
                 mc = dict(m)
                 owner = str(mc.pop("owner_email", "") or "").strip().lower()
                 mc["can_manage"] = bool(is_admin or (owner and owner == req_email))
-                if mc.get("media_id") and mc["media_id"].endswith(".pdf"): mc["has_pdf_thumb"] = True
+                if mc.get("media_id") and mc["media_id"].endswith(".pdf"): mc["has_pdf_thumb"] = True; mc["pdf_thumb"] = _generer_miniature_pdf_b64(mc["media_id"])
                 if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx")):
                     mc["preview_rows"] = _extraire_mini_apercu(mc["media_id"])
                 out_msgs.append(mc)

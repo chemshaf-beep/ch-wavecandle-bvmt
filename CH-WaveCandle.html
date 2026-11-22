@@ -5043,7 +5043,7 @@ window.__chInjecterIndicateurs = function() {
               pWrap.appendChild(pImg);
             };
 
-            if (_MEDIA_CACHE.has(m.media_id + "_thumb")) {
+            if (m.pdf_thumb) { _MEDIA_CACHE.set(m.media_id + "_thumb", m.pdf_thumb); } if (_MEDIA_CACHE.has(m.media_id + "_thumb")) {
               afficherImgPdf(_MEDIA_CACHE.get(m.media_id + "_thumb"));
             } else {
               core.rpc({ cmd: "chat_get_media", media_id: m.media_id }).then(r => {
