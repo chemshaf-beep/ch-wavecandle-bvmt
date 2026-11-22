@@ -985,7 +985,7 @@ body.theme-clair .statusbar {
 </style>
 
 <style id="ch-hand-cursor-css">
-body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] canvas { cursor: grab !important; } body.ch-mode-hand [_echarts_instance_]:active, body.ch-mode-hand [_echarts_instance_] canvas:active { cursor: grabbing !important; } body.ch-mode-draw [_echarts_instance_], body.ch-mode-draw [_echarts_instance_] canvas { cursor: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3czLm9yZyIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiNGQkJGMjQiIHN0cm9rZT0iIzBGMTcyQSIgc3Ryb2tlLXdpZHRoPSIxLjYiIGQ9Ik0zIDE3LjI1VjIxaDMuNzVMMTcuODEgOS45NGwtMy43NS0zLjc1TDMgMTcuMjV6TTIwLjcxIDcuMDRhMSAxIDAgMCAwIDAtMS40MmwtMi4zNC0yLjM0YTEgMSAwIDAgMC0xLjQyIDBsLTEuODMgMS44MyAzLjc1IDMuNzUgMS44NC0xLjgyeiIvPjwvc3ZnPg==') 2 22, auto !important; }
+body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] canvas { cursor: grab !important; } body.ch-mode-hand [_echarts_instance_]:active, body.ch-mode-hand [_echarts_instance_] canvas:active { cursor: grabbing !important; } html body.ch-mode-draw [_echarts_instance_], html body.ch-mode-draw [_echarts_instance_] * { cursor: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3czLm9yZyIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiNGQkJGMjQiIHN0cm9rZT0iIzBGMTcyQSIgc3Ryb2tlLXdpZHRoPSIxLjYiIGQ9Ik0zIDE3LjI1VjIxaDMuNzVMMTcuODEgOS45NGwtMy43NS0zLjc1TDMgMTcuMjV6TTIwLjcxIDcuMDRhMSAxIDAgMCAwIDAtMS40MmwtMi4zNC0yLjM0YTEgMSAwIDAgMC0xLjQyIDBsLTEuODMgMS44MyAzLjc1IDMuNzUgMS44NC0xLjgyeiIvPjwvc3ZnPg==') 2 22, auto !important; }
 </style>
 </head>
 <body>
@@ -6019,6 +6019,95 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }
   window.addEventListener("load", () => { boot(); setTimeout(boot, 600); });
   new MutationObserver(boot).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+})();
+</script>
+<script id="ch-last-session-and-pencil">
+(function(){
+  // A. Verrouillage absolu du curseur crayon sur <canvas> pendant le dessin
+  const origCursorDesc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, "cursor");
+  if(origCursorDesc && origCursorDesc.set && !CSSStyleDeclaration.prototype.__chCursorPatched){
+    CSSStyleDeclaration.prototype.__chCursorPatched = true;
+    Object.defineProperty(CSSStyleDeclaration.prototype, "cursor", {
+      get: function(){ return origCursorDesc.get.call(this); },
+      set: function(val){
+        if(document.body && document.body.classList.contains("ch-mode-draw") && val !== "grab" && val !== "grabbing" && !String(val).includes("data:image/svg+xml")){
+          return;
+        }
+        return origCursorDesc.set.call(this, val);
+      }
+    });
+  }
+
+  // B. Ouverture automatique de la derniere seance disponible hors seance en direct
+  let sessionChecked = false;
+  function parseFrDate(str){
+    const m = String(str || "").match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if(!m) return null;
+    return new Date(Number(m.at(3)), Number(m.at(2)) - 1, Number(m.at(1)));
+  }
+
+  function autoSelectLatestExecutedSession(){
+    if(sessionChecked) return;
+    const pw = Array.from(document.querySelectorAll("input[type='password']")).filter(el => el.offsetParent !== null && el.offsetHeight > 0);
+    if(pw.length > 0) return;
+
+    const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
+    if(!loadBtn) return;
+
+    const bodyTxt = document.body.innerText || "";
+    const noTicksYet = bodyTxt.includes("0 vagues") || bodyTxt.includes("TICKS TOTAUX\n0") || bodyTxt.includes("Aucune donnée") || bodyTxt.includes("Aucune séance");
+
+    // 1. Cas ou la date est un <select> d'historique
+    const dateSel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /\d{2}\/\d{2}\/\d{4}/.test(o.textContent || o.value || ""))
+    );
+    if(dateSel && dateSel.options.length > 0){
+      const opts = Array.from(dateSel.options).filter(o => /\d{2}\/\d{2}\/\d{4}/.test(o.textContent || o.value || ""));
+      if(opts.length > 0){
+        opts.sort((a, b) => (parseFrDate(b.textContent || b.value) || 0) - (parseFrDate(a.textContent || a.value) || 0));
+        const latestOpt = opts.at(0);
+        if(latestOpt && (noTicksYet || dateSel.value !== latestOpt.value)){
+          sessionChecked = true;
+          dateSel.value = latestOpt.value;
+          dateSel.dispatchEvent(new Event("change", { bubbles: true }));
+          setTimeout(() => loadBtn.click(), 120);
+          return;
+        }
+      }
+    }
+
+    // 2. Cas ou la date est un <input type="date"> ou texte DD/MM/YYYY hors jour de bourse (ex: week-end)
+    const dateInp = Array.from(document.querySelectorAll("input")).find(i => i.type === "date" || /\d{2}\/\d{2}\/\d{4}/.test(i.value || ""));
+    if(dateInp && noTicksYet){
+      const now = new Date();
+      const day = now.getDay(); // 0 = Dimanche, 6 = Samedi
+      let lastTrading = new Date(now);
+      if(day === 0) lastTrading.setDate(now.getDate() - 2);
+      else if(day === 6) lastTrading.setDate(now.getDate() - 1);
+      else if(now.getHours() < 9) lastTrading.setDate(day === 1 ? now.getDate() - 3 : now.getDate() - 1);
+
+      const dd = String(lastTrading.getDate()).padStart(2, "0");
+      const mm = String(lastTrading.getMonth() + 1).padStart(2, "0");
+      const yyyy = lastTrading.getFullYear();
+      const targetVal = dateInp.type === "date" ? (yyyy + "-" + mm + "-" + dd) : (dd + "/" + mm + "/" + yyyy);
+
+      if(dateInp.value !== targetVal){
+        sessionChecked = true;
+        dateInp.value = targetVal;
+        dateInp.dispatchEvent(new Event("input", { bubbles: true }));
+        dateInp.dispatchEvent(new Event("change", { bubbles: true }));
+        setTimeout(() => loadBtn.click(), 120);
+      }
+    }
+  }
+
+  window.addEventListener("load", () => {
+    setTimeout(autoSelectLatestExecutedSession, 900);
+    setTimeout(autoSelectLatestExecutedSession, 2000);
+  });
+  new MutationObserver(() => {
+    if(!sessionChecked) setTimeout(autoSelectLatestExecutedSession, 500);
+  }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
