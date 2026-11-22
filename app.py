@@ -2410,30 +2410,49 @@ def _charger_messages_chat():
         pass
     return []
 
+_CHAT_SYNC_TIMER = None
+_CHAT_SYNC_LOCK = threading.Lock()
+_ADMIN_EMAILS = {"chemshaf@gmail.com"}
+
 def _sauver_messages_chat(msgs):
+    global _CHAT_SYNC_TIMER
     try:
         tmp = _CHAT_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(msgs[-500:], f, ensure_ascii=False, indent=2)
+            json.dump(msgs[-1000:], f, ensure_ascii=False, indent=2)
         os.replace(tmp, _CHAT_FILE)
     except Exception:
         pass
-    _push_fichier_gh("chat_messages.json", _CHAT_FILE, "Sauvegarde forum communautaire")
+    # Regrouper les commits HF Hub toutes les 12 secondes pour éviter tout rate-limit API
+    with _CHAT_SYNC_LOCK:
+        if _CHAT_SYNC_TIMER is not None:
+            try:
+                _CHAT_SYNC_TIMER.cancel()
+            except Exception:
+                pass
+        _CHAT_SYNC_TIMER = threading.Timer(12.0, lambda: _push_fichier_gh("chat_messages.json", _CHAT_FILE, "Sync groupée forum communautaire"))
+        _CHAT_SYNC_TIMER.daemon = True
+        _CHAT_SYNC_TIMER.start()
 
-_LAST_GH_SYNC_STATUS = "En attente"
-
-def _enregistrer_media_direct(raw_url):
+def _enregistrer_media_direct(raw_url, orig_name=""):
     try:
         s = str(raw_url or "").strip()
-        if not s or len(s) > 2_500_000:
+        if not s or len(s) > 2_800_000:
             return ""
-        if "," in s:
-            b64_part = s.split(",", 1).pop()
-        else:
-            b64_part = s
+        header = s[:80].lower()
+        b64_part = s.split(",", 1).pop() if "," in s else s
         if not b64_part:
             return ""
-        ext = "jpg" if ("jpeg" in s[:40].lower() or "jpg" in s[:40].lower()) else "png"
+        if "pdf" in header or orig_name.lower().endswith(".pdf"):
+            ext = "pdf"
+        elif "csv" in header or orig_name.lower().endswith(".csv"):
+            ext = "csv"
+        elif "spreadsheet" in header or "excel" in header or orig_name.lower().endswith(".xlsx"):
+            ext = "xlsx"
+        elif "jpeg" in header or "jpg" in header:
+            ext = "jpg"
+        else:
+            ext = "png"
         mid = f"media_{int(time.time() * 1000)}_{os.urandom(3).hex()}.{ext}"
         fp = os.path.join(_CHAT_MEDIA_DIR, mid)
         with open(fp, "wb") as f:
@@ -2443,6 +2462,14 @@ def _enregistrer_media_direct(raw_url):
     except Exception as e:
         print("[!] Erreur enregistrement media chat:", e)
         return ""
+
+def _email_depuis_token(tk_val):
+    u = _TOKENS_ACTIFS.get(tk_val)
+    if isinstance(u, dict):
+        return str(u.get("email") or "").strip().lower()
+    if isinstance(u, str):
+        return u.strip().lower()
+    return ""
 
 def _rpc_data(payload_json: str):
     try:
@@ -2480,7 +2507,7 @@ def _rpc_data(payload_json: str):
                     except Exception:
                         pass
             if os.path.isfile(fp_m):
-                mime = "image/jpeg" if mid.endswith(".jpg") else "image/png"
+                mime = "application/pdf" if mid.endswith(".pdf") else ("text/csv" if mid.endswith(".csv") else ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if mid.endswith(".xlsx") else ("image/jpeg" if mid.endswith(".jpg") else "image/png")))
                 with open(fp_m, "rb") as rf:
                     b64_out = base64.b64encode(rf.read()).decode("ascii")
                 return json.dumps({"status": 200, "data_url": f"data:{mime};base64,{b64_out}"})
@@ -2490,6 +2517,7 @@ def _rpc_data(payload_json: str):
             msg_id = str(b.get("id", "")).strip()
             nouv_txt = str(b.get("text", "")).strip()
             nouv_sent = str(b.get("sentiment", "")).strip().upper()
+            req_email = _email_depuis_token(tk)
             if not msg_id or not nouv_txt or len(nouv_txt) > 1500:
                 return json.dumps({"status": 400, "err": "Texte invalide"})
             with _CHAT_LOCK:
@@ -2497,6 +2525,9 @@ def _rpc_data(payload_json: str):
                 trouve = False
                 for m in msgs:
                     if str(m.get("id")) == msg_id:
+                        owner = str(m.get("owner_email") or "").strip().lower()
+                        if owner and req_email != owner and req_email not in _ADMIN_EMAILS:
+                            return json.dumps({"status": 403, "err": "Non autorisé à modifier ce message"})
                         m["text"] = nouv_txt
                         if nouv_sent in ("HAUSSIER", "BAISSIER", "NEUTRE"):
                             m["sentiment"] = nouv_sent
@@ -2508,10 +2539,46 @@ def _rpc_data(payload_json: str):
                 _sauver_messages_chat(msgs)
             return json.dumps({"status": 200})
 
+        if cmd == "chat_delete":
+            msg_id = str(b.get("id", "")).strip()
+            req_email = _email_depuis_token(tk)
+            with _CHAT_LOCK:
+                msgs = _charger_messages_chat()
+                nouv_msgs = []
+                supprime = False
+                for m in msgs:
+                    if str(m.get("id")) == msg_id:
+                        owner = str(m.get("owner_email") or "").strip().lower()
+                        if owner and req_email != owner and req_email not in _ADMIN_EMAILS:
+                            return json.dumps({"status": 403, "err": "Suppression refusée"})
+                        supprime = True
+                        continue
+                    nouv_msgs.append(m)
+                if not supprime:
+                    return json.dumps({"status": 404, "err": "Message introuvable"})
+                _sauver_messages_chat(nouv_msgs)
+            return json.dumps({"status": 200})
+
         if cmd == "chat_list":
             salon = str(b.get("salon", "GENERAL")).strip().upper()
-            msgs = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
-            tk_s, repo_s = _hf_data_cfg(); return json.dumps({"status": 200, "messages": msgs[-120:], "sync_info": f"{repo_s or 'NON_CONFIG'} ({_LAST_GH_SYNC_STATUS})"})
+            limit = min(500, max(40, int(b.get("limit", 40))))
+            req_email = _email_depuis_token(tk)
+            is_admin = req_email in _ADMIN_EMAILS
+            all_salon = [m for m in _charger_messages_chat() if m.get("salon", "GENERAL") == salon]
+            out_msgs = []
+            for m in all_salon[-limit:]:
+                mc = dict(m)
+                owner = str(mc.pop("owner_email", "") or "").strip().lower()
+                mc["can_manage"] = bool(is_admin or (owner and owner == req_email))
+                out_msgs.append(mc)
+            tk_s, repo_s = _hf_data_cfg()
+            return json.dumps({
+                "status": 200,
+                "messages": out_msgs,
+                "total": len(all_salon),
+                "is_admin": is_admin,
+                "sync_info": f"{repo_s or 'NON_CONFIG'} ({_LAST_GH_SYNC_STATUS})"
+            })
         if cmd == "chat_set_pseudo":
             nouv_pseudo = re.sub(r"[^a-zA-Z0-9_\-\.]", "", str(b.get("pseudo", "")).strip())[:24]
             if len(nouv_pseudo) < 3:
@@ -2565,7 +2632,7 @@ def _rpc_data(payload_json: str):
                     "sentiment": sentiment,
                     "quote": quote,
                     "ticker_tag": ticker_tag,
-                    "media_id": _enregistrer_media_direct(b.get("media_data_url", "")) or str(b.get("media_id", "")).strip()[:80],
+                    "owner_email": _email_depuis_token(tk), "media_name": str(b.get("media_name", "")).strip()[:80], "media_id": _enregistrer_media_direct(b.get("media_data_url", ""), str(b.get("media_name", ""))) or str(b.get("media_id", "")).strip()[:80],
                     "text": texte,
                     "heure": datetime.datetime.now().strftime("%d/%m %H:%M")
                 }
