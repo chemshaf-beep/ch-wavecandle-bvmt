@@ -2825,7 +2825,7 @@ def _rpc_data(payload_json: str):
                 mc = dict(m)
                 owner = str(mc.pop("owner_email", "") or "").strip().lower()
                 mc["can_manage"] = bool(is_admin or (owner and owner == req_email))
-                if mc.get("media_id") and mc["media_id"].endswith(".pdf"): mc["has_pdf_thumb"] = True; mc["pdf_thumb"] = _generer_miniature_pdf_b64(mc["media_id"])
+                if mc.get("media_id") and mc["media_id"].endswith(".pdf"): mc["has_pdf_thumb"] = True; mc["pdf_thumb"] = _generer_miniature_pdf_b64(mc["media_id"]); mc["pdf_thumb"] = _generer_miniature_pdf_b64(mc["media_id"])
                 if not mc.get("preview_rows") and mc.get("media_id") and (mc["media_id"].endswith(".csv") or mc["media_id"].endswith(".xlsx")):
                     mc["preview_rows"] = _extraire_mini_apercu(mc["media_id"])
                 out_msgs.append(mc)
@@ -2890,7 +2890,7 @@ def _rpc_data(payload_json: str):
                     "sentiment": sentiment,
                     "quote": quote,
                     "ticker_tag": ticker_tag,
-                    "owner_email": _email_depuis_token(tk), "media_name": str(b.get("media_name", "")).strip()[:80], "media_id": (_mid_new := _enregistrer_media_direct(b.get("media_data_url", ""), str(b.get("media_name", ""))) or str(b.get("media_id", "")).strip()[:80]), "preview_rows": _extraire_mini_apercu(_mid_new),
+                    "owner_email": _email_depuis_token(tk), "media_name": str(b.get("media_name", "")).strip()[:80], "media_id": (_mid_new := _enregistrer_media_direct(b.get("media_data_url", ""), str(b.get("media_name", ""))) or str(b.get("media_id", "")).strip()[:80]), "preview_rows": (None if _mid_new.endswith(".pdf") else _extraire_mini_apercu(_mid_new)),
                     "text": texte,
                     "heure": datetime.datetime.now().strftime("%d/%m %H:%M")
                 }
