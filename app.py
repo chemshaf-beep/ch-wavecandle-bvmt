@@ -24,7 +24,7 @@ _last_tlm_ts = 0.0
 def _filtered_stdout_write(s):
     global _last_tlm_ts
     txt = str(s)
-    if "[NOYAU MASTER]" in txt or "Base de données RAM: OK" in txt:
+    if "NOYAU MASTER" in txt or "PRODUCTION_REEL" in txt or "Base de données RAM: OK" in txt:
         now_t = time.time() if "time" in globals() else 0.0
         if now_t > 0 and (now_t - _last_tlm_ts) < 60.0:
             return len(txt)
