@@ -1721,7 +1721,7 @@ function genererDataCamembert(st) {
 }
 
 
-let dessinsUtilisateur = [];
+let dessinsUtilisateur = []; try { Object.defineProperty(window, 'dessinsUtilisateur', { get: () => dessinsUtilisateur, set: v => { dessinsUtilisateur = Array.isArray(v) ? v : []; }, configurable: true }); } catch(e){}
 let dessinEnCours = null;
 
 function outilActif() {
