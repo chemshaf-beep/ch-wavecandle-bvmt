@@ -1734,31 +1734,42 @@ function construireElementsDessin() {
   const clair = estThemeClair();
   const tous = dessinEnCours ? dessinsUtilisateur.concat([dessinEnCours]) : dessinsUtilisateur;
   const elems = [];
+  const modeAjust = (outilActif() === 'AUCUN');
 
   tous.forEach((d, idx) => {
     if (!d) return;
 
-    // 1. CRAYON LIBRE (trace continu a main levee)
+    // 1. CRAYON LIBRE LISSE (spline smooth: 0.65)
     if (d.type === 'CRAYON_LIBRE' && Array.isArray(d.points) && d.points.length > 1) {
-      const pxPts = d.points
-        .map(pt => chart.convertToPixel({ seriesIndex: 0 }, [pt[0], pt[1]]))
-        .filter(p => Array.isArray(p) && !isNaN(p[0]) && !isNaN(p[1]));
+      const pxPts = [];
+      d.points.forEach(pt => {
+        const p = chart.convertToPixel({ seriesIndex: 0 }, [pt, pt]);
+        if (Array.isArray(p) && !isNaN(p) && !isNaN(p)) {
+          if (pxPts.length === 0 || Math.hypot(p - pxPts[pxPts.length - 1], p - pxPts[pxPts.length - 1]) >= 3) {
+            pxPts.push([p, p]);
+          }
+        }
+      });
       if (pxPts.length > 1) {
-        elems.push({
-          id: 'usr_draw_' + idx, type: 'group', silent: true, z: 112,
-          children: [
-            { type: 'polyline', shape: { points: pxPts, smooth: 0.25 }, style: { stroke: clair ? '#0284C7' : '#38BDF8', lineWidth: 2.4, fill: 'none' } }
-          ]
-        });
+        const colC = clair ? '#0284C7' : '#38BDF8';
+        const chC = [
+          { type: 'polyline', shape: { points: pxPts, smooth: 0.65 }, style: { stroke: colC, lineWidth: 2.6, fill: 'none', lineCap: 'round', lineJoin: 'round' } }
+        ];
+        if (modeAjust) {
+          const pDeb = pxPts, pFin = pxPts[pxPts.length - 1];
+          chC.push({ type: 'circle', shape: { cx: pDeb, cy: pDeb, r: 5 }, style: { fill: '#FFFFFF', stroke: colC, lineWidth: 2 } });
+          chC.push({ type: 'circle', shape: { cx: pFin, cy: pFin, r: 5 }, style: { fill: '#FFFFFF', stroke: colC, lineWidth: 2 } });
+        }
+        elems.push({ id: 'usr_draw_' + idx, type: 'group', silent: true, z: 112, children: chC });
       }
       return;
     }
 
     const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
     const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
-    if (!Array.isArray(p1) || !Array.isArray(p2) || isNaN(p1[0]) || isNaN(p1[1]) || isNaN(p2[0]) || isNaN(p2[1])) return;
+    if (!Array.isArray(p1) || !Array.isArray(p2) || isNaN(p1) || isNaN(p1) || isNaN(p2) || isNaN(p2)) return;
 
-    const x1 = p1[0], y1 = p1[1], x2 = p2[0], y2 = p2[1];
+    const x1 = p1, y1 = p1, x2 = p2, y2 = p2;
     const diffPrix = d.y2 - d.y1;
     const pctPrix = d.y1 !== 0 ? ((diffPrix / d.y1) * 100) : 0;
     const signe = diffPrix >= 0 ? '+' : '';
@@ -1772,40 +1783,49 @@ function construireElementsDessin() {
       elems.push({
         id: 'usr_draw_' + idx, type: 'group', silent: true, z: 110,
         children: [
-          { type: 'line', shape: { x1: rect.x, y1: y1, x2: rect.x + rect.width, y2: y1 }, style: { stroke: colLigne, lineWidth: 1.6, lineDash: [6, 4] } },
-          { type: 'text', style: { text: `d.type === "RESISTANCE" ? "Résistance" : "Support" : {d.y1.toFixed(2)} TND`, x: rect.x + 8, y: y1 - 6, fill: colLigne, font: 'bold 11px Consolas', textAlign: 'left', textVerticalAlign: 'bottom' } }
+          { type: 'line', shape: { x1: rect.x, y1: y1, x2: rect.x + rect.width, y2: y1 }, style: { stroke: colLigne, lineWidth: 1.6, lineDash: } },
+          { type: 'text', style: { text: (d.type === "RESISTANCE" ? "Résistance" : "Support") + " : " + Number(d.y1).toFixed(2) + " TND", x: rect.x + 8, y: y1 - 6, fill: colLigne, font: 'bold 11px Consolas', textAlign: 'left', textVerticalAlign: 'bottom' } }
         ]
       });
     } else if (d.type === 'RECTANGLE') {
       const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
-      elems.push({
-        id: 'usr_draw_' + idx, type: 'group', silent: true, z: 105,
-        children: [
-          { type: 'rect', shape: { x: rx, y: ry, width: rw, height: rh }, style: { fill: clair ? 'rgba(2,132,199,0.12)' : 'rgba(0,229,255,0.12)', stroke: clair ? '#0284C7' : '#00E5FF', lineWidth: 1.4 } },
-          { type: 'text', style: { text: `Math.max(d.y1, d.y2).toFixed(2) ↔ {Math.min(d.y1, d.y2).toFixed(2)} (signe{pctPrix.toFixed(2)}%)`, x: rx + rw / 2, y: ry - 5, fill: clair ? '#0369A1' : '#00E5FF', font: 'bold 10.5px Consolas', textAlign: 'center', textVerticalAlign: 'bottom' } }
-        ]
-      });
+      const chR = [
+        { type: 'rect', shape: { x: rx, y: ry, width: rw, height: rh }, style: { fill: clair ? 'rgba(2,132,199,0.12)' : 'rgba(0,229,255,0.12)', stroke: clair ? '#0284C7' : '#00E5FF', lineWidth: 1.4 } },
+        { type: 'text', style: { text: Math.max(d.y1, d.y2).toFixed(2) + " ↔ " + Math.min(d.y1, d.y2).toFixed(2) + " (" + signe + pctPrix.toFixed(2) + "%)", x: rx + rw / 2, y: ry - 5, fill: clair ? '#0369A1' : '#00E5FF', font: 'bold 10.5px Consolas', textAlign: 'center', textVerticalAlign: 'bottom' } }
+      ];
+      if (modeAjust) {
+        chR.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 5 }, style: { fill: '#FFFFFF', stroke: '#00E5FF', lineWidth: 2 } });
+        chR.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 5 }, style: { fill: '#FFFFFF', stroke: '#00E5FF', lineWidth: 2 } });
+      }
+      elems.push({ id: 'usr_draw_' + idx, type: 'group', silent: true, z: 105, children: chR });
     } else if (d.type === 'COURBE_LIBRE') {
-      // 2. COURBE LISSE (arc parabolique fleche)
+      // 2. COURBE A 3 POINTS AJUSTABLES (P1 depart, P_ctrl courbure, P2 arrivee)
       const dist = Math.hypot(x2 - x1, y2 - y1);
       if (dist < 4) return;
-      const midX = (x1 + x2) / 2;
-      const midY = (y1 + y2) / 2;
-      const bulge = Math.max(30, dist * 0.30);
-      const cpx = midX;
-      const cpy = midY + (diffPrix >= 0 ? bulge : -bulge);
+      if (d.cx === undefined || d.cy === undefined) {
+        d.cx = (d.x1 + d.x2) / 2;
+        const spanY = Math.abs(d.y2 - d.y1) || 0.25;
+        d.cy = ((d.y1 + d.y2) / 2) + (diffPrix >= 0 ? -spanY * 0.45 : spanY * 0.45);
+      }
+      const pCtrl = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
+      const cpx = Array.isArray(pCtrl) && !isNaN(pCtrl) ? pCtrl : (x1 + x2) / 2;
+      const cpy = Array.isArray(pCtrl) && !isNaN(pCtrl) ? pCtrl : (y1 + y2) / 2;
       const ang = Math.atan2(y2 - cpy, x2 - cpx);
       const aLen = 13, aW = 5.5;
-      elems.push({
-        id: 'usr_draw_' + idx, type: 'group', silent: true, z: 112,
-        children: [
-          { type: 'bezierCurve', shape: { x1, y1, x2, y2, cpx1: cpx, cpy1: cpy }, style: { stroke: colLigne, lineWidth: 2.4, fill: 'none' } },
-          { type: 'circle', shape: { cx: x1, cy: y1, r: 3.5 }, style: { fill: colLigne } },
-          { type: 'polygon', shape: { points: [[x2, y2], [x2 - Math.cos(ang)*aLen - Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen + Math.cos(ang)*aW], [x2 - Math.cos(ang)*aLen + Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen - Math.cos(ang)*aW]] }, style: { fill: colLigne } }
-        ]
-      });
+      const chB = [
+        { type: 'bezierCurve', shape: { x1, y1, x2, y2, cpx1: cpx, cpy1: cpy }, style: { stroke: colLigne, lineWidth: 2.5, fill: 'none' } },
+        { type: 'polygon', shape: { points: [[x2, y2], [x2 - Math.cos(ang)*aLen - Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen + Math.cos(ang)*aW], [x2 - Math.cos(ang)*aLen + Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen - Math.cos(ang)*aW]] }, style: { fill: colLigne } }
+      ];
+      if (modeAjust) {
+        chB.push({ type: 'line', shape: { x1: x1, y1: y1, x2: cpx, y2: cpy }, style: { stroke: colLigne, lineWidth: 1, lineDash: } });
+        chB.push({ type: 'line', shape: { x1: cpx, y1: cpy, x2: x2, y2: y2 }, style: { stroke: colLigne, lineWidth: 1, lineDash: } });
+        chB.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 5 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2 } });
+        chB.push({ type: 'circle', shape: { cx: cpx, cy: cpy, r: 5.5 }, style: { fill: '#FACC15', stroke: colLigne, lineWidth: 2 } });
+        chB.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 5 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2 } });
+      }
+      elems.push({ id: 'usr_draw_' + idx, type: 'group', silent: true, z: 112, children: chB });
     } else {
-      // 3. DROITE DE TENDANCE / MESURE : tete de fleche orientee + etiquette inclinee selon le meme angle
+      // 3. DROITE DE TENDANCE / MESURE : tete de fleche + etiquette inclinee + poignees d'ajustement en Main libre
       const estMesure = d.type === 'MESURE';
       const dx = x2 - x1, dy = y2 - y1;
       const dist = Math.hypot(dx, dy);
@@ -1824,8 +1844,8 @@ function construireElementsDessin() {
       const midY = (y1 + y2) / 2 + ny * 10;
 
       const children = [
-        { type: 'line', shape: { x1, y1, x2, y2 }, style: { stroke: colLigne, lineWidth: 2.2, lineDash: estMesure ? [4, 3] : [] } },
-        { type: 'circle', shape: { cx: x1, cy: y1, r: 3.5 }, style: { fill: colLigne } }
+        { type: 'line', shape: { x1, y1, x2, y2 }, style: { stroke: colLigne, lineWidth: 2.2, lineDash: estMesure ? : [] } },
+        { type: 'circle', shape: { cx: x1, cy: y1, r: modeAjust ? 5 : 3.5 }, style: { fill: modeAjust ? '#FFFFFF' : colLigne, stroke: colLigne, lineWidth: modeAjust ? 2 : 0 } }
       ];
       if (!estMesure && dist >= 8) {
         children.push({
@@ -1834,7 +1854,10 @@ function construireElementsDessin() {
           style: { fill: colLigne }
         });
       } else {
-        children.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 3.5 }, style: { fill: colLigne } });
+        children.push({ type: 'circle', shape: { cx: x2, cy: y2, r: modeAjust ? 5 : 3.5 }, style: { fill: modeAjust ? '#FFFFFF' : colLigne, stroke: colLigne, lineWidth: modeAjust ? 2 : 0 } });
+      }
+      if (modeAjust && !estMesure) {
+        children.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 5 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2 } });
       }
       children.push({
         type: 'text',
@@ -5701,7 +5724,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }
   }
   void 0;
-  window.addEventListener("load", () => { void 0; injectTopBarItems(); setTimeout(() => { void 0; injectTopBarItems(); }, 600); });
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500); void 0; injectTopBarItems(); setTimeout(() => { void 0; injectTopBarItems(); }, 600); });
   new MutationObserver(() => { void 0; injectTopBarItems(); }).observe(document.body, { childList: true, subtree: true });
 })();
 
@@ -5804,7 +5837,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     injectHelp();
     if(!checked && isLoggedIn()){ checked = true; try { if(!localStorage.getItem(KEY)) setTimeout(() => { step = 0; showStep(); }, 800); } catch(e){} }
   }
-  window.addEventListener("load", () => { ui(); check(); new MutationObserver(check).observe(document.body, { childList: true, subtree: true }); });
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500); ui(); check(); new MutationObserver(check).observe(document.body, { childList: true, subtree: true }); });
 })();
 
 </script>
@@ -6003,7 +6046,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       chatBtn.insertAdjacentElement("afterend", pb);
     }
   }
-  window.addEventListener("load", () => { inject(); setTimeout(inject, 600); });
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500); inject(); setTimeout(inject, 600); });
   new MutationObserver(inject).observe(document.body, { childList: true, subtree: true });
 })();
 
@@ -6144,7 +6197,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     hookModeSelectHorizonLock();
     applyCanvasCursor();
   }
-  window.addEventListener("load", () => { boot(); setTimeout(boot, 600); });
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500); boot(); setTimeout(boot, 600); });
   new MutationObserver(boot).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
 })();
 </script>
@@ -6281,7 +6344,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }
   }
 
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
   window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500);
     ensureFloatingPencil();
     setTimeout(checkAndLoadLatestSession, 500);
     setTimeout(checkAndLoadLatestSession, 1300);
@@ -6445,7 +6518,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     });
   }
 
-  window.addEventListener("load", () => { hookNativeEdit(); setTimeout(hookNativeEdit, 800); });
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500); hookNativeEdit(); setTimeout(hookNativeEdit, 800); });
   new MutationObserver(hookNativeEdit).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
@@ -6569,7 +6652,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     watchTickerChanges();
   }, 500);
 
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
   window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500);
     enforcePreMarketBlock();
     watchTickerChanges();
   });
@@ -6678,7 +6771,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }
   }
 
-  window.addEventListener("load", () => { bindEtiquettesCheckbox(); setTimeout(bindEtiquettesCheckbox, 500); });
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500); bindEtiquettesCheckbox(); setTimeout(bindEtiquettesCheckbox, 500); });
   new MutationObserver(bindEtiquettesCheckbox).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
@@ -6748,7 +6851,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }, true);
   }
 
-  window.addEventListener("load", () => { hookBtnChargerDate(); setTimeout(hookBtnChargerDate, 700); });
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+  window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500); hookBtnChargerDate(); setTimeout(hookBtnChargerDate, 700); });
   new MutationObserver(hookBtnChargerDate).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
@@ -6950,7 +7063,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     });
   }
 
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
   window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500);
     injectAxisExpandControl();
     bindNativeRedrawHooks();
     setTimeout(() => { injectAxisExpandControl(); bindNativeRedrawHooks(); }, 600);
@@ -7012,10 +7135,110 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     } catch(e){}
   }
 
+  function forceEtiquettesCheckedOnBoot(){
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.__chBootChecked){
+      chk.__chBootChecked = true;
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
   window.addEventListener("load", () => {
+    forceEtiquettesCheckedOnBoot();
+    setTimeout(forceEtiquettesCheckedOnBoot, 500);
     const sel = document.getElementById("selPosCamembert");
     if(sel) sel.addEventListener("change", () => setTimeout(applyPieClean, 25));
     setInterval(applyPieClean, 250);
+  });
+})();
+</script>
+<script id="ch-adjust-handles-interact">
+(function(){
+  let dragTarget = null; // { idx, pointKey: 'p1'|'p2'|'ctrl'|'all', startDataX, startDataY }
+
+  function bindHandleDragging(){
+    if(typeof chart === "undefined" || !chart || !chart.getZr) return;
+    const zr = chart.getZr();
+    if(!zr || zr.__chHandleDragBound) return;
+    zr.__chHandleDragBound = true;
+
+    zr.on("mousedown", (params) => {
+      if(typeof outilActif !== "function" || outilActif() !== "AUCUN") return;
+      if(!Array.isArray(dessinsUtilisateur) || dessinsUtilisateur.length === 0) return;
+
+      const mx = params.offsetX, my = params.offsetY;
+      const hitRadius = 11;
+
+      for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
+        const d = dessinsUtilisateur[i];
+        if(!d || d.type === "SUPPORT" || d.type === "RESISTANCE") continue;
+
+        if(d.type === "CRAYON_LIBRE" && Array.isArray(d.points) && d.points.length > 1){
+          const pt0 = chart.convertFromPixel({ seriesIndex: 0 }, [mx, my]);
+          for(let k = 0; k < d.points.length; k++){
+            const px = chart.convertToPixel({ seriesIndex: 0 }, [d.points[k], d.points[k]]);
+            if(Array.isArray(px) && Math.hypot(mx - px, my - px) <= hitRadius){
+              dragTarget = { idx: i, pointKey: "all", startDataX: pt0, startDataY: pt0, origPoints: d.points.map(p => [p, p]) };
+              return;
+            }
+          }
+          continue;
+        }
+
+        if(d.type === "COURBE_LIBRE" && d.cx !== undefined && d.cy !== undefined){
+          const pCtrl = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
+          if(Array.isArray(pCtrl) && Math.hypot(mx - pCtrl, my - pCtrl) <= hitRadius + 2){
+            dragTarget = { idx: i, pointKey: "ctrl" };
+            return;
+          }
+        }
+
+        const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
+        if(Array.isArray(p1) && Math.hypot(mx - p1, my - p1) <= hitRadius){
+          dragTarget = { idx: i, pointKey: "p1" };
+          return;
+        }
+
+        const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
+        if(Array.isArray(p2) && Math.hypot(mx - p2, my - p2) <= hitRadius){
+          dragTarget = { idx: i, pointKey: "p2" };
+          return;
+        }
+      }
+    });
+
+    zr.on("mousemove", (params) => {
+      if(!dragTarget) return;
+      const d = dessinsUtilisateur[dragTarget.idx];
+      if(!d) { dragTarget = null; return; }
+      const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
+      if(!Array.isArray(pt) || isNaN(pt) || isNaN(pt)) return;
+
+      if(dragTarget.pointKey === "p1"){
+        d.x1 = pt; d.y1 = pt;
+      } else if(dragTarget.pointKey === "p2"){
+        d.x2 = pt; d.y2 = pt;
+      } else if(dragTarget.pointKey === "ctrl"){
+        d.cx = pt; d.cy = pt;
+      } else if(dragTarget.pointKey === "all" && Array.isArray(dragTarget.origPoints)){
+        const dx = pt - dragTarget.startDataX;
+        const dy = pt - dragTarget.startDataY;
+        d.points = dragTarget.origPoints.map(op => [op + dx, op + dy]);
+      }
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+    });
+
+    zr.on("mouseup", () => {
+      if(dragTarget){
+        dragTarget = null;
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+      }
+    });
+  }
+
+  window.addEventListener("load", () => {
+    bindHandleDragging();
+    setTimeout(bindHandleDragging, 600);
   });
 })();
 </script>
