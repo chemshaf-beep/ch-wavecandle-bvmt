@@ -1697,17 +1697,17 @@ function construireElementsDessin() {
     const diffPrix = d.y2 - d.y1;
     const pctPrix = d.y1 !== 0 ? ((diffPrix / d.y1) * 100) : 0;
     const signe = diffPrix >= 0 ? '+' : '';
-    const colLigne = d.type === 'SUPPORT' ? (clair ? '#0284C7' : '#00E5FF')
+    const colLigne = d.type === 'SUPPORT' ? '#10B981' : d.type === 'RESISTANCE' ? '#EF4444'
                    : d.type === 'MESURE' ? (clair ? '#B45309' : '#FFD700')
                    : (diffPrix >= 0 ? (clair ? '#047857' : '#00FF66') : (clair ? '#B91C1C' : '#FF3B3B'));
 
-    if (d.type === 'SUPPORT') {
+    if (d.type === 'SUPPORT' || d.type === 'RESISTANCE') {
       const rect = chart.getModel().getComponent('grid', 0).coordinateSystem.getRect();
       elems.push({
         id: 'usr_draw_' + idx, type: 'group', silent: true, z: 110,
         children: [
           { type: 'line', shape: { x1: rect.x, y1: y1, x2: rect.x + rect.width, y2: y1 }, style: { stroke: colLigne, lineWidth: 1.6, lineDash: [6, 4] } },
-          { type: 'text', style: { text: `${d.y1.toFixed(2)} TND`, x: rect.x + 8, y: y1 - 6, fill: colLigne, font: 'bold 11px Consolas', textAlign: 'left', textVerticalAlign: 'bottom' } }
+          { type: 'text', style: { text: `${d.type === "RESISTANCE" ? "Résistance" : "Support"} : ${d.y1.toFixed(2)} TND`, x: rect.x + 8, y: y1 - 6, fill: colLigne, font: 'bold 11px Consolas', textAlign: 'left', textVerticalAlign: 'bottom' } }
         ]
       });
     } else if (d.type === 'RECTANGLE') {
@@ -2860,8 +2860,8 @@ zr.on('mousedown', params => {
   if (outil === 'AUCUN' || !globalData) return;
   const ptData = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
   if (!Array.isArray(ptData) || isNaN(ptData[0]) || isNaN(ptData[1])) return;
-  if (outil === 'SUPPORT') {
-    dessinsUtilisateur.push({ type: 'SUPPORT', x1: ptData[0], y1: ptData[1], x2: ptData[0], y2: ptData[1] });
+  if (outil === 'SUPPORT' || outil === 'RESISTANCE') {
+    dessinsUtilisateur.push({ type: outil, x1: ptData[0], y1: ptData[1], x2: ptData[0], y2: ptData[1] });
     rafraichirDessinsGraphique();
     return;
   }
@@ -6173,166 +6173,21 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
-<script id="ch-support-res-and-keep">
+
+
+<script id="ch-native-draw-manager">
 (function(){
-  let lastChosenLevelType = null; // "support" | "resistance" | null
-  let autoReloadCount = 0;
+  let selDrawIdx = -1;
+  let draggingDraw = false;
+  let dragLastData = null;
 
-  // 1. Diviser "Support / Résistance" en 2 options : "🟢 Support" (vert) et "🔴 Résistance" (rouge)
-  function splitSupportResistanceOptions(){
-    const sel = Array.from(document.querySelectorAll("select")).find(s =>
-      Array.from(s.options).some(o => /tendance|support|r[eé]sistance/i.test(o.textContent || o.value || ""))
-    );
-    if(!sel) return;
-
-    const mixedOpt = Array.from(sel.options).find(o => /support/i.test(o.textContent || "") && /r[eé]sistance/i.test(o.textContent || ""));
-    if(mixedOpt && !sel.querySelector("option[value='ch_opt_support']")){
-      const baseVal = mixedOpt.value;
-      const optSup = document.createElement("option");
-      optSup.value = "ch_opt_support";
-      optSup.dataset.origVal = baseVal;
-      optSup.textContent = "🟢 Support";
-
-      const optRes = document.createElement("option");
-      optRes.value = "ch_opt_resistance";
-      optRes.dataset.origVal = baseVal;
-      optRes.textContent = "🔴 Résistance";
-
-      mixedOpt.insertAdjacentElement("beforebegin", optSup);
-      mixedOpt.insertAdjacentElement("beforebegin", optRes);
-      mixedOpt.remove();
+  function redrawNative(){
+    if(typeof chart === "undefined" || !chart) return;
+    if(typeof rafraichirDessinsGraphique === "function"){
+      rafraichirDessinsGraphique();
+    } else if(typeof construireElementsDessin === "function"){
+      chart.setOption({ graphic: construireElementsDessin() }, { replaceMerge: ["graphic"] });
     }
-
-    if(!sel.__chSrSplitHooked){
-      sel.__chSrSplitHooked = true;
-      sel.addEventListener("change", function(){
-        const cur = sel.options.item(sel.selectedIndex);
-        if(!cur) return;
-        if(cur.value === "ch_opt_support" || /support/i.test(cur.textContent || "")){
-          lastChosenLevelType = "support";
-          if(cur.dataset.origVal){
-            // Propager la valeur native au moteur de dessin sans perdre l'affichage selectionne
-            sel.__chInternalMode = cur.dataset.origVal;
-          }
-        } else if(cur.value === "ch_opt_resistance" || /r[eé]sistance/i.test(cur.textContent || "")){
-          lastChosenLevelType = "resistance";
-          if(cur.dataset.origVal){
-            sel.__chInternalMode = cur.dataset.origVal;
-          }
-        } else if(/main/i.test(cur.textContent || "")){
-          // Conserver lastChosenLevelType quelques ms pour colorer le trace au moment du relachement
-          setTimeout(() => { lastChosenLevelType = null; }, 350);
-        }
-      }, true);
-    }
-  }
-
-  // Intercepte la lecture de sel.value par le moteur natif lorsque ch_opt_support ou ch_opt_resistance est choisi
-  const origSelValDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
-  if(origSelValDesc && origSelValDesc.get && !HTMLSelectElement.prototype.__chSrValPatched){
-    HTMLSelectElement.prototype.__chSrValPatched = true;
-    Object.defineProperty(HTMLSelectElement.prototype, "value", {
-      get: function(){
-        const v = origSelValDesc.get.call(this);
-        if(v === "ch_opt_support" || v === "ch_opt_resistance"){
-          const opt = this.options.item(this.selectedIndex);
-          return (opt && opt.dataset && opt.dataset.origVal) ? opt.dataset.origVal : "horizontal";
-        }
-        return v;
-      },
-      set: function(nv){
-        return origSelValDesc.set.call(this, nv);
-      }
-    });
-  }
-
-  // 2. Appliquer la couleur Verte (#10B981) pour Support et Rouge (#EF4444) pour Resistance sur les traces ECharts (graphic & markLine)
-  function isAlreadyColored(c){
-    if(!c) return false;
-    const up = String(c).toUpperCase();
-    return up === "#10B981" || up === "#EF4444";
-  }
-  function recolorNode(obj, colorHex){
-    if(!obj || typeof obj !== "object") return;
-    if(Array.isArray(obj)){ obj.forEach(x => recolorNode(x, colorHex)); return; }
-    if(obj.__chLockedColor) return;
-    let applied = false;
-    if(obj.style && typeof obj.style === "object"){
-      if(obj.style.stroke && !isAlreadyColored(obj.style.stroke)){ obj.style.stroke = colorHex; applied = true; }
-      if(obj.style.fill && obj.type === "text" && !isAlreadyColored(obj.style.fill)){ obj.style.fill = colorHex; applied = true; }
-    }
-    if(obj.lineStyle && typeof obj.lineStyle === "object" && obj.lineStyle.color && !isAlreadyColored(obj.lineStyle.color)){
-      obj.lineStyle.color = colorHex; applied = true;
-    }
-    if(obj.label && typeof obj.label === "object" && obj.label.color && !isAlreadyColored(obj.label.color)){
-      obj.label.color = colorHex; applied = true;
-    }
-    if(applied) obj.__chLockedColor = colorHex;
-    if(Array.isArray(obj.children)) obj.children.forEach(c => recolorNode(c, colorHex));
-    if(Array.isArray(obj.elements)) obj.elements.forEach(c => recolorNode(c, colorHex));
-  }
-
-  function hookEchartsColoring(){
-    if(!window.echarts) return;
-    document.querySelectorAll("[_echarts_instance_]").forEach(el => {
-      try {
-        const inst = window.echarts.getInstanceByDom(el);
-        if(!inst || inst.__chSrColorHooked) return;
-        inst.__chSrColorHooked = true;
-        const origSet = inst.setOption.bind(inst);
-        inst.setOption = function(opt, notMerge, lazyUpdate){
-          if(opt && lastChosenLevelType){
-            const col = lastChosenLevelType === "support" ? "#10B981" : "#EF4444";
-            if(opt.graphic) recolorNode(opt.graphic, col);
-            if(Array.isArray(opt.series)){
-              opt.series.forEach(s => {
-                if(s && s.markLine) recolorNode(s.markLine, col);
-              });
-            }
-          }
-          return origSet(opt, notMerge, lazyUpdate);
-        };
-      } catch(e){}
-    });
-  }
-
-  // 3. Empecher l'effacement automatique du graphique apres le demarrage (relance Charger si 0 ticks avant 08h30)
-  function guardChartAgainstEmptyOverwrite(){
-    const pw = Array.from(document.querySelectorAll("input[type='password']")).filter(el => el.offsetParent !== null && el.offsetHeight > 0);
-    if(pw.length > 0) return;
-
-    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
-    const isBefore0830 = (d.getDay() === 0 || d.getDay() === 6 || (d.getHours() * 60 + d.getMinutes()) < 510);
-    if(!isBefore0830) return;
-
-    const bodyTxt = document.body.innerText || "";
-    const wasWipedToZero = bodyTxt.includes("Séance du 23/11/2026 - 1 vagues") || /TICKS TOTAUX[\s\r\n]+0\b/i.test(bodyTxt);
-    if(wasWipedToZero && autoReloadCount < 3){
-      autoReloadCount++;
-      const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
-      if(loadBtn) setTimeout(() => loadBtn.click(), 200);
-    }
-  }
-
-  function tick(){
-    splitSupportResistanceOptions();
-    hookEchartsColoring();
-    guardChartAgainstEmptyOverwrite();
-  }
-
-  window.addEventListener("load", () => { tick(); setTimeout(tick, 800); setTimeout(tick, 1800); });
-  new MutationObserver(tick).observe(document.body, { childList: true, subtree: true });
-})();
-</script>
-<script id="ch-edit-drawings">
-(function(){
-  let selectedIdx = null; // { kind: "markLine"|"graphic", seriesIdx, dataIdx, price }
-  let isDraggingLevel = false;
-
-  function getInst(){
-    if(!window.echarts) return null;
-    const dom = document.querySelector("[_echarts_instance_]");
-    return dom ? window.echarts.getInstanceByDom(dom) : null;
   }
 
   function ensureEditBar(){
@@ -6342,143 +6197,101 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       bar.id = "chEditTraceBar";
       bar.style.cssText = "display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100240;background:#0F172A;color:#F8FAFC;border:1px solid #38BDF8;border-radius:10px;padding:6px 12px;box-shadow:0 8px 26px rgba(0,0,0,0.8);font-family:'Segoe UI',system-ui,sans-serif;font-size:11.5px;align-items:center;gap:8px;";
       bar.innerHTML = "<span id='chEditTraceLbl' style='font-weight:700;'>Tracé sélectionné</span>" +
-        "<span style='color:#94A3B8;font-size:10.5px;'>(Glissez sur le graphique pour déplacer)</span>" +
+        "<span style='color:#94A3B8;font-size:10.5px;'>(Glissez pour déplacer)</span>" +
         "<button id='chEditTraceDelBtn' type='button' style='background:#EF4444;color:#FFF;border:none;border-radius:6px;padding:4px 9px;font-weight:700;cursor:pointer;height:auto!important;'>🗑️ Supprimer</button>" +
         "<button id='chEditTraceCloseBtn' type='button' style='background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:6px;padding:4px 8px;font-weight:600;cursor:pointer;height:auto!important;'>✕</button>";
       document.body.appendChild(bar);
-      document.getElementById("chEditTraceCloseBtn").onclick = () => { selectedIdx = null; bar.style.display = "none"; };
-      document.getElementById("chEditTraceDelBtn").onclick = () => deleteSelectedTrace();
+      document.getElementById("chEditTraceCloseBtn").onclick = () => { selDrawIdx = -1; bar.style.display = "none"; };
+      document.getElementById("chEditTraceDelBtn").onclick = () => deleteSelected();
     }
     return bar;
   }
 
-  function deleteSelectedTrace(){
-    const inst = getInst();
-    if(!inst || !selectedIdx) return;
-    const opt = inst.getOption() || {};
-    if(selectedIdx.kind === "markLine" && Array.isArray(opt.series)){
-      const s = opt.series.at(selectedIdx.seriesIdx);
-      if(s && s.markLine && Array.isArray(s.markLine.data)){
-        const newData = s.markLine.data.filter((_, idx) => idx !== selectedIdx.dataIdx);
-        const patch = opt.series.map((_, i) => i === selectedIdx.seriesIdx ? { markLine: { data: newData } } : {});
-        inst.setOption({ series: patch });
-      }
-    } else if(selectedIdx.kind === "graphic" && Array.isArray(opt.graphic)){
-      const g0 = opt.graphic.at(0);
-      if(g0 && Array.isArray(g0.elements)){
-        const newEls = g0.elements.filter((_, idx) => idx !== selectedIdx.dataIdx);
-        inst.setOption({ graphic: [{ elements: newEls }] }, { replaceMerge: ["graphic"] });
-      }
+  function deleteSelected(){
+    if(typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
+    if(selDrawIdx >= 0 && selDrawIdx < dessinsUtilisateur.length){
+      dessinsUtilisateur.splice(selDrawIdx, 1);
+      selDrawIdx = -1;
+      ensureEditBar().style.display = "none";
+      redrawNative();
     }
-    selectedIdx = null;
-    ensureEditBar().style.display = "none";
   }
 
-  function findNearestTrace(inst, pxX, pxY){
-    const opt = inst.getOption() || {};
-    // 1. Chercher dans markLine (Support / Resistance horizontaux ou tendances)
-    if(Array.isArray(opt.series)){
-      for(let si = 0; si < opt.series.length; si++){
-        const s = opt.series.at(si);
-        if(!s || !s.markLine || !Array.isArray(s.markLine.data)) continue;
-        for(let di = 0; di < s.markLine.data.length; di++){
-          const item = s.markLine.data.at(di);
-          if(!item) continue;
-          if(!Array.isArray(item) && item.yAxis !== undefined){
-            const linePx = inst.convertToPixel({ seriesIndex: si }, [0, Number(item.yAxis)]);
-            if(linePx && Math.abs(linePx.at(1) - pxY) <= 10){
-              return { kind: "markLine", seriesIdx: si, dataIdx: di, price: Number(item.yAxis), isHline: true };
-            }
-          } else if(Array.isArray(item) && item.length >= 2 && item.at(0).coord && item.at(1).coord){
-            const p1 = inst.convertToPixel({ seriesIndex: si }, item.at(0).coord);
-            const p2 = inst.convertToPixel({ seriesIndex: si }, item.at(1).coord);
-            if(p1 && p2){
-              const dist = pointToSegDist(pxX, pxY, p1.at(0), p1.at(1), p2.at(0), p2.at(1));
-              if(dist <= 10) return { kind: "markLine", seriesIdx: si, dataIdx: di, isHline: false };
-            }
-          }
-        }
-      }
-    }
-    // 2. Chercher dans graphic (elements natifs)
-    if(Array.isArray(opt.graphic) && opt.graphic.at(0) && Array.isArray(opt.graphic.at(0).elements)){
-      const els = opt.graphic.at(0).elements;
-      for(let ei = els.length - 1; ei >= 0; ei--){
-        const el = els.at(ei);
-        if(!el || !el.shape) continue;
-        if(el.shape.y1 !== undefined && el.shape.y2 !== undefined && el.shape.x1 !== undefined && el.shape.x2 !== undefined){
-          const d = pointToSegDist(pxX, pxY, el.shape.x1, el.shape.y1, el.shape.x2, el.shape.y2);
-          if(d <= 10) return { kind: "graphic", dataIdx: ei, isHline: Math.abs(el.shape.y1 - el.shape.y2) < 2 };
-        }
-      }
-    }
-    return null;
-  }
-
-  function pointToSegDist(px, py, x1, y1, x2, y2){
+  function ptSegDist(px, py, x1, y1, x2, y2){
     const dx = x2 - x1, dy = y2 - y1;
     if(dx === 0 && dy === 0) return Math.hypot(px - x1, py - y1);
     const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)));
     return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
   }
 
-  function bindInteractiveEdit(){
-    const inst = getInst();
-    if(!inst || inst.__chEditBound) return;
-    inst.__chEditBound = true;
-    const zr = inst.getZr();
+  function findHitNative(px, py){
+    if(typeof chart === "undefined" || !chart || typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return -1;
+    const rect = chart.getModel().getComponent("grid", 0).coordinateSystem.getRect();
+    for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
+      const d = dessinsUtilisateur.at(i);
+      if(!d) continue;
+      const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
+      if(!Array.isArray(p1) || isNaN(p1.at(1))) continue;
+      if(d.type === "SUPPORT" || d.type === "RESISTANCE"){
+        if(px >= rect.x && px <= rect.x + rect.width && Math.abs(py - p1.at(1)) <= 10) return i;
+      } else {
+        const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
+        if(Array.isArray(p2) && !isNaN(p2.at(0)) && ptSegDist(px, py, p1.at(0), p1.at(1), p2.at(0), p2.at(1)) <= 10) return i;
+      }
+    }
+    return -1;
+  }
+
+  function hookNativeEdit(){
+    if(typeof chart === "undefined" || !chart || chart.__chNatEdit) return;
+    chart.__chNatEdit = true;
+    const zr = chart.getZr();
 
     zr.on("mousedown", function(params){
-      if(document.body && document.body.classList.contains("ch-mode-draw")) return;
-      const hit = findNearestTrace(inst, params.offsetX, params.offsetY);
-      if(hit){
-        selectedIdx = hit;
-        isDraggingLevel = !!hit.isHline;
+      const out = document.getElementById("selOutilDessin")?.value || "AUCUN";
+      if(out !== "AUCUN" && out !== "free_hand_nav") return;
+      const hit = findHitNative(params.offsetX, params.offsetY);
+      if(hit >= 0){
+        selDrawIdx = hit;
+        draggingDraw = true;
+        const c = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
+        dragLastData = Array.isArray(c) ? [c.at(0), c.at(1)] : null;
+        const d = dessinsUtilisateur.at(hit);
         const bar = ensureEditBar();
-        document.getElementById("chEditTraceLbl").textContent = hit.isHline ? ("Niveau : " + (hit.price ? hit.price.toFixed(2) + " TND" : "Support/Résistance")) : "Ligne de tendance";
+        const nom = d.type === "RESISTANCE" ? ("Résistance : " + Number(d.y1).toFixed(2) + " TND")
+                  : d.type === "SUPPORT" ? ("Support : " + Number(d.y1).toFixed(2) + " TND")
+                  : "Trait de tendance";
+        document.getElementById("chEditTraceLbl").textContent = nom;
         bar.style.display = "flex";
       }
     });
 
     zr.on("mousemove", function(params){
-      if(!isDraggingLevel || !selectedIdx) return;
-      const coord = inst.convertFromPixel({ seriesIndex: selectedIdx.seriesIdx || 0 }, [params.offsetX, params.offsetY]);
-      if(!coord || coord.length < 2) return;
-      const newPrice = Number(Number(coord.at(1)).toFixed(3));
-      const opt = inst.getOption() || {};
-      if(selectedIdx.kind === "markLine" && Array.isArray(opt.series)){
-        const s = opt.series.at(selectedIdx.seriesIdx);
-        if(s && s.markLine && Array.isArray(s.markLine.data)){
-          const item = s.markLine.data.at(selectedIdx.dataIdx);
-          if(item && !Array.isArray(item)){
-            item.yAxis = newPrice;
-            if(item.label && typeof item.label.formatter === "string"){
-              item.label.formatter = item.label.formatter.replace(/\d+[.,]\d+/, newPrice.toFixed(2));
-            }
-            const patch = opt.series.map((_, i) => i === selectedIdx.seriesIdx ? { markLine: { data: s.markLine.data } } : {});
-            inst.setOption({ series: patch });
-            document.getElementById("chEditTraceLbl").textContent = "Niveau : " + newPrice.toFixed(2) + " TND";
-          }
-        }
-      } else if(selectedIdx.kind === "graphic" && Array.isArray(opt.graphic)){
-        const g0 = opt.graphic.at(0);
-        if(g0 && Array.isArray(g0.elements)){
-          const el = g0.elements.at(selectedIdx.dataIdx);
-          if(el && el.shape){
-            el.shape.y1 = params.offsetY;
-            el.shape.y2 = params.offsetY;
-            inst.setOption({ graphic: [{ elements: g0.elements }] });
-          }
-        }
+      if(!draggingDraw || selDrawIdx < 0 || !Array.isArray(dessinsUtilisateur) || selDrawIdx >= dessinsUtilisateur.length) return;
+      const c = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
+      if(!Array.isArray(c) || c.length < 2) return;
+      const d = dessinsUtilisateur.at(selDrawIdx);
+      const curY = Number(c.at(1));
+      if(d.type === "SUPPORT" || d.type === "RESISTANCE"){
+        d.y1 = curY; d.y2 = curY;
+        const tag = d.type === "RESISTANCE" ? "Résistance" : "Support";
+        document.getElementById("chEditTraceLbl").textContent = tag + " : " + curY.toFixed(2) + " TND";
+      } else if(dragLastData){
+        const dy = curY - Number(dragLastData.at(1));
+        d.y1 = Number(d.y1) + dy; d.y2 = Number(d.y2) + dy;
+        dragLastData = [c.at(0), curY];
       }
+      redrawNative();
     });
 
-    zr.on("mouseup", function(){ isDraggingLevel = false; });
-    document.addEventListener("keydown", e => { if((e.key === "Delete" || e.key === "Backspace") && selectedIdx && document.activeElement.tagName !== "INPUT") deleteSelectedTrace(); });
+    zr.on("mouseup", function(){ draggingDraw = false; });
+    document.addEventListener("keydown", e => {
+      if((e.key === "Delete" || e.key === "Backspace") && selDrawIdx >= 0 && document.activeElement.tagName !== "INPUT") deleteSelected();
+    });
   }
 
-  window.addEventListener("load", () => { bindInteractiveEdit(); setTimeout(bindInteractiveEdit, 800); });
-  new MutationObserver(bindInteractiveEdit).observe(document.body, { childList: true, subtree: true });
+  window.addEventListener("load", () => { hookNativeEdit(); setTimeout(hookNativeEdit, 800); });
+  new MutationObserver(hookNativeEdit).observe(document.body, { childList: true, subtree: true });
 })();
 
 </script>
