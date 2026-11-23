@@ -6176,10 +6176,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 </script>
 
 
+
 <script id="ch-native-draw-manager">
 (function(){
   let selDrawIdx = -1;
   let draggingDraw = false;
+  let didDragMove = false;
   let dragLastData = null;
 
   function redrawNative(){
@@ -6189,6 +6191,14 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     } else if(typeof construireElementsDessin === "function"){
       chart.setOption({ graphic: construireElementsDessin() }, { replaceMerge: ["graphic"] });
     }
+  }
+
+  function hideEditBar(){
+    selDrawIdx = -1;
+    draggingDraw = false;
+    didDragMove = false;
+    const bar = document.getElementById("chEditTraceBar");
+    if(bar) bar.style.display = "none";
   }
 
   function ensureEditBar(){
@@ -6202,7 +6212,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         "<button id='chEditTraceDelBtn' type='button' style='background:#EF4444;color:#FFF;border:none;border-radius:6px;padding:4px 9px;font-weight:700;cursor:pointer;height:auto!important;'>🗑️ Supprimer</button>" +
         "<button id='chEditTraceCloseBtn' type='button' style='background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:6px;padding:4px 8px;font-weight:600;cursor:pointer;height:auto!important;'>✕</button>";
       document.body.appendChild(bar);
-      document.getElementById("chEditTraceCloseBtn").onclick = () => { selDrawIdx = -1; bar.style.display = "none"; };
+      document.getElementById("chEditTraceCloseBtn").onclick = () => hideEditBar();
       document.getElementById("chEditTraceDelBtn").onclick = () => deleteSelected();
     }
     return bar;
@@ -6212,8 +6222,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     if(typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
     if(selDrawIdx >= 0 && selDrawIdx < dessinsUtilisateur.length){
       dessinsUtilisateur.splice(selDrawIdx, 1);
-      selDrawIdx = -1;
-      ensureEditBar().style.display = "none";
+      hideEditBar();
       redrawNative();
     }
   }
@@ -6246,15 +6255,29 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   function hookNativeEdit(){
     if(typeof chart === "undefined" || !chart || chart.__chNatEdit) return;
     chart.__chNatEdit = true;
+
+    // Preserver automatiquement les traces utilisateur (Support/Resistance/Tendance) meme quand on deplace le camembert
+    const origSetOpt = chart.setOption.bind(chart);
+    chart.setOption = function(opt, opts){
+      if(opt && Array.isArray(opt.graphic) && typeof construireElementsDessin === "function" && Array.isArray(dessinsUtilisateur) && dessinsUtilisateur.length > 0){
+        const hasUsr = opt.graphic.some(g => g && String(g.id || "").startsWith("usr_draw_"));
+        if(!hasUsr){
+          opt = Object.assign({}, opt, { graphic: opt.graphic.concat(construireElementsDessin()) });
+        }
+      }
+      return origSetOpt(opt, opts);
+    };
+
     const zr = chart.getZr();
 
     zr.on("mousedown", function(params){
       const out = document.getElementById("selOutilDessin")?.value || "AUCUN";
-      if(out !== "AUCUN" && out !== "free_hand_nav") return;
+      if(out !== "AUCUN" && out !== "free_hand_nav"){ hideEditBar(); return; }
       const hit = findHitNative(params.offsetX, params.offsetY);
       if(hit >= 0){
         selDrawIdx = hit;
         draggingDraw = true;
+        didDragMove = false;
         const c = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
         dragLastData = Array.isArray(c) ? [c.at(0), c.at(1)] : null;
         const d = dessinsUtilisateur.at(hit);
@@ -6264,6 +6287,9 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
                   : "Trait de tendance";
         document.getElementById("chEditTraceLbl").textContent = nom;
         bar.style.display = "flex";
+      } else {
+        // Clic en dehors de tout trace -> deselectionner et fermer la barre
+        hideEditBar();
       }
     });
 
@@ -6271,6 +6297,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       if(!draggingDraw || selDrawIdx < 0 || !Array.isArray(dessinsUtilisateur) || selDrawIdx >= dessinsUtilisateur.length) return;
       const c = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
       if(!Array.isArray(c) || c.length < 2) return;
+      didDragMove = true;
       const d = dessinsUtilisateur.at(selDrawIdx);
       const curY = Number(c.at(1));
       if(d.type === "SUPPORT" || d.type === "RESISTANCE"){
@@ -6285,16 +6312,24 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       redrawNative();
     });
 
-    zr.on("mouseup", function(){ draggingDraw = false; });
+    zr.on("mouseup", function(){
+      if(draggingDraw && didDragMove){
+        // Une fois le deplacement termine au relachement, deselectionner et masquer la barre
+        hideEditBar();
+      } else {
+        draggingDraw = false;
+      }
+    });
+
     document.addEventListener("keydown", e => {
       if((e.key === "Delete" || e.key === "Backspace") && selDrawIdx >= 0 && document.activeElement.tagName !== "INPUT") deleteSelected();
+      if(e.key === "Escape") hideEditBar();
     });
   }
 
   window.addEventListener("load", () => { hookNativeEdit(); setTimeout(hookNativeEdit, 800); });
   new MutationObserver(hookNativeEdit).observe(document.body, { childList: true, subtree: true });
 })();
-
 </script>
 </body>
 </html>
