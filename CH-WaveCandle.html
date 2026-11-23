@@ -7435,5 +7435,148 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   });
 })();
 </script>
+<script id="ch-drawings-time-anchor">
+(function(){
+  function parseCandleEpochSec(b){
+    if(!b) return NaN;
+    if(typeof b.ts === "number" && b.ts > 1e8) return b.ts;
+    if(typeof b.timestamp === "number" && b.timestamp > 1e8) return b.timestamp > 1e11 ? Math.floor(b.timestamp / 1000) : b.timestamp;
+    const raw = String(b.date_iso || b.date || b.label || b.heure || "").trim();
+    // Format YYYY-MM-DD HH:MM ou DD/MM/YYYY HH:MM ou DD/MM HH:MM
+    const mIso = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+    if(mIso){
+      return Math.floor(Date.UTC(Number(mIso.at(1)), Number(mIso.at(2)) - 1, Number(mIso.at(3)), Number(mIso.at(4) || 12), Number(mIso.at(5) || 0)) / 1000);
+    }
+    const mFr = raw.match(/^(\d{2})\/(\d{2})(?:\/(\d{2,4}))?(?:\s+(\d{2}):(\d{2}))?/);
+    if(mFr){
+      const yRaw = mFr.at(3);
+      const yr = yRaw ? (yRaw.length === 2 ? 2000 + Number(yRaw) : Number(yRaw)) : new Date().getFullYear();
+      return Math.floor(Date.UTC(yr, Number(mFr.at(2)) - 1, Number(mFr.at(1)), Number(mFr.at(4) || 12), Number(mFr.at(5) || 0)) / 1000);
+    }
+    return NaN;
+  }
+
+  function xToEpoch(xVal){
+    const hVal = document.getElementById("selHorizon")?.value || "";
+    if(hVal !== "MULTI" || typeof globalData === "undefined" || !globalData || !Array.isArray(globalData.bougies) || globalData.bougies.length === 0){
+      return NaN;
+    }
+    const bougies = globalData.bougies;
+    const n = bougies.length;
+    const idx = Number(xVal);
+    if(isNaN(idx)) return NaN;
+
+    if(idx >= 0 && idx < n){
+      return parseCandleEpochSec(bougies.at(Math.round(idx)));
+    }
+    // Si le point est dans la zone future projetee (idx >= n)
+    const lastTs = parseCandleEpochSec(bougies.at(n - 1));
+    const prevTs = n > 1 ? parseCandleEpochSec(bougies.at(n - 2)) : (lastTs - 86400);
+    const step = (!isNaN(lastTs) && !isNaN(prevTs) && lastTs > prevTs) ? (lastTs - prevTs) : 86400;
+    return !isNaN(lastTs) ? Math.round(lastTs + (idx - (n - 1)) * step) : NaN;
+  }
+
+  function epochToX(targetTs, fallbackX){
+    const hVal = document.getElementById("selHorizon")?.value || "";
+    if(hVal !== "MULTI" || isNaN(targetTs) || typeof globalData === "undefined" || !globalData || !Array.isArray(globalData.bougies) || globalData.bougies.length === 0){
+      return fallbackX;
+    }
+    const bougies = globalData.bougies;
+    const n = bougies.length;
+    let bestIdx = 0;
+    let bestDiff = Infinity;
+    for(let i = 0; i < n; i++){
+      const ts = parseCandleEpochSec(bougies.at(i));
+      if(!isNaN(ts)){
+        const diff = Math.abs(ts - targetTs);
+        if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+      }
+    }
+    const lastTs = parseCandleEpochSec(bougies.at(n - 1));
+    if(!isNaN(lastTs) && targetTs > lastTs){
+      const prevTs = n > 1 ? parseCandleEpochSec(bougies.at(n - 2)) : (lastTs - 86400);
+      const step = (!isNaN(prevTs) && lastTs > prevTs) ? (lastTs - prevTs) : 86400;
+      return Math.round((n - 1) + (targetTs - lastTs) / step);
+    }
+    return bestIdx;
+  }
+
+  function stampDrawingsTime(){
+    if(typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
+    const hVal = document.getElementById("selHorizon")?.value || "";
+    if(hVal !== "MULTI") return;
+    const curGran = document.getElementById("selGranularite")?.value || "JOUR";
+
+    dessinsUtilisateur.forEach(d => {
+      if(!d) return;
+      // Si la granularite n'a pas change depuis la derniere empreinte, mettre a jour les timestamps depuis les x actuels
+      if(!d.__gran || d.__gran === curGran){
+        d.__gran = curGran;
+        if(d.x1 !== undefined){ const t = xToEpoch(d.x1); if(!isNaN(t)) d.t1 = t; }
+        if(d.x2 !== undefined){ const t = xToEpoch(d.x2); if(!isNaN(t)) d.t2 = t; }
+        if(d.cx !== undefined){ const t = xToEpoch(d.cx); if(!isNaN(t)) d.tc1 = t; }
+        if(d.cx2 !== undefined){ const t = xToEpoch(d.cx2); if(!isNaN(t)) d.tc2 = t; }
+        if(Array.isArray(d.points)){
+          d.tPoints = d.points.map(pt => [xToEpoch(pt.at(0)), pt.at(1)]);
+        }
+      }
+    });
+  }
+
+  function reprojectDrawingsToCurrentGranularity(){
+    if(typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
+    const hVal = document.getElementById("selHorizon")?.value || "";
+    if(hVal !== "MULTI") return;
+    const curGran = document.getElementById("selGranularite")?.value || "JOUR";
+
+    dessinsUtilisateur.forEach(d => {
+      if(!d) return;
+      if(d.__gran && d.__gran !== curGran){
+        if(typeof d.t1 === "number") d.x1 = epochToX(d.t1, d.x1);
+        if(typeof d.t2 === "number") d.x2 = epochToX(d.t2, d.x2);
+        if(typeof d.tc1 === "number") d.cx = epochToX(d.tc1, d.cx);
+        if(typeof d.tc2 === "number") d.cx2 = epochToX(d.tc2, d.cx2);
+        if(Array.isArray(d.tPoints)){
+          d.points = d.tPoints.map((tp, k) => {
+            const origPt = Array.isArray(d.points) ? d.points.at(k) : null;
+            const fbX = origPt ? origPt.at(0) : 0;
+            return [typeof tp.at(0) === "number" && !isNaN(tp.at(0)) ? epochToX(tp.at(0), fbX) : fbX, tp.at(1)];
+          });
+        }
+        d.__gran = curGran;
+      }
+    });
+  }
+
+  function hookTimeAnchor(){
+    if(typeof window.rafraichirDessinsGraphique === "function" && !window.rafraichirDessinsGraphique.__chTimeAnchorWrapped){
+      const origRef = window.rafraichirDessinsGraphique;
+      const wrapped = function(){
+        reprojectDrawingsToCurrentGranularity();
+        stampDrawingsTime();
+        return origRef.apply(this, arguments);
+      };
+      wrapped.__chTimeAnchorWrapped = true;
+      window.rafraichirDessinsGraphique = wrapped;
+    }
+    const selGran = document.getElementById("selGranularite");
+    if(selGran && !selGran.__chTimeGranBound){
+      selGran.__chTimeGranBound = true;
+      selGran.addEventListener("change", () => {
+        setTimeout(() => {
+          reprojectDrawingsToCurrentGranularity();
+          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+        }, 80);
+      });
+    }
+  }
+
+  window.addEventListener("load", () => {
+    hookTimeAnchor();
+    setTimeout(hookTimeAnchor, 400);
+    window.addEventListener("pointerup", () => setTimeout(stampDrawingsTime, 30));
+  });
+})();
+</script>
 </body>
 </html>
