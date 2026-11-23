@@ -1753,6 +1753,42 @@ def _fusionner_ram_vers_seance():
                 f_out.write("\n".join(lignes_old + ajouts) + "\n")
     except Exception:
         pass
+_LAST_GH_PRUNE_DAY = ""
+
+def _purger_anciens_fichiers_github(tk, repo, headers, max_jours_garder=5):
+    global _LAST_GH_PRUNE_DAY
+    tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+    now_tn = datetime.datetime.now(tz_tn)
+    jour_cle = now_tn.strftime("%Y%m%d")
+    if _LAST_GH_PRUNE_DAY == jour_cle or (now_tn.hour * 60 + now_tn.minute) < 905:
+        return
+    _LAST_GH_PRUNE_DAY = jour_cle
+    try:
+        dir_url = f"https://github.com{repo}/contents/Historique/bourse_historique_reel"
+        with urllib.request.urlopen(urllib.request.Request(dir_url, headers=headers), timeout=15) as r:
+            items = json.loads(r.read().decode("utf-8"))
+        if not isinstance(items, list):
+            return
+        seances_gh = []
+        for it in items:
+            nm = str(it.get("name", ""))
+            m_d = re.search(r"(\d{8})", nm)
+            if nm.endswith(".csv") and m_d and it.get("sha") and it.get("path"):
+                try:
+                    dt_s = datetime.datetime.strptime(m_d.group(1), "%d%m%Y")
+                    seances_gh.append((dt_s, it["path"], it["sha"]))
+                except Exception:
+                    pass
+        seances_gh.sort(key=lambda x: x, reverse=True)
+        for _, old_path, old_sha in seances_gh[max_jours_garder:]:
+            del_url = f"https://github.com{repo}/contents/{old_path}"
+            body_del = json.dumps({"message": f"Nettoyage auto archive > {max_jours_garder}j : {old_path}", "sha": old_sha}).encode("utf-8")
+            req_del = urllib.request.Request(del_url, data=body_del, headers=headers, method="DELETE")
+            with urllib.request.urlopen(req_del, timeout=15):
+                pass
+            print(f"[🧹 GH-PRUNE] Ancien fichier supprime sur {repo} : {old_path}")
+    except Exception:
+        pass
 def sync_github_cloud():
     global _LAST_GH_SYNC
     tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
@@ -1785,6 +1821,7 @@ def sync_github_cloud():
         "User-Agent": "CH-WaveCandle-HFT",
         "Content-Type": "application/json"
     }
+    _purger_anciens_fichiers_github(tk, repo, headers, 5)
     for root, _, files in os.walk(_HIST_DIR):
         if "Backup" in root: continue
         for fn in files:
@@ -2186,6 +2223,7 @@ def _push_users_github():
         "User-Agent": "CH-WaveCandle-HFT",
         "Content-Type": "application/json"
     }
+    _purger_anciens_fichiers_github(tk, repo, headers, 5)
     try:
         sha = None
         try:
