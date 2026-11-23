@@ -2228,8 +2228,8 @@ function dessinerChandeliersMulti(data) {
         data: seriesData
       },
       {
-        id: 'pieCamembert', type: 'pie', radius: (document.getElementById("selPosCamembert")?.value === "MASQUE") ? [0, 0] :, label: { show: document.getElementById("selPosCamembert")?.value !== "MASQUE" }, z: 50, radius: ['0%', '22%'], center: Array.isArray(pieAuto.pos) ? pieAuto.pos : ['82%', '24%'], silent: true,
-        label: { position: 'inside', fontWeight: 'bold', fontFamily: 'Consolas', fontSize: 11, formatter: p => `${p.value.toLocaleString('fr-FR')}\nCMP:${p.data.cmp.toFixed(2)}` },
+        id: 'pieCamembert', type: 'pie', z: 50, radius: (document.getElementById('selPosCamembert')?.value === 'MASQUE' ? [0, 0] : ['0%', '22%']), center: Array.isArray(pieAuto.pos) ? pieAuto.pos : ['82%', '24%'], silent: true,
+        label: { show: document.getElementById('selPosCamembert')?.value !== 'MASQUE', position: 'inside', fontWeight: 'bold', fontFamily: 'Consolas', fontSize: 11, formatter: p => `${p.value.toLocaleString('fr-FR')}\nCMP:${p.data.cmp.toFixed(2)}` },
         data: genererDataCamembert(s)
       }
     ]
@@ -2536,8 +2536,8 @@ function dessinerGraphique(data) {
     xAxis: { type: 'value', min: 32400, max: 54000, interval: 3600, axisLine: { lineStyle: { color: '#333' } }, splitLine: { lineStyle: { color: '#1E1E1E' } }, axisLabel: { color: '#999', formatter: val => heureDepuisSec(val).slice(0,5) } },
     yAxis: { type: 'value', position: 'right', min: +(prixMin - margeY * 0.3).toFixed(2), max: +(prixMax + margeY).toFixed(2), axisLine: { lineStyle: { color: '#333' } }, splitLine: { lineStyle: { color: '#1E1E1E' } }, axisLabel: { color: '#999', formatter: val => val.toFixed(2) } },
     series: seriePrincipale.concat([{
-      id: 'pieCamembert', type: 'pie', radius: (document.getElementById("selPosCamembert")?.value === "MASQUE") ? [0, 0] :, label: { show: document.getElementById("selPosCamembert")?.value !== "MASQUE" }, z: 50, radius: ['0%', '22%'], center: pieAutoV.pos, silent: true,
-      label: { position: 'inside', fontWeight: 'bold', fontFamily: 'Consolas', fontSize: 11, formatter: p => `${p.value.toLocaleString('fr-FR')}\nCMP:${p.data.cmp.toFixed(2)}` },
+      id: 'pieCamembert', type: 'pie', z: 50, radius: (document.getElementById('selPosCamembert')?.value === 'MASQUE' ? [0, 0] : ['0%', '22%']), center: pieAutoV.pos, silent: true,
+      label: { show: document.getElementById('selPosCamembert')?.value !== 'MASQUE', position: 'inside', fontWeight: 'bold', fontFamily: 'Consolas', fontSize: 11, formatter: p => `${p.value.toLocaleString('fr-FR')}\nCMP:${p.data.cmp.toFixed(2)}` },
       data: genererDataCamembert(s)
     }])
   }, true);
