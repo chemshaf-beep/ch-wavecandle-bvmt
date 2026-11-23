@@ -6730,7 +6730,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const mm = String(curDate.getMonth() + 1).padStart(2, "0");
         const hh = String(Math.floor(curMin / 60)).padStart(2, "0");
         const mi = String(curMin % 60).padStart(2, "0");
-        labels.push(mDate ? `dd/{mm} hh:{mi}` : `hh:{mi}`);
+        labels.push(mDate ? (dd + "/" + mm + " " + hh + ":" + mi) : (hh + ":" + mi));
       } else {
         if(stepDays === 1){
           curDate = nextBusinessDay(curDate);
@@ -6740,7 +6740,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         }
         const dd = String(curDate.getDate()).padStart(2, "0");
         const mm = String(curDate.getMonth() + 1).padStart(2, "0");
-        labels.push(`dd/{mm}`);
+        labels.push(dd + "/" + mm);
       }
     }
     return labels;
@@ -6765,7 +6765,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const hVal = document.getElementById("selHorizon")?.value || "";
       const granVal = document.getElementById("selGranularite")?.value || "";
       const futRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
-      const yPadRatio = currentExpandMode === "FUTUR50" ? 0.14 : 0.06;
+      const yPadRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
 
       // 1. Calculer les bornes Y (prix) élargies (valable dans tous les modes)
       let minP = typeof y0.min === "number" ? y0.min : Infinity;
