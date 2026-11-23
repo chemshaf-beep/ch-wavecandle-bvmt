@@ -6565,5 +6565,50 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   window.addEventListener("load", keepReplayControlsVisibleInSingleSession);
 })();
 </script>
+<script id="ch-etiquettes-canvas-filter">
+(function(){
+  window.__CH_HIDE_CANDLE_LABELS = false;
+
+  // 1. Filtrer uniquement les etiquettes de volume/pourcentage des bougies & chandeliers sur le canvas ECharts
+  const origFillText = CanvasRenderingContext2D.prototype.fillText;
+  CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth){
+    if(window.__CH_HIDE_CANDLE_LABELS && this.canvas && this.canvas.closest && this.canvas.closest("[_echarts_instance_]")){
+      const s = String(text || "").trim();
+      // Masquer uniquement les volumes entiers (ex: "4 302", "312") et pourcentages (ex: "100%", "94%"), en conservant les heures ("09:00") et cours ("92.70")
+      if(/^(\d{1,3}(?:[\s\u00A0]\d{3})*|\d+)\s*%?$/.test(s) && !s.includes(":") && !s.includes(".")){
+        return;
+      }
+    }
+    return origFillText.apply(this, arguments);
+  };
+
+  function triggerInstantRedraw(){
+    if(typeof chart !== "undefined" && chart && typeof chart.resize === "function"){
+      chart.resize();
+    } else if(window.echarts){
+      document.querySelectorAll("[_echarts_instance_]").forEach(el => {
+        try { window.echarts.getInstanceByDom(el)?.resize(); } catch(e){}
+      });
+    }
+  }
+
+  function bindEtiquettesCheckbox(){
+    const cb = document.getElementById("chCandleLblCb");
+    if(!cb) return;
+    if(!cb.__chCanvasFilterBound){
+      cb.__chCanvasFilterBound = true;
+      cb.checked = true;
+      window.__CH_HIDE_CANDLE_LABELS = false;
+      cb.onchange = function(){
+        window.__CH_HIDE_CANDLE_LABELS = !cb.checked;
+        triggerInstantRedraw();
+      };
+    }
+  }
+
+  window.addEventListener("load", () => { bindEtiquettesCheckbox(); setTimeout(bindEtiquettesCheckbox, 500); });
+  new MutationObserver(bindEtiquettesCheckbox).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
