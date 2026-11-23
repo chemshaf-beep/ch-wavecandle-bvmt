@@ -1711,6 +1711,14 @@ def sync_github_cloud():
     if (time.time() - _LAST_GH_SYNC) < 120:
         return
     _LAST_GH_SYNC = time.time()
+    _tz_tn_sync = datetime.timezone(datetime.timedelta(hours=1))
+    _now_tn_sync = datetime.datetime.now(_tz_tn_sync)
+    if _now_tn_sync.weekday() < 5 and (_now_tn_sync.hour * 60 + _now_tn_sync.minute) >= 510:
+        try:
+            if os.path.isfile(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 250:
+                shutil.copy2(FICHIER_HISTO_RAMDISK, FICHIER_HISTO_SEANCE)
+        except Exception:
+            pass
     date_jour = datetime.datetime.now().strftime("%d%m%Y")
     headers = {
         "Authorization": f"Bearer {tk}",
@@ -1887,6 +1895,12 @@ def lancer_collecteur_bvmt():
         FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_simulation_{DATE_JOUR_STR}.csv")
         FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_simulation_{DATE_JOUR_STR}.json")
 
+    if not os.path.exists(FICHIER_HISTO_RAMDISK) and os.path.isfile(FICHIER_HISTO_SEANCE) and os.path.getsize(FICHIER_HISTO_SEANCE) > 250:
+        try:
+            shutil.copy2(FICHIER_HISTO_SEANCE, FICHIER_HISTO_RAMDISK)
+            print(f"[♻️ REPRISE SEANCE] Tampon RAM amorcé depuis {os.path.basename(FICHIER_HISTO_SEANCE)} ({os.path.getsize(FICHIER_HISTO_SEANCE)} octets).")
+        except Exception as _e_rep:
+            print(f"[!] Erreur amorce RAM : {_e_rep}")
     if not os.path.exists(FICHIER_HISTO_RAMDISK) and (est_jour_ouvre_demarrage or not MODE_PRODUCTION):
         executer_purge_et_reinitialisation_seance_a_chaud(date_instant_pc)
 
