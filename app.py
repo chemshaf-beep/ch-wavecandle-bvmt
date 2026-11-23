@@ -97,8 +97,6 @@ FICHIER_HISTO_SEANCE = os.path.join(REPERTOIRE_HISTO_REEL, f"{PREFIXE_LOG}{DATE_
 if MODE_PRODUCTION:
     # Ingestion unifiée vers le répertoire Synthese_cloture
     FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_reel_{DATE_JOUR_STR}.csv")
-            try: threading.Thread(target=sync_github_cloud, daemon=True).start() # cloture
-            try: threading.Thread(target=sync_github_cloud, daemon=True).start() # cloture
     FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_reel_{DATE_JOUR_STR}.json")
 else:
     FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_simulation_{DATE_JOUR_STR}.csv")
@@ -1989,8 +1987,6 @@ def lancer_collecteur_bvmt():
     
     if MODE_PRODUCTION:
         FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_reel_{DATE_JOUR_STR}.csv")
-            try: threading.Thread(target=sync_github_cloud, daemon=True).start() # cloture
-            try: threading.Thread(target=sync_github_cloud, daemon=True).start() # cloture
         FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_reel_{DATE_JOUR_STR}.json")
     else:
         FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_simulation_{DATE_JOUR_STR}.csv")
@@ -2068,8 +2064,6 @@ def lancer_collecteur_bvmt():
                 
                 if MODE_PRODUCTION:
                     FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_reel_{DATE_JOUR_STR}.csv")
-            try: threading.Thread(target=sync_github_cloud, daemon=True).start() # cloture
-            try: threading.Thread(target=sync_github_cloud, daemon=True).start() # cloture
                     FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_reel_{DATE_JOUR_STR}.json")
                 else:
                     FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_simulation_{DATE_JOUR_STR}.csv")
