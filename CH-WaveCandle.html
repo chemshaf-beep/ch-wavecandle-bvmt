@@ -2879,7 +2879,7 @@ document.getElementById('btnDossierRacine').onclick = async () => {
     try { dirHandleLive = await rootHandle.getDirectoryHandle('Cache_Live'); } catch (e) { dirHandleLive = null; }
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
-      document.getElementById('selHorizon').value = 'UNIQUE';
+      const _savedH = localStorage.getItem('ch_pref_horizon'); if (_savedH === 'MULTI') { document.getElementById('selHorizon').value = 'MULTI'; chargerMultiSeances(); return; } document.getElementById('selHorizon').value = 'UNIQUE';
       chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (err) {
@@ -3394,7 +3394,7 @@ async function demarrageAutomatiqueHttp() {
 
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
-      document.getElementById('selHorizon').value = 'UNIQUE';
+      const _savedH = localStorage.getItem('ch_pref_horizon'); if (_savedH === 'MULTI') { document.getElementById('selHorizon').value = 'MULTI'; chargerMultiSeances(); return; } document.getElementById('selHorizon').value = 'UNIQUE';
       chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (e) { document.getElementById('statusText').style.color = '#FF3B3B'; document.getElementById('statusText').innerText = 'ERREUR AUTO : ' + e.message; }
@@ -7288,29 +7288,39 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   });
 })();
 </script>
+
 <script id="ch-pie-visibility-clean">
 (function(){
-  function hookNativePieBuilder(){
+  function hookNativePieParts(){
+    if(typeof window.construirePartsAgressivite === "function" && !window.construirePartsAgressivite.__chMaskWrapped){
+      const origParts = window.construirePartsAgressivite;
+      const wrapped = function(){
+        const sel = document.getElementById("selPosCamembert");
+        if(sel && sel.value === "MASQUE") return [];
+        return origParts.apply(this, arguments);
+      };
+      wrapped.__chMaskWrapped = true;
+      window.construirePartsAgressivite = wrapped;
+    }
     if(typeof window.creerElementAgressivite === "function" && !window.creerElementAgressivite.__chMaskWrapped){
       const origPieEl = window.creerElementAgressivite;
-      const wrapped = function(){
+      const wrappedEl = function(){
         const sel = document.getElementById("selPosCamembert");
         if(sel && sel.value === "MASQUE") return null;
         return origPieEl.apply(this, arguments);
       };
-      wrapped.__chMaskWrapped = true;
-      window.creerElementAgressivite = wrapped;
+      wrappedEl.__chMaskWrapped = true;
+      window.creerElementAgressivite = wrappedEl;
     }
   }
 
-  function applyPieNoFlash(){
-    hookNativePieBuilder();
+  function applyPieInstant(){
+    hookNativePieParts();
     if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
     const sel = document.getElementById("selPosCamembert");
     const hidePie = sel ? (sel.value === "MASQUE") : false;
     try {
       const opt = chart.getOption();
-      // Masquer uniquement le titre redondant
       if(Array.isArray(opt.title) && opt.title.length > 0){
         const cleanedTitles = opt.title.map(t => {
           const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
@@ -7321,7 +7331,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         });
         chart.setOption({ title: cleanedTitles });
       }
-      // Masquer uniquement les elements graphic du camembert (sans toucher aux series chandeliers/vagues !)
       if(Array.isArray(opt.graphic)){
         const toggleEl = (el) => {
           if(!el) return el;
@@ -7337,30 +7346,68 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     } catch(e){}
   }
 
+  function triggerImmediateRedraw(){
+    hookNativePieParts();
+    if(typeof globalData !== "undefined" && globalData){
+      const hv = document.getElementById("selHorizon")?.value || "";
+      if(hv === "MULTI" && typeof dessinerChandeliersMulti === "function") dessinerChandeliersMulti(globalData);
+      else if(typeof dessinerGraphique === "function") dessinerGraphique(globalData);
+    }
+    setTimeout(applyPieInstant, 10);
+  }
+
   window.addEventListener("load", () => {
-    hookNativePieBuilder();
+    hookNativePieParts();
     const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
     if(chk && !chk.checked){ chk.checked = true; chk.dispatchEvent(new Event("change", { bubbles: true })); }
 
-    // Memoriser l'horizon choisi pour restaurer directement le bon mode des l'ouverture
     const selH = document.getElementById("selHorizon");
     if(selH){
+      const prefH = localStorage.getItem("ch_pref_horizon");
+      if(prefH && prefH !== selH.value && Array.from(selH.options).some(o => o.value === prefH)){
+        selH.value = prefH;
+        setTimeout(() => selH.dispatchEvent(new Event("change")), 120);
+      }
       selH.addEventListener("change", () => { try { localStorage.setItem("ch_pref_horizon", selH.value); } catch(e){} });
     }
 
     const selPie = document.getElementById("selPosCamembert");
     if(selPie){
-      selPie.addEventListener("change", () => {
-        hookNativePieBuilder();
-        if(typeof globalData !== "undefined" && globalData){
-          const hv = document.getElementById("selHorizon")?.value || "";
-          if(hv === "MULTI" && typeof dessinerChandeliersMulti === "function") dessinerChandeliersMulti(globalData);
-          else if(typeof dessinerGraphique === "function") dessinerGraphique(globalData);
-        }
-        setTimeout(applyPieNoFlash, 15);
-      });
+      selPie.addEventListener("change", triggerImmediateRedraw);
     }
-    setInterval(applyPieNoFlash, 300);
+    setInterval(applyPieInstant, 300);
+  });
+})();
+</script>
+<script id="ch-instant-multiseances">
+(function(){
+  const MULTI_MEM = {};
+
+  function getMultiCacheKey(){
+    const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
+    const gr = document.getElementById("selGranularite")?.value || "JOUR";
+    const fb = document.getElementById("selFiltreBlocs")?.value || "TOUS";
+    return `ch_multi_v1_\({tk}_\){gr}_\({fb}`; }  function installInstantMultiHook(){ if(typeof window.chargerMultiSeances === "function" && !window.chargerMultiSeances.__chInstantWrapped){ const origMulti = window.chargerMultiSeances; const wrappedMulti = async function(){ const key = getMultiCacheKey(); // 1. Affichage immediat en 0 ms depuis la RAM ou le stockage local si disponible let cachedObj = MULTI_MEM[key]; if(!cachedObj){ try { const raw = localStorage.getItem(key); if(raw) cachedObj = JSON.parse(raw); } catch(e){} } if(cachedObj && Array.isArray(cachedObj.bougies) && cachedObj.bougies.length > 0){ MULTI_MEM[key] = cachedObj; window.globalData = cachedObj; if(typeof dessinerChandeliersMulti === "function"){ dessinerChandeliersMulti(cachedObj); } const st = document.getElementById("statusText"); if(st) st.innerText = `Multi-Séances (\){cachedObj.date_deb || ""} → \({cachedObj.date_fin \vert{}\vert{} ""}) — \){cachedObj.bougies.length} chandeliers [Mémoire rapide]`;
+        }
+
+        // 2. Verification et mise a jour silencieuse en arriere-plan
+        const res = await origMulti.apply(this, arguments);
+        try {
+          if(typeof globalData !== "undefined" && globalData && Array.isArray(globalData.bougies) && globalData.bougies.length > 0){
+            MULTI_MEM[key] = globalData;
+            localStorage.setItem(key, JSON.stringify(globalData));
+          }
+        } catch(e){}
+        return res;
+      };
+      wrappedMulti.__chInstantWrapped = true;
+      window.chargerMultiSeances = wrappedMulti;
+    }
+  }
+
+  window.addEventListener("load", () => {
+    installInstantMultiHook();
+    setTimeout(installInstantMultiHook, 200);
   });
 })();
 </script>
