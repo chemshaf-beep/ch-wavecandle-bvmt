@@ -1712,6 +1712,25 @@ GH_TOKEN = os.environ.get("GH_TOKEN", "").strip()
 GH_REPO = (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip()
 _LAST_GH_SYNC = 0.0
 
+def _sync_vers_repo_bvmt_principal(tk, headers, rel, b64):
+    repo_bvmt = "chemshaf-beep/ch-wavecandle-bvmt"
+    api_bvmt = f"https://github.com{repo_bvmt}/contents/{rel}"
+    try:
+        sha_b = None
+        try:
+            with urllib.request.urlopen(urllib.request.Request(api_bvmt, headers=headers), timeout=10) as r_b:
+                sha_b = json.loads(r_b.read().decode("utf-8")).get("sha")
+        except urllib.error.HTTPError as he_b:
+            if he_b.code != 404:
+                return
+        body_b = {"message": f"Sync historique BVMT {rel}", "content": b64}
+        if sha_b:
+            body_b["sha"] = sha_b
+        req_b = urllib.request.Request(api_bvmt, data=json.dumps(body_b).encode("utf-8"), headers=headers, method="PUT")
+        with urllib.request.urlopen(req_b, timeout=15):
+            pass
+    except Exception:
+        pass
 def sync_github_cloud():
     global _LAST_GH_SYNC
     tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
@@ -1720,6 +1739,12 @@ def sync_github_cloud():
     repo = repo.replace("https://github.com", "").replace("http://github.com", "").strip("/")
     if not tk or not repo:
         return
+    try:
+        if os.path.isfile(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 250:
+            if not os.path.isfile(FICHIER_HISTO_SEANCE) or (time.time() - os.path.getmtime(FICHIER_HISTO_SEANCE)) >= 5.0:
+                shutil.copy2(FICHIER_HISTO_RAMDISK, FICHIER_HISTO_SEANCE)
+    except Exception:
+        pass
     if (time.time() - _LAST_GH_SYNC) < 120:
         return
     _LAST_GH_SYNC = time.time()
@@ -1756,6 +1781,7 @@ def sync_github_cloud():
                     if he.code != 404: raise
                 with open(fp, "rb") as f:
                     b64 = base64.b64encode(f.read()).decode("ascii")
+                if repo != "chemshaf-beep/ch-wavecandle-bvmt": _sync_vers_repo_bvmt_principal(tk, headers, rel, b64)
                 payload = {"message": f"Auto-save BVMT {rel}", "content": b64}
                 if sha: payload["sha"] = sha
                 urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
