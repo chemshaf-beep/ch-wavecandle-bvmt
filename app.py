@@ -1412,6 +1412,20 @@ def boucle_background_aspiration_falcon():
         if BUFFER_TEXTE_RESEAU_FALCON == "":
             BUFFER_TEXTE_RESEAU_FALCON = "SbeMarket SheetValeur;Etat;Qt. A;Achat;Vente;Qt.V;Clôture;CTO;VTO;Ouverture;Dernier;Var.;CMP;Qté;Volume;P. Haut;P. Bas;Seuil.S. Haut;Seuil.S. Bas;Seuil.D. Haut;Seuil.D. Bas;Heure\n"
 
+import builtins as _bi
+_orig_print = _bi.print
+_last_tlm_log = 0.0
+def _clean_hf_print(*args, **kwargs):
+    global _last_tlm_log
+    msg = " ".join(str(a) for a in args)
+    if "[NOYAU MASTER]" in msg or "Base de données RAM: OK" in msg:
+        now_t = time.time()
+        if (now_t - _last_tlm_log) < 60.0:
+            return
+        _last_tlm_log = now_t
+    return _orig_print(*args, **kwargs)
+_bi.print = _clean_hf_print
+
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
@@ -1755,10 +1769,38 @@ def boucle_synchro_github():
     time.sleep(10)
     try: sync_github_cloud()
     except Exception: pass
+import builtins as _bi
+_orig_print = _bi.print
+_last_tlm_log = 0.0
+def _clean_hf_print(*args, **kwargs):
+    global _last_tlm_log
+    msg = " ".join(str(a) for a in args)
+    if "[NOYAU MASTER]" in msg or "Base de données RAM: OK" in msg:
+        now_t = time.time()
+        if (now_t - _last_tlm_log) < 60.0:
+            return
+        _last_tlm_log = now_t
+    return _orig_print(*args, **kwargs)
+_bi.print = _clean_hf_print
+
     while True:
         time.sleep(60)
         try: sync_github_cloud()
         except Exception: pass
+import builtins as _bi
+_orig_print = _bi.print
+_last_tlm_log = 0.0
+def _clean_hf_print(*args, **kwargs):
+    global _last_tlm_log
+    msg = " ".join(str(a) for a in args)
+    if "[NOYAU MASTER]" in msg or "Base de données RAM: OK" in msg:
+        now_t = time.time()
+        if (now_t - _last_tlm_log) < 60.0:
+            return
+        _last_tlm_log = now_t
+    return _orig_print(*args, **kwargs)
+_bi.print = _clean_hf_print
+
     while True:
         time.sleep(60)
         try: sync_github_cloud()
@@ -1905,6 +1947,20 @@ def lancer_collecteur_bvmt():
         executer_purge_et_reinitialisation_seance_a_chaud(date_instant_pc)
 
     # Boucle souveraine de sûreté cadencée
+import builtins as _bi
+_orig_print = _bi.print
+_last_tlm_log = 0.0
+def _clean_hf_print(*args, **kwargs):
+    global _last_tlm_log
+    msg = " ".join(str(a) for a in args)
+    if "[NOYAU MASTER]" in msg or "Base de données RAM: OK" in msg:
+        now_t = time.time()
+        if (now_t - _last_tlm_log) < 60.0:
+            return
+        _last_tlm_log = now_t
+    return _orig_print(*args, **kwargs)
+_bi.print = _clean_hf_print
+
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
@@ -2048,6 +2104,20 @@ def _generer_index_et_whitelist():
 _generer_index_et_whitelist()
 
 def _boucle_index_cloud():
+import builtins as _bi
+_orig_print = _bi.print
+_last_tlm_log = 0.0
+def _clean_hf_print(*args, **kwargs):
+    global _last_tlm_log
+    msg = " ".join(str(a) for a in args)
+    if "[NOYAU MASTER]" in msg or "Base de données RAM: OK" in msg:
+        now_t = time.time()
+        if (now_t - _last_tlm_log) < 60.0:
+            return
+        _last_tlm_log = now_t
+    return _orig_print(*args, **kwargs)
+_bi.print = _clean_hf_print
+
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
