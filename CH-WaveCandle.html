@@ -7070,9 +7070,9 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 </script>
 
 
+
 <script id="ch-pie-and-trendline-pro">
 (function(){
-  // === PARTIE A : MASQUAGE TOTAL DU CAMEMBERT ET DE SES 2 TITRES ===
   function applyPieVisibility(){
     if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
     const sel = document.getElementById("selPosCamembert");
@@ -7085,18 +7085,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const sPatch = opt.series.map(s => {
           if(s && s.type === "pie"){
             changed = true;
-            return {
-              silent: hidePie,
-              label: { show: !hidePie },
-              labelLine: { show: !hidePie },
-              itemStyle: { opacity: hidePie ? 0 : 1 }
-            };
+            return { silent: hidePie, label: { show: !hidePie }, labelLine: { show: !hidePie }, itemStyle: { opacity: hidePie ? 0 : 1 } };
           }
           return {};
         });
         if(changed) chart.setOption({ series: sPatch });
       }
-
       if(Array.isArray(opt.title) && opt.title.length > 0){
         let tChanged = false;
         const newTitles = opt.title.map(t => {
@@ -7113,7 +7107,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         });
         if(tChanged) chart.setOption({ title: newTitles });
       }
-
       if(Array.isArray(opt.graphic) && opt.graphic.length > 0){
         let gChanged = false;
         const toggleEl = (el) => {
@@ -7122,10 +7115,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           const txt = String((el.style && el.style.text) || el.text || "");
           if(/\d{2}\/\d{2}/.test(txt) || /Agressivité/i.test(txt) || /Séance/i.test(txt)){
             gChanged = true;
-            return Object.assign({}, el, {
-              invisible: hidePie,
-              style: Object.assign({}, el.style, { opacity: hidePie ? 0 : 1 })
-            });
+            return Object.assign({}, el, { invisible: hidePie, style: Object.assign({}, el.style, { opacity: hidePie ? 0 : 1 }) });
           }
           return el;
         };
@@ -7135,7 +7125,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     } catch(e){}
   }
   window.__chApplyPieVisibility = applyPieVisibility;
-  // === PARTIE B : TETES DE FLECHE, ETIQUETTES INCLINEES, CRAYON LIBRE ET COURBES ===
   function renderCustomShapesAndArrows(){
     if(typeof chart === "undefined" || !chart || typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
     try {
@@ -7161,13 +7150,13 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
               silent: true,
               z: 118,
               shape: { points: pxPts, smooth: 0.25 },
-              style: { stroke: col, lineWidth: 2.2, fill: "none" }
+              style: { stroke: col, lineWidth: 2.5, fill: "none" }
             });
           }
           return;
         }
 
-        // 2. COURBE LISSE (arc / bezier avec fleche au bout)
+        // 2. COURBE LISSE (arc / bezier avec fleche)
         if(t === "COURBE_LIBRE" && d.x1 !== undefined && d.y1 !== undefined && d.x2 !== undefined && d.y2 !== undefined){
           const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
           const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
@@ -7176,7 +7165,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
             const midX = (p1 + p2) / 2;
             const midY = (p1 + p2) / 2;
             const dist = Math.hypot(p2 - p1, p2 - p1);
-            const bulge = d.bulge !== undefined ? Number(d.bulge) : Math.max(28, dist * 0.28);
+            const bulge = Math.max(32, dist * 0.30);
             const cpx = midX;
             const cpy = midY + (Number(d.y2) >= Number(d.y1) ? bulge : -bulge);
 
@@ -7186,11 +7175,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
               silent: true,
               z: 118,
               shape: { x1: p1, y1: p1, x2: p2, y2: p2, cpx1: cpx, cpy1: cpy },
-              style: { stroke: col, lineWidth: 2.2, fill: "none" }
+              style: { stroke: col, lineWidth: 2.5, fill: "none" }
             });
 
             const ang = Math.atan2(p2 - cpy, p2 - cpx);
-            const aLen = 12, aW = 5;
+            const aLen = 13, aW = 5.5;
             arrowElements.push({
               type: "polygon",
               id: "ch_curve_arr_" + idx,
@@ -7225,7 +7214,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const isUp = (Number(d.y2) >= Number(d.y1));
         const col = d.color || d.couleur || (isUp ? "#00E676" : "#FF5252");
 
-        const arrowLen = 14, arrowHalfW = 6;
+        const arrowLen = 15, arrowHalfW = 6.5;
         const ux = Math.cos(angle), uy = Math.sin(angle);
         const px = -uy, py = ux;
 
@@ -7252,8 +7241,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           let nx = Math.sin(angle), ny = -Math.cos(angle);
           if(ny > 0){ nx = -nx; ny = -ny; }
 
-          const midX = (p1 + p2) / 2 + nx * 10;
-          const midY = (p1 + p2) / 2 + ny * 10;
+          const midX = (p1 + p2) / 2 + nx * 11;
+          const midY = (p1 + p2) / 2 + ny * 11;
           const diff = Number(d.y2) - Number(d.y1);
           const pct = Number(d.y1) > 0 ? ((diff / Number(d.y1)) * 100).toFixed(2) : "0.00";
           const signe = diff >= 0 ? "+" : "";
@@ -7273,7 +7262,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
               font: "bold 11px Consolas, monospace",
               textAlign: "center",
               textVerticalAlign: "middle",
-              backgroundColor: "rgba(11, 17, 32, 0.80)",
+              backgroundColor: "rgba(11, 17, 32, 0.85)",
               padding: 4,
               borderRadius: 3
             }
@@ -7285,8 +7274,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       chart.setOption({ graphic: existingG });
     } catch(e){}
   }
-
   let activeFreeDrawing = null;
+  function getActiveToolUpper(){
+    const selOutil = document.querySelector("select[id*='Outil'], select[id*='outil'], #selOutilDessin");
+    return selOutil ? String(selOutil.value || "").toUpperCase() : "";
+  }
+
   function bindFreehandAndCurveMouse(){
     if(typeof chart === "undefined" || !chart || !chart.getZr) return;
     const zr = chart.getZr();
@@ -7294,11 +7287,18 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     zr.__chFreeCurveBound = true;
 
     zr.on("mousedown", (params) => {
-      const selOutil = document.querySelector("select[id*='Outil'], select[id*='outil'], #selOutilDessin");
-      const outil = selOutil ? String(selOutil.value || "").toUpperCase() : "";
+      const outil = getActiveToolUpper();
       if(outil !== "CRAYON_LIBRE" && outil !== "COURBE_LIBRE") return;
       const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
       if(!Array.isArray(pt) || isNaN(pt) || isNaN(pt)) return;
+
+      if(Array.isArray(dessinsUtilisateur) && dessinsUtilisateur.length > 0){
+        const last = dessinsUtilisateur[dessinsUtilisateur.length - 1];
+        if(last && last !== activeFreeDrawing && last.x1 === last.x2 && last.y1 === last.y2){
+          dessinsUtilisateur.pop();
+        }
+      }
+
       activeFreeDrawing = (outil === "CRAYON_LIBRE")
         ? { type: "CRAYON_LIBRE", points: [[pt, pt]], color: "#38BDF8" }
         : { type: "COURBE_LIBRE", x1: pt, y1: pt, x2: pt, y2: pt, color: "#A855F7" };
@@ -7310,13 +7310,28 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       if(!activeFreeDrawing) return;
       const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
       if(!Array.isArray(pt) || isNaN(pt) || isNaN(pt)) return;
-      if(activeFreeDrawing.type === "CRAYON_LIBRE") activeFreeDrawing.points.push([pt, pt]);
-      else { activeFreeDrawing.x2 = pt; activeFreeDrawing.y2 = pt; }
+      if(activeFreeDrawing.type === "CRAYON_LIBRE"){
+        activeFreeDrawing.points.push([pt, pt]);
+      } else {
+        activeFreeDrawing.x2 = pt;
+        activeFreeDrawing.y2 = pt;
+      }
       renderCustomShapesAndArrows();
     });
 
     zr.on("mouseup", () => {
       if(activeFreeDrawing){
+        if(Array.isArray(dessinsUtilisateur)){
+          for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
+            const item = dessinsUtilisateur[i];
+            if(item && item !== activeFreeDrawing && item.type !== "CRAYON_LIBRE" && item.type !== "COURBE_LIBRE" && item.type !== "SUPPORT" && item.type !== "RESISTANCE"){
+              const refX = activeFreeDrawing.x1 !== undefined ? activeFreeDrawing.x1 : (activeFreeDrawing.points && activeFreeDrawing.points ? activeFreeDrawing.points : NaN);
+              if(!isNaN(refX) && Math.abs(Number(item.x1) - Number(refX)) < 0.001){
+                dessinsUtilisateur.splice(i, 1);
+              }
+            }
+          }
+        }
         activeFreeDrawing = null;
         if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
       }
