@@ -6680,76 +6680,71 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   new MutationObserver(hookBtnChargerDate).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+
 <script id="ch-axis-expand-future">
 (function(){
   let currentExpandMode = "AUTO"; // AUTO | FUTUR25 | FUTUR50
   let applyingAxis = false;
 
-  function computeDataBounds(){
-    if(typeof globalData === "undefined" || !globalData) return null;
-    let maxIdx = 0;
-    let minP = Infinity, maxP = -Infinity;
-
-    if(Array.isArray(globalData.vagues) && globalData.vagues.length > 0){
-      globalData.vagues.forEach((v, idx) => {
-        if(idx > maxIdx) maxIdx = idx;
-        const vals = [v.prix_deb, v.prix_fin, v.min, v.max, v.open, v.close, v.low, v.high].map(Number).filter(n => !isNaN(n) && n > 0);
-        vals.forEach(n => { if(n < minP) minP = n; if(n > maxP) maxP = n; });
-      });
+  function redrawNative(){
+    if(typeof globalData === "undefined" || !globalData) return;
+    const hVal = document.getElementById("selHorizon")?.value || "";
+    if(hVal === "MULTI" && typeof dessinerChandeliersMulti === "function"){
+      dessinerChandeliersMulti(globalData);
+    } else if(typeof dessinerGraphique === "function"){
+      dessinerGraphique(globalData);
     }
-    if(Array.isArray(globalData.bougies) && globalData.bougies.length > 0){
-      maxIdx = Math.max(maxIdx, globalData.bougies.length - 1);
-      globalData.bougies.forEach(b => {
-        const vals = (Array.isArray(b) ? b : [b.open, b.close, b.low, b.high]).map(Number).filter(n => !isNaN(n) && n > 0);
-        vals.forEach(n => { if(n < minP) minP = n; if(n > maxP) maxP = n; });
-      });
-    }
-    if(typeof chart !== "undefined" && chart && typeof chart.getOption === "function"){
-      const opt = chart.getOption();
-      const xData = opt?.xAxis?.at(0)?.data;
-      if(Array.isArray(xData) && xData.length > 0) maxIdx = Math.max(maxIdx, xData.length - 1);
-    }
-    if(minP === Infinity || maxP === -Infinity || maxIdx <= 0) return null;
-    return { maxIdx, minP, maxP };
   }
 
   function applyAxisExpansion(){
-    if(applyingAxis || typeof chart === "undefined" || !chart || typeof chart.setOption !== "function") return;
-    const b = computeDataBounds();
-    if(!b) return;
+    if(applyingAxis || typeof chart === "undefined" || !chart) return;
+    if(currentExpandMode === "AUTO"){
+      applyingAxis = true;
+      try { redrawNative(); } finally { setTimeout(() => { applyingAxis = false; }, 60); }
+      return;
+    }
+
     applyingAxis = true;
     try {
-      if(currentExpandMode === "AUTO"){
-        chart.setOption({
-          xAxis: [{ max: null }],
-          yAxis: [{ min: null, max: null, scale: true }]
-        });
-      } else {
-        const futRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
-        const yPadRatio = currentExpandMode === "FUTUR50" ? 0.12 : 0.05;
-        const extraBars = Math.max(4, Math.round((b.maxIdx + 1) * futRatio));
-        const spanY = Math.max(0.02, b.maxP - b.minP);
-        const newMinY = Number(Math.max(0.01, b.minP - spanY * yPadRatio - b.minP * (yPadRatio * 0.25)).toFixed(3));
-        const newMaxY = Number((b.maxP + spanY * yPadRatio + b.maxP * (yPadRatio * 0.25)).toFixed(3));
+      // 1. Partir du rendu natif exact pour obtenir les vraies bornes X et Y de la seance
+      redrawNative();
+      const opt = chart.getOption();
+      const x0 = opt?.xAxis?.at(0);
+      const y0 = opt?.yAxis?.at(0);
+      if(!x0 || !y0) return;
 
-        // Etendre xAxis.data avec des emplacements futurs si l'axe est de type category
-        const opt = chart.getOption();
-        const x0 = opt?.xAxis?.at(0) || {};
-        if(Array.isArray(x0.data) && x0.data.length > 0){
-          const baseLen = b.maxIdx + 1;
-          const cleanData = x0.data.slice(0, baseLen);
-          for(let i = 1; i <= extraBars; i++) cleanData.push("+" + i);
-          chart.setOption({
-            xAxis: [{ data: cleanData, max: cleanData.length - 1 }],
-            yAxis: [{ min: newMinY, max: newMaxY, scale: false }]
-          });
-        } else {
-          chart.setOption({
-            xAxis: [{ max: b.maxIdx + extraBars }],
-            yAxis: [{ min: newMinY, max: newMaxY, scale: false }]
-          });
-        }
+      const futRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
+      const yPadRatio = currentExpandMode === "FUTUR50" ? 0.12 : 0.05;
+
+      // Calculer les bornes Y reelles des prix
+      let minP = typeof y0.min === "number" ? y0.min : Infinity;
+      let maxP = typeof y0.max === "number" ? y0.max : -Infinity;
+      if((minP === Infinity || maxP === -Infinity) && typeof globalData !== "undefined" && globalData){
+        const items = Array.isArray(globalData.vagues) && globalData.vagues.length ? globalData.vagues : (globalData.bougies || []);
+        items.forEach(it => {
+          const vals = (Array.isArray(it) ? it : [it.prix_deb, it.prix_fin, it.min, it.max, it.open, it.close, it.low, it.high]).map(Number).filter(n => !isNaN(n) && n > 0);
+          vals.forEach(n => { if(n < minP) minP = n; if(n > maxP) maxP = n; });
+        });
       }
+      const spanY = (minP !== Infinity && maxP !== -Infinity) ? Math.max(0.02, maxP - minP) : 0.5;
+      const yPatch = (minP !== Infinity && maxP !== -Infinity)
+        ? [{ min: Number(Math.max(0.01, minP - spanY * yPadRatio).toFixed(3)), max: Number((maxP + spanY * yPadRatio).toFixed(3)), scale: false }]
+        : [{}];
+
+      // Calculer l'extension future sur l'axe X (numerique en secondes OU categories en multi-seances)
+      if(x0.type === "category" && Array.isArray(x0.data) && x0.data.length > 0){
+        const extra = Math.max(3, Math.round(x0.data.length * futRatio));
+        const extData = x0.data.slice();
+        for(let i = 1; i <= extra; i++) extData.push("+" + i);
+        chart.setOption({ xAxis: [{ data: extData, max: extData.length - 1 }], yAxis: yPatch });
+      } else {
+        const curMinX = typeof x0.min === "number" ? x0.min : 32400; // 09:00:00
+        const curMaxX = typeof x0.max === "number" ? x0.max : 54000; // 15:00:00
+        const spanX = Math.max(3600, curMaxX - curMinX);
+        const newMaxX = Math.round(curMaxX + spanX * futRatio);
+        chart.setOption({ xAxis: [{ min: curMinX, max: newMaxX }], yAxis: yPatch });
+      }
+
       if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
     } catch(e){} finally {
       setTimeout(() => { applyingAxis = false; }, 80);
@@ -6776,7 +6771,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     modeSel.parentElement.insertBefore(sel, modeSel.nextSibling);
   }
 
-  // Reappliquer automatiquement l'elargissement apres chaque redessin du graphique
   const hookChartSetOption = () => {
     if(typeof chart !== "undefined" && chart && !chart.__chAxisHooked){
       chart.__chAxisHooked = true;
