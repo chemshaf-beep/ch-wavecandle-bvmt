@@ -6610,43 +6610,45 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   new MutationObserver(bindEtiquettesCheckbox).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+
 <script id="ch-force-fresh-charger">
 (function(){
+  function getTodayCompact(){
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+    return String(d.getDate()).padStart(2,"0") + String(d.getMonth()+1).padStart(2,"0") + d.getFullYear();
+  }
+
   function hookChargerFreshReload(){
     const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
     if(!loadBtn || loadBtn.__chFreshHooked) return;
     loadBtn.__chFreshHooked = true;
     loadBtn.addEventListener("click", function(){
-      // Vider tout cache CSV en memoire dans la page avant le chargement
-      try {
-        if(typeof cacheCsvSeances === "object" && cacheCsvSeances) {
-          Object.keys(cacheCsvSeances).forEach(k => delete cacheCsvSeances[k]);
-        }
-        if(typeof cacheFichiers === "object" && cacheFichiers) {
-          Object.keys(cacheFichiers).forEach(k => delete cacheFichiers[k]);
-        }
-      } catch(e){}
       window.__CH_FORCE_FRESH_CSV = Date.now();
     }, true);
   }
 
-  // Ajouter un parametre anti-cache sur la requete RPC de lecture CSV lorsqu'on vient de cliquer sur Charger
+  // Rediriger toute lecture de bourse_historique_reel_AUJOURDHUI.csv vers temp_bourse_historique_reel_AUJOURDHUI.csv (temps reel exact)
   const origFetch = window.fetch.bind(window);
   window.fetch = function(input, init){
-    if(window.__CH_FORCE_FRESH_CSV && (Date.now() - window.__CH_FORCE_FRESH_CSV) < 4000){
-      try {
-        const url = typeof input === "string" ? input : (input && input.url ? input.url : "");
-        if(url.includes("bvmt_data") && init && typeof init.body === "string" && init.body.includes("bourse_historique_reel_")){
+    try {
+      const url = typeof input === "string" ? input : (input && input.url ? input.url : "");
+      if(url.includes("bvmt_data") && init && typeof init.body === "string"){
+        const todayStr = getTodayCompact();
+        const targetHist = "bourse_historique_reel_" + todayStr + ".csv";
+        if(init.body.includes(targetHist)){
           const bodyObj = JSON.parse(init.body);
-          if(Array.isArray(bodyObj.data) && typeof bodyObj.data[0] === "string"){
-            const inner = JSON.parse(bodyObj.data[0]);
-            inner._nocache = Date.now();
-            bodyObj.data[0] = JSON.stringify(inner);
-            init = Object.assign({}, init, { body: JSON.stringify(bodyObj) });
+          if(Array.isArray(bodyObj.data) && typeof bodyObj.data === "string"){
+            const inner = JSON.parse(bodyObj.data);
+            if(inner.path && String(inner.path).includes(targetHist)){
+              inner.path = "temp_" + targetHist;
+              inner._ts = Date.now();
+              bodyObj.data = JSON.stringify(inner);
+              init = Object.assign({}, init, { body: JSON.stringify(bodyObj) });
+            }
           }
         }
-      } catch(e){}
-    }
+      }
+    } catch(e){}
     return origFetch(input, init);
   };
 
