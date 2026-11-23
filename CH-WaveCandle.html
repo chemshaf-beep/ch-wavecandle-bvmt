@@ -6611,49 +6611,75 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 </script>
 
+
 <script id="ch-force-fresh-charger">
 (function(){
-  function getTodayCompact(){
-    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
-    return String(d.getDate()).padStart(2,"0") + String(d.getMonth()+1).padStart(2,"0") + d.getFullYear();
+  async function fetchFreshCsvViaRpc(relPath){
+    const tk = Object.values(localStorage).concat(Object.values(sessionStorage))
+      .map(v => { try { const p = JSON.parse(v); return p?.token || p; } catch { return v; } })
+      .find(v => typeof v === "string" && v.length >= 20 && v.length <= 120 && !v.includes(" "));
+    if(!tk) return null;
+    const r1 = await fetch("/gradio_api/call/bvmt_data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: [JSON.stringify({ token: tk, path: relPath, _ts: Date.now() })] })
+    });
+    const j1 = await r1.json();
+    if(!j1 || !j1.event_id) return null;
+    const r2 = await fetch("/gradio_api/call/bvmt_data/" + j1.event_id);
+    const sse = await r2.text();
+    const m = sse.match(/data:\s*(\[.*\])/);
+    if(!m) return null;
+    const parsed = JSON.parse(JSON.parse(m.at(1)).at(0));
+    return (parsed && typeof parsed.text === "string" && parsed.text.length > 50) ? parsed.text : null;
   }
 
-  function hookChargerFreshReload(){
-    const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
-    if(!loadBtn || loadBtn.__chFreshHooked) return;
-    loadBtn.__chFreshHooked = true;
-    loadBtn.addEventListener("click", function(){
-      window.__CH_FORCE_FRESH_CSV = Date.now();
+  function hookBtnChargerDate(){
+    const btn = document.getElementById("btnChargerDate");
+    if(!btn || btn.__chFreshHandleHooked) return;
+    btn.__chFreshHandleHooked = true;
+
+    btn.addEventListener("click", async function(e){
+      const dInp = document.getElementById("txtDateSeance");
+      const rawD = (dInp?.value || "").trim();
+      const m = rawD.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if(!m || typeof seancesLocales === "undefined" || !Array.isArray(seancesLocales)) return;
+      const iso = m.at(3) + "-" + m.at(2) + "-" + m.at(1);
+      const compact = m.at(1) + m.at(2) + m.at(3);
+
+      const dTn = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+      const todayCompact = String(dTn.getDate()).padStart(2,"0") + String(dTn.getMonth()+1).padStart(2,"0") + dTn.getFullYear();
+
+      const sObj = seancesLocales.find(s => s && s.date_iso === iso);
+      if(!sObj) return;
+
+      e.stopImmediatePropagation();
+      e.preventDefault();
+
+      const origTxt = btn.textContent;
+      btn.textContent = "⏳...";
+      try {
+        const targetPath = (compact === todayCompact)
+          ? ("temp_bourse_historique_reel_" + compact + ".csv")
+          : (sObj.rel_path || sObj.path || ("bourse_historique_reel/bourse_historique_reel_" + compact + ".csv"));
+        const freshTxt = await fetchFreshCsvViaRpc(targetPath);
+        if(freshTxt){
+          sObj.handle = {
+            getFile: async () => new File([freshTxt], "bourse_historique_reel_" + compact + ".csv", { type: "text/csv" })
+          };
+        }
+        const tk = document.getElementById("selTicker")?.value || "";
+        if(typeof chargerDonnees === "function"){
+          await chargerDonnees(iso, tk, true);
+        }
+      } finally {
+        btn.textContent = origTxt;
+      }
     }, true);
   }
 
-  // Rediriger toute lecture de bourse_historique_reel_AUJOURDHUI.csv vers temp_bourse_historique_reel_AUJOURDHUI.csv (temps reel exact)
-  const origFetch = window.fetch.bind(window);
-  window.fetch = function(input, init){
-    try {
-      const url = typeof input === "string" ? input : (input && input.url ? input.url : "");
-      if(url.includes("bvmt_data") && init && typeof init.body === "string"){
-        const todayStr = getTodayCompact();
-        const targetHist = "bourse_historique_reel_" + todayStr + ".csv";
-        if(init.body.includes(targetHist)){
-          const bodyObj = JSON.parse(init.body);
-          if(Array.isArray(bodyObj.data) && typeof bodyObj.data === "string"){
-            const inner = JSON.parse(bodyObj.data);
-            if(inner.path && String(inner.path).includes(targetHist)){
-              inner.path = "temp_" + targetHist;
-              inner._ts = Date.now();
-              bodyObj.data = JSON.stringify(inner);
-              init = Object.assign({}, init, { body: JSON.stringify(bodyObj) });
-            }
-          }
-        }
-      }
-    } catch(e){}
-    return origFetch(input, init);
-  };
-
-  window.addEventListener("load", () => { hookChargerFreshReload(); setTimeout(hookChargerFreshReload, 700); });
-  new MutationObserver(hookChargerFreshReload).observe(document.body, { childList: true, subtree: true });
+  window.addEventListener("load", () => { hookBtnChargerDate(); setTimeout(hookBtnChargerDate, 700); });
+  new MutationObserver(hookBtnChargerDate).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
