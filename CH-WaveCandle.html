@@ -6610,5 +6610,49 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   new MutationObserver(bindEtiquettesCheckbox).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+<script id="ch-force-fresh-charger">
+(function(){
+  function hookChargerFreshReload(){
+    const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
+    if(!loadBtn || loadBtn.__chFreshHooked) return;
+    loadBtn.__chFreshHooked = true;
+    loadBtn.addEventListener("click", function(){
+      // Vider tout cache CSV en memoire dans la page avant le chargement
+      try {
+        if(typeof cacheCsvSeances === "object" && cacheCsvSeances) {
+          Object.keys(cacheCsvSeances).forEach(k => delete cacheCsvSeances[k]);
+        }
+        if(typeof cacheFichiers === "object" && cacheFichiers) {
+          Object.keys(cacheFichiers).forEach(k => delete cacheFichiers[k]);
+        }
+      } catch(e){}
+      window.__CH_FORCE_FRESH_CSV = Date.now();
+    }, true);
+  }
+
+  // Ajouter un parametre anti-cache sur la requete RPC de lecture CSV lorsqu'on vient de cliquer sur Charger
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    if(window.__CH_FORCE_FRESH_CSV && (Date.now() - window.__CH_FORCE_FRESH_CSV) < 4000){
+      try {
+        const url = typeof input === "string" ? input : (input && input.url ? input.url : "");
+        if(url.includes("bvmt_data") && init && typeof init.body === "string" && init.body.includes("bourse_historique_reel_")){
+          const bodyObj = JSON.parse(init.body);
+          if(Array.isArray(bodyObj.data) && typeof bodyObj.data[0] === "string"){
+            const inner = JSON.parse(bodyObj.data[0]);
+            inner._nocache = Date.now();
+            bodyObj.data[0] = JSON.stringify(inner);
+            init = Object.assign({}, init, { body: JSON.stringify(bodyObj) });
+          }
+        }
+      } catch(e){}
+    }
+    return origFetch(input, init);
+  };
+
+  window.addEventListener("load", () => { hookChargerFreshReload(); setTimeout(hookChargerFreshReload, 700); });
+  new MutationObserver(hookChargerFreshReload).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
