@@ -2879,7 +2879,7 @@ document.getElementById('btnDossierRacine').onclick = async () => {
     try { dirHandleLive = await rootHandle.getDirectoryHandle('Cache_Live'); } catch (e) { dirHandleLive = null; }
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
-      const _savedH = localStorage.getItem('ch_pref_horizon'); if (_savedH === 'MULTI') { document.getElementById('selHorizon').value = 'MULTI'; chargerMultiSeances(); return; } document.getElementById('selHorizon').value = 'UNIQUE';
+      const _savedH = localStorage.getItem('ch_pref_horizon') || 'UNIQUE'; document.getElementById('selHorizon').value = _savedH; if (_savedH === 'MULTI') { chargerMultiSeances(); return; } if (_savedH === 'LIVE' && typeof demarrerModeLive === 'function') { demarrerModeLive(); return; }
       chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (err) {
@@ -3394,7 +3394,7 @@ async function demarrageAutomatiqueHttp() {
 
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
-      const _savedH = localStorage.getItem('ch_pref_horizon'); if (_savedH === 'MULTI') { document.getElementById('selHorizon').value = 'MULTI'; chargerMultiSeances(); return; } document.getElementById('selHorizon').value = 'UNIQUE';
+      const _savedH = localStorage.getItem('ch_pref_horizon') || 'UNIQUE'; document.getElementById('selHorizon').value = _savedH; if (_savedH === 'MULTI') { chargerMultiSeances(); return; } if (_savedH === 'LIVE' && typeof demarrerModeLive === 'function') { demarrerModeLive(); return; }
       chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (e) { document.getElementById('statusText').style.color = '#FF3B3B'; document.getElementById('statusText').innerText = 'ERREUR AUTO : ' + e.message; }
@@ -7379,18 +7379,42 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   });
 })();
 </script>
+
 <script id="ch-instant-multiseances">
 (function(){
   const MULTI_MEM = {};
 
   function getMultiCacheKey(){
-    const tk = document.getElementById("selTicker")?.value || "DELICE HOLDING";
-    const gr = document.getElementById("selGranularite")?.value || "JOUR";
-    const fb = document.getElementById("selFiltreBlocs")?.value || "TOUS";
-    return `ch_multi_v1_\({tk}_\){gr}_\({fb}`; }  function installInstantMultiHook(){ if(typeof window.chargerMultiSeances === "function" && !window.chargerMultiSeances.__chInstantWrapped){ const origMulti = window.chargerMultiSeances; const wrappedMulti = async function(){ const key = getMultiCacheKey(); // 1. Affichage immediat en 0 ms depuis la RAM ou le stockage local si disponible let cachedObj = MULTI_MEM[key]; if(!cachedObj){ try { const raw = localStorage.getItem(key); if(raw) cachedObj = JSON.parse(raw); } catch(e){} } if(cachedObj && Array.isArray(cachedObj.bougies) && cachedObj.bougies.length > 0){ MULTI_MEM[key] = cachedObj; window.globalData = cachedObj; if(typeof dessinerChandeliersMulti === "function"){ dessinerChandeliersMulti(cachedObj); } const st = document.getElementById("statusText"); if(st) st.innerText = `Multi-Séances (\){cachedObj.date_deb || ""} → \({cachedObj.date_fin \vert{}\vert{} ""}) — \){cachedObj.bougies.length} chandeliers [Mémoire rapide]`;
+    const tk = document.getElementById("selTicker") ? document.getElementById("selTicker").value : "DELICE HOLDING";
+    const gr = document.getElementById("selGranularite") ? document.getElementById("selGranularite").value : "JOUR";
+    const fb = document.getElementById("selFiltreBlocs") ? document.getElementById("selFiltreBlocs").value : "TOUS";
+    return "ch_multi_v1_" + tk + "_" + gr + "_" + fb;
+  }
+
+  function installInstantMultiHook(){
+    if(typeof window.chargerMultiSeances === "function" && !window.chargerMultiSeances.__chInstantWrapped){
+      const origMulti = window.chargerMultiSeances;
+      const wrappedMulti = async function(){
+        const key = getMultiCacheKey();
+        let cachedObj = MULTI_MEM[key];
+        if(!cachedObj){
+          try {
+            const raw = localStorage.getItem(key);
+            if(raw) cachedObj = JSON.parse(raw);
+          } catch(e){}
+        }
+        if(cachedObj && Array.isArray(cachedObj.bougies) && cachedObj.bougies.length > 0){
+          MULTI_MEM[key] = cachedObj;
+          window.globalData = cachedObj;
+          if(typeof dessinerChandeliersMulti === "function"){
+            dessinerChandeliersMulti(cachedObj);
+          }
+          const st = document.getElementById("statusText");
+          if(st){
+            st.innerText = "Multi-Séances (" + (cachedObj.date_deb || "") + " → " + (cachedObj.date_fin || "") + ") — " + cachedObj.bougies.length + " chandeliers [Mémoire rapide]";
+          }
         }
 
-        // 2. Verification et mise a jour silencieuse en arriere-plan
         const res = await origMulti.apply(this, arguments);
         try {
           if(typeof globalData !== "undefined" && globalData && Array.isArray(globalData.bougies) && globalData.bougies.length > 0){
