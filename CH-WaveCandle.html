@@ -1842,7 +1842,7 @@ function construireElementsDessin() {
         y: midY,
         rotation: textAngle,
         style: {
-          text: `signe{diffPrix.toFixed(2)} TND (signe{pctPrix.toFixed(2)}%)`,
+          text: signe + diffPrix.toFixed(2) + " TND (" + signe + pctPrix.toFixed(2) + "%)",
           fill: colLigne,
           font: 'bold 11px Consolas',
           textAlign: 'center',
@@ -2992,8 +2992,7 @@ zr.on('mousemove', params => {
   if (!dessinEnCours) return;
   const ptData = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
   if (!Array.isArray(ptData) || isNaN(ptData[0]) || isNaN(ptData[1])) return;
-  dessinEnCours.x2 = ptData[0];
-  dessinEnCours.y2 = ptData[1];
+  if (dessinEnCours.type === "CRAYON_LIBRE") { if (!Array.isArray(dessinEnCours.points)) dessinEnCours.points = [[dessinEnCours.x1, dessinEnCours.y1]]; dessinEnCours.points.push([ptData[0], ptData[1]]); } dessinEnCours.x2 = ptData[0]; dessinEnCours.y2 = ptData[1];
   rafraichirDessinsGraphique();
 });
 
@@ -6969,6 +6968,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 
 
+
 <script id="ch-pie-visibility-clean">
 (function(){
   function applyPieClean(){
@@ -6982,6 +6982,20 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           ? { silent: hidePie, label: { show: !hidePie }, labelLine: { show: !hidePie }, itemStyle: { opacity: hidePie ? 0 : 1 } }
           : {});
         chart.setOption({ series: sPatch });
+      }
+      if(Array.isArray(opt.title) && opt.title.length > 0){
+        const newTitles = opt.title.map(t => {
+          const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
+          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full) || /Séance/i.test(full)){
+            return Object.assign({}, t, {
+              show: !hidePie,
+              textStyle: Object.assign({}, t.textStyle, { color: hidePie ? "transparent" : "#F59E0B" }),
+              subtextStyle: Object.assign({}, t.subtextStyle, { color: hidePie ? "transparent" : "#EF4444" })
+            });
+          }
+          return t;
+        });
+        chart.setOption({ title: newTitles });
       }
       if(Array.isArray(opt.graphic)){
         const toggleEl = (el) => {
@@ -6997,12 +7011,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       }
     } catch(e){}
   }
+
   window.addEventListener("load", () => {
-    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test(c.parentElement?.textContent || ""));
-    if(chk && !chk.checked){ chk.checked = true; chk.dispatchEvent(new Event("change")); }
     const sel = document.getElementById("selPosCamembert");
     if(sel) sel.addEventListener("change", () => setTimeout(applyPieClean, 25));
-    setTimeout(applyPieClean, 300);
+    setInterval(applyPieClean, 250);
   });
 })();
 </script>
