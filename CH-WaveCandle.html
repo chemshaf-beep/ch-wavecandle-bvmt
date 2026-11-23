@@ -6067,48 +6067,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   document.addEventListener("pointerup", function(){
     const pen = document.getElementById("chFloatingPencil");
     if(pen) pen.style.display = "none";
-    setTimeout(colorizeSupportsAndResistances, 160);
+    
   }, true);
-
-  // === 2. RESISTANCE = ROUGE (#EF4444), SUPPORT = VERT (#10B981) ===
-  function getLastPrice(){
-    const m = (document.body.innerText || "").match(/DERNIER COURS[\s\S]{0,40}?(\d+[.,]\d+)/i);
-    return m ? Number(m.at(1).replace(",", ".")) : null;
-  }
-  function colorizeSupportsAndResistances(){
-    if(!window.echarts) return;
-    const dom = document.querySelector("[_echarts_instance_]");
-    const inst = dom ? window.echarts.getInstanceByDom(dom) : null;
-    if(!inst) return;
-    const opt = inst.getOption() || {};
-    if(!Array.isArray(opt.series)) return;
-    const lastPx = getLastPrice();
-    let changed = false;
-    const patchSeries = opt.series.map(s => {
-      if(!s || !s.markLine || !Array.isArray(s.markLine.data) || !s.markLine.data.length) return {};
-      const newData = s.markLine.data.map(item => {
-        if(!item || Array.isArray(item) || item.yAxis === undefined) return item;
-        const lvl = Number(item.yAxis);
-        const rawLabel = String((item.label && item.label.formatter) || item.name || "");
-        let isRes = /r[eé]sistance/i.test(rawLabel);
-        let isSup = /support/i.test(rawLabel);
-        if(!isRes && !isSup && lastPx !== null && !isNaN(lvl)){ isRes = lvl >= lastPx; isSup = lvl < lastPx; }
-        const col = isRes ? "#EF4444" : "#10B981";
-        const tag = isRes ? "Résistance" : "Support";
-        if((item.lineStyle && item.lineStyle.color) !== col || !rawLabel.includes(tag)){
-          changed = true;
-          return Object.assign({}, item, {
-            name: tag + " " + lvl.toFixed(2),
-            lineStyle: Object.assign({}, item.lineStyle || {}, { color: col, width: 2, type: "dashed" }),
-            label: Object.assign({}, item.label || {}, { show: true, formatter: tag + " : " + lvl.toFixed(2) + " TND", color: "#FFFFFF", backgroundColor: col, padding: 4, borderRadius: 4 })
-          });
-        }
-        return item;
-      });
-      return { markLine: { data: newData } };
-    });
-    if(changed) inst.setOption({ series: patchSeries });
-  }
 
   // === 3. DEMARRAGE SUR DERNIERE SEANCE EXECUTEE + VERROUILLAGE DATE CONTRE LE RETOUR SUR 23/11/2026 ===
   function getLastExecutedDates(){
@@ -6206,7 +6166,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     ensureFloatingPencil();
     setTimeout(checkAndLoadLatestSession, 500);
     setTimeout(checkAndLoadLatestSession, 1300);
-    setTimeout(colorizeSupportsAndResistances, 1500);
+    
   });
   new MutationObserver(() => {
     checkAndLoadLatestSession();
@@ -6363,6 +6323,164 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   window.addEventListener("load", () => { tick(); setTimeout(tick, 800); setTimeout(tick, 1800); });
   new MutationObserver(tick).observe(document.body, { childList: true, subtree: true });
 })();
+</script>
+<script id="ch-edit-drawings">
+(function(){
+  let selectedIdx = null; // { kind: "markLine"|"graphic", seriesIdx, dataIdx, price }
+  let isDraggingLevel = false;
+
+  function getInst(){
+    if(!window.echarts) return null;
+    const dom = document.querySelector("[_echarts_instance_]");
+    return dom ? window.echarts.getInstanceByDom(dom) : null;
+  }
+
+  function ensureEditBar(){
+    let bar = document.getElementById("chEditTraceBar");
+    if(!bar){
+      bar = document.createElement("div");
+      bar.id = "chEditTraceBar";
+      bar.style.cssText = "display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100240;background:#0F172A;color:#F8FAFC;border:1px solid #38BDF8;border-radius:10px;padding:6px 12px;box-shadow:0 8px 26px rgba(0,0,0,0.8);font-family:'Segoe UI',system-ui,sans-serif;font-size:11.5px;align-items:center;gap:8px;";
+      bar.innerHTML = "<span id='chEditTraceLbl' style='font-weight:700;'>Tracé sélectionné</span>" +
+        "<span style='color:#94A3B8;font-size:10.5px;'>(Glissez sur le graphique pour déplacer)</span>" +
+        "<button id='chEditTraceDelBtn' type='button' style='background:#EF4444;color:#FFF;border:none;border-radius:6px;padding:4px 9px;font-weight:700;cursor:pointer;height:auto!important;'>🗑️ Supprimer</button>" +
+        "<button id='chEditTraceCloseBtn' type='button' style='background:#1E293B;color:#94A3B8;border:1px solid #334155;border-radius:6px;padding:4px 8px;font-weight:600;cursor:pointer;height:auto!important;'>✕</button>";
+      document.body.appendChild(bar);
+      document.getElementById("chEditTraceCloseBtn").onclick = () => { selectedIdx = null; bar.style.display = "none"; };
+      document.getElementById("chEditTraceDelBtn").onclick = () => deleteSelectedTrace();
+    }
+    return bar;
+  }
+
+  function deleteSelectedTrace(){
+    const inst = getInst();
+    if(!inst || !selectedIdx) return;
+    const opt = inst.getOption() || {};
+    if(selectedIdx.kind === "markLine" && Array.isArray(opt.series)){
+      const s = opt.series.at(selectedIdx.seriesIdx);
+      if(s && s.markLine && Array.isArray(s.markLine.data)){
+        const newData = s.markLine.data.filter((_, idx) => idx !== selectedIdx.dataIdx);
+        const patch = opt.series.map((_, i) => i === selectedIdx.seriesIdx ? { markLine: { data: newData } } : {});
+        inst.setOption({ series: patch });
+      }
+    } else if(selectedIdx.kind === "graphic" && Array.isArray(opt.graphic)){
+      const g0 = opt.graphic.at(0);
+      if(g0 && Array.isArray(g0.elements)){
+        const newEls = g0.elements.filter((_, idx) => idx !== selectedIdx.dataIdx);
+        inst.setOption({ graphic: [{ elements: newEls }] }, { replaceMerge: ["graphic"] });
+      }
+    }
+    selectedIdx = null;
+    ensureEditBar().style.display = "none";
+  }
+
+  function findNearestTrace(inst, pxX, pxY){
+    const opt = inst.getOption() || {};
+    // 1. Chercher dans markLine (Support / Resistance horizontaux ou tendances)
+    if(Array.isArray(opt.series)){
+      for(let si = 0; si < opt.series.length; si++){
+        const s = opt.series.at(si);
+        if(!s || !s.markLine || !Array.isArray(s.markLine.data)) continue;
+        for(let di = 0; di < s.markLine.data.length; di++){
+          const item = s.markLine.data.at(di);
+          if(!item) continue;
+          if(!Array.isArray(item) && item.yAxis !== undefined){
+            const linePx = inst.convertToPixel({ seriesIndex: si }, [0, Number(item.yAxis)]);
+            if(linePx && Math.abs(linePx.at(1) - pxY) <= 10){
+              return { kind: "markLine", seriesIdx: si, dataIdx: di, price: Number(item.yAxis), isHline: true };
+            }
+          } else if(Array.isArray(item) && item.length >= 2 && item.at(0).coord && item.at(1).coord){
+            const p1 = inst.convertToPixel({ seriesIndex: si }, item.at(0).coord);
+            const p2 = inst.convertToPixel({ seriesIndex: si }, item.at(1).coord);
+            if(p1 && p2){
+              const dist = pointToSegDist(pxX, pxY, p1.at(0), p1.at(1), p2.at(0), p2.at(1));
+              if(dist <= 10) return { kind: "markLine", seriesIdx: si, dataIdx: di, isHline: false };
+            }
+          }
+        }
+      }
+    }
+    // 2. Chercher dans graphic (elements natifs)
+    if(Array.isArray(opt.graphic) && opt.graphic.at(0) && Array.isArray(opt.graphic.at(0).elements)){
+      const els = opt.graphic.at(0).elements;
+      for(let ei = els.length - 1; ei >= 0; ei--){
+        const el = els.at(ei);
+        if(!el || !el.shape) continue;
+        if(el.shape.y1 !== undefined && el.shape.y2 !== undefined && el.shape.x1 !== undefined && el.shape.x2 !== undefined){
+          const d = pointToSegDist(pxX, pxY, el.shape.x1, el.shape.y1, el.shape.x2, el.shape.y2);
+          if(d <= 10) return { kind: "graphic", dataIdx: ei, isHline: Math.abs(el.shape.y1 - el.shape.y2) < 2 };
+        }
+      }
+    }
+    return null;
+  }
+
+  function pointToSegDist(px, py, x1, y1, x2, y2){
+    const dx = x2 - x1, dy = y2 - y1;
+    if(dx === 0 && dy === 0) return Math.hypot(px - x1, py - y1);
+    const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+  }
+
+  function bindInteractiveEdit(){
+    const inst = getInst();
+    if(!inst || inst.__chEditBound) return;
+    inst.__chEditBound = true;
+    const zr = inst.getZr();
+
+    zr.on("mousedown", function(params){
+      if(document.body && document.body.classList.contains("ch-mode-draw")) return;
+      const hit = findNearestTrace(inst, params.offsetX, params.offsetY);
+      if(hit){
+        selectedIdx = hit;
+        isDraggingLevel = !!hit.isHline;
+        const bar = ensureEditBar();
+        document.getElementById("chEditTraceLbl").textContent = hit.isHline ? ("Niveau : " + (hit.price ? hit.price.toFixed(2) + " TND" : "Support/Résistance")) : "Ligne de tendance";
+        bar.style.display = "flex";
+      }
+    });
+
+    zr.on("mousemove", function(params){
+      if(!isDraggingLevel || !selectedIdx) return;
+      const coord = inst.convertFromPixel({ seriesIndex: selectedIdx.seriesIdx || 0 }, [params.offsetX, params.offsetY]);
+      if(!coord || coord.length < 2) return;
+      const newPrice = Number(Number(coord.at(1)).toFixed(3));
+      const opt = inst.getOption() || {};
+      if(selectedIdx.kind === "markLine" && Array.isArray(opt.series)){
+        const s = opt.series.at(selectedIdx.seriesIdx);
+        if(s && s.markLine && Array.isArray(s.markLine.data)){
+          const item = s.markLine.data.at(selectedIdx.dataIdx);
+          if(item && !Array.isArray(item)){
+            item.yAxis = newPrice;
+            if(item.label && typeof item.label.formatter === "string"){
+              item.label.formatter = item.label.formatter.replace(/\d+[.,]\d+/, newPrice.toFixed(2));
+            }
+            const patch = opt.series.map((_, i) => i === selectedIdx.seriesIdx ? { markLine: { data: s.markLine.data } } : {});
+            inst.setOption({ series: patch });
+            document.getElementById("chEditTraceLbl").textContent = "Niveau : " + newPrice.toFixed(2) + " TND";
+          }
+        }
+      } else if(selectedIdx.kind === "graphic" && Array.isArray(opt.graphic)){
+        const g0 = opt.graphic.at(0);
+        if(g0 && Array.isArray(g0.elements)){
+          const el = g0.elements.at(selectedIdx.dataIdx);
+          if(el && el.shape){
+            el.shape.y1 = params.offsetY;
+            el.shape.y2 = params.offsetY;
+            inst.setOption({ graphic: [{ elements: g0.elements }] });
+          }
+        }
+      }
+    });
+
+    zr.on("mouseup", function(){ isDraggingLevel = false; });
+    document.addEventListener("keydown", e => { if((e.key === "Delete" || e.key === "Backspace") && selectedIdx && document.activeElement.tagName !== "INPUT") deleteSelectedTrace(); });
+  }
+
+  window.addEventListener("load", () => { bindInteractiveEdit(); setTimeout(bindInteractiveEdit, 800); });
+  new MutationObserver(bindInteractiveEdit).observe(document.body, { childList: true, subtree: true });
+})();
+
 </script>
 </body>
 </html>
