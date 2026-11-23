@@ -2257,6 +2257,11 @@ def _construire_index():
             fp = os.path.join(live_dir, fn)
             if not os.path.isfile(fp) or fn == "index.json" or fn in vus:
                 continue
+            tz_check = datetime.timezone(datetime.timedelta(hours=1))
+            now_check = datetime.datetime.now(tz_check)
+            today_check = now_check.strftime("%d%m%Y")
+            if today_check in fn and ((now_check.weekday() >= 5) or ((now_check.hour * 60 + now_check.minute) < 510)):
+                continue
             if fn.startswith("temp_bourse_historique_") and date_jour not in fn:
                 try: os.remove(fp)
                 except Exception: pass

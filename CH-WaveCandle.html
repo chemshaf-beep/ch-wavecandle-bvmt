@@ -6331,5 +6331,193 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   new MutationObserver(hookNativeEdit).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+
+<script id="ch-premarket-and-ticker-reset">
+(function(){
+  let lastTickerVal = null;
+
+  function getTunisNow(){
+    return new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+  }
+
+  function isBeforeMarketOpen(){
+    const d = getTunisNow();
+    return (d.getDay() === 0 || d.getDay() === 6 || (d.getHours() * 60 + d.getMinutes()) < 510);
+  }
+
+  function getTodayStrings(){
+    const d = getTunisNow();
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return { fr: dd + "/" + mm + "/" + yyyy, iso: yyyy + "-" + mm + "-" + dd, compact: dd + mm + yyyy };
+  }
+
+  function getLastTradingStrings(){
+    const d = getTunisNow();
+    const day = d.getDay();
+    if(day === 0) d.setDate(d.getDate() - 2);
+    else if(day === 6) d.setDate(d.getDate() - 1);
+    else if((d.getHours() * 60 + d.getMinutes()) < 510) d.setDate(day === 1 ? d.getDate() - 3 : d.getDate() - 1);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return { fr: dd + "/" + mm + "/" + yyyy, iso: yyyy + "-" + mm + "-" + dd, compact: dd + mm + yyyy };
+  }
+
+  // 1. Interdire formellement LIVE et la date du jour (ex: 23/11/2026) avant 08h30 (Tunis)
+  function enforcePreMarketBlock(){
+    if(!isBeforeMarketOpen()) return;
+    const today = getTodayStrings();
+    const last = getLastTradingStrings();
+
+    const hSel = document.getElementById("selHorizon");
+    if(hSel && hSel.value === "LIVE"){
+      const singleOpt = Array.from(hSel.options).find(o => o.value !== "LIVE" && /unique|seance|séance/i.test((o.textContent||"") + " " + (o.value||"")));
+      if(singleOpt){
+        hSel.value = singleOpt.value;
+        hSel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+
+    const dInp = document.getElementById("txtDateSeance");
+    if(dInp){
+      const v = String(dInp.value || "");
+      if(v.includes(today.fr) || v.includes(today.iso)){
+        dInp.value = dInp.type === "date" ? last.iso : last.fr;
+        dInp.dispatchEvent(new Event("change", { bubbles: true }));
+        const loadBtn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim() === "Charger");
+        if(loadBtn) setTimeout(() => loadBtn.click(), 120);
+      }
+    }
+  }
+
+  // 2. Reinitialisation complete (traces, indicateurs, mode) lors du changement de valeur
+  function resetWorkspaceOnTickerChange(newTicker){
+    // A. Effacer tous les traces utilisateur
+    if(typeof dessinsUtilisateur !== "undefined" && Array.isArray(dessinsUtilisateur)){
+      dessinsUtilisateur.length = 0;
+    }
+    if(typeof dessinEnCours !== "undefined"){
+      dessinEnCours = null;
+    }
+    if(typeof rafraichirDessinsGraphique === "function"){
+      try { rafraichirDessinsGraphique(); } catch(e){}
+    }
+    const editBar = document.getElementById("chEditTraceBar");
+    if(editBar) editBar.style.display = "none";
+
+    // B. Decocher tous les indicateurs techniques actifs
+    document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+      if(cb.id === "chCandleLblCb") return;
+      const lbl = cb.closest("label") || cb.parentElement;
+      const txt = lbl ? (lbl.textContent || "").trim() : "";
+      if(!txt || txt.length >= 48 || /étiquettes|radar/i.test(txt)) return;
+      if(cb.checked) cb.click();
+    });
+
+    // C. Revenir en mode Vagues Polygonales par defaut
+    const modeSel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /vagues|bougie|chandelier/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+    if(modeSel){
+      const polyOpt = Array.from(modeSel.options).find(o => /vagues|polygon/i.test((o.textContent||"") + " " + (o.value||"")));
+      if(polyOpt && modeSel.value !== polyOpt.value){
+        modeSel.value = polyOpt.value;
+        modeSel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  }
+
+  function watchTickerChanges(){
+    const tickerSel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /delice|biat|sfbt|atb|bh|amen|tpr|sah|poulina/i.test((o.textContent||"") + " " + (o.value||"")))
+    );
+    if(!tickerSel) return;
+    if(lastTickerVal === null) lastTickerVal = tickerSel.value;
+    if(!tickerSel.__chResetHooked){
+      tickerSel.__chResetHooked = true;
+      tickerSel.addEventListener("change", function(){
+        if(tickerSel.value && tickerSel.value !== lastTickerVal){
+          lastTickerVal = tickerSel.value;
+          resetWorkspaceOnTickerChange(tickerSel.value);
+        }
+      }, true);
+    }
+  }
+
+  setInterval(() => {
+    enforcePreMarketBlock();
+    watchTickerChanges();
+  }, 500);
+
+  window.addEventListener("load", () => {
+    enforcePreMarketBlock();
+    watchTickerChanges();
+  });
+})();
+
+</script>
+<script id="ch-replay-in-single-session">
+(function(){
+  function getTunisNow(){
+    return new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+  }
+  function isBefore0830(){
+    const d = getTunisNow();
+    return (d.getDay() === 0 || d.getDay() === 6 || (d.getHours() * 60 + d.getMinutes()) < 510);
+  }
+  function getTodayFr(){
+    const d = getTunisNow();
+    return String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0") + "/" + d.getFullYear();
+  }
+
+  function keepReplayControlsVisibleInSingleSession(){
+    const hSel = document.getElementById("selHorizon");
+    if(!hSel) return;
+    const hTxt = ((hSel.options.item(hSel.selectedIndex)?.textContent || "") + " " + (hSel.value || "")).toLowerCase();
+    const isSingleOrLive = hTxt.includes("unique") || hTxt.includes("live") || hTxt.includes("tick");
+
+    const replayDateSel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /replay\s*:/i.test(o.textContent || ""))
+    );
+    const replayStartBtn = Array.from(document.querySelectorAll("button")).find(b =>
+      /replay\s*s[eé]ance/i.test(b.textContent || "")
+    );
+    const replaySpeedSel = Array.from(document.querySelectorAll("select")).find(s =>
+      Array.from(s.options).some(o => /vitesse\s*:/i.test(o.textContent || ""))
+    );
+    const replayFullBtn = Array.from(document.querySelectorAll("button, select")).find(el =>
+      /toute\s*la\s*s[eé]ance/i.test(el.textContent || "")
+    );
+
+    // Exclure la date du jour (ex: 23/11/2026) avant 08h30 dans le selecteur Replay
+    if(replayDateSel && isBefore0830()){
+      const todayFr = getTodayFr();
+      const curOpt = replayDateSel.options.item(replayDateSel.selectedIndex);
+      if(curOpt && (curOpt.textContent || "").includes(todayFr)){
+        const validOpt = Array.from(replayDateSel.options).find(o => !(o.textContent || "").includes(todayFr) && /\d{2}\/\d{2}\/\d{4}/.test(o.textContent || ""));
+        if(validOpt){
+          replayDateSel.value = validOpt.value;
+          replayDateSel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+    }
+
+    // Afficher les 4 controles Replay lorsque Horizon = Seance Unique (Ticks) ou Live
+    new Array(replayDateSel, replayStartBtn, replaySpeedSel, replayFullBtn).forEach(el => {
+      if(!el) return;
+      if(isSingleOrLive){
+        el.style.setProperty("display", "inline-flex", "important");
+      } else {
+        el.style.setProperty("display", "none", "important");
+      }
+    });
+  }
+
+  setInterval(keepReplayControlsVisibleInSingleSession, 400);
+  window.addEventListener("load", keepReplayControlsVisibleInSingleSession);
+})();
+</script>
 </body>
 </html>
