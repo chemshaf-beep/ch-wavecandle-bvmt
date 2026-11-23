@@ -11,20 +11,32 @@
     return (d.getDay() === 0 || d.getDay() === 6 || (d.getHours() * 60 + d.getMinutes()) < 510);
   }
 
-  // Intercepteur anti-saturation sur /gradio_api/call/bvmt_data et /bvmt_api/index
+  function makeSilentSseResponse(){
+    const sseBody = "event: complete\ndata: [null]\n\n";
+    return new Response(sseBody, {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream; charset=utf-8" }
+    });
+  }
+
   const origFetch = window.fetch.bind(window);
   window.fetch = function(input, init){
     const url = typeof input === "string" ? input : (input && input.url ? input.url : "");
     const isLivePoll = url.includes("bvmt_data") || url.includes("live=1");
     if(isLivePoll){
-      const now = Date.now();
-      // 1. Avant 08h30 (Tunis), couper les rafales live=1 pour ne pas charger le faux fichier du jour ni saturer le serveur
+      // 1. Avant 08h30 (Tunis), repondre avec un flux SSE silencieux valide apres 1.5s (0 erreur, 0 boucle)
       if(isBefore0830Tunis() && url.includes("live=1")){
-        return Promise.resolve(new Response(JSON.stringify({ status: 204, skipped: true }), { status: 200, headers: { "Content-Type": "application/json" } }));
+        return new Promise(resolve => setTimeout(() => resolve(makeSilentSseResponse()), 1500));
       }
-      // 2. Empecher l'empilement de requetes bvmt_data simultanees (cause du crash Failed to fetch)
-      if(bvmtInFlight || (now - lastBvmtCallAt) < 1200){
-        return Promise.resolve(new Response(JSON.stringify({ status: 429, busy: true }), { status: 200, headers: { "Content-Type": "application/json" } }));
+      // 2. Cadencer les appels bvmt_data a maximum 1 appel toutes les 1.2s sans jamais empiler
+      const now = Date.now();
+      const waitMs = Math.max(0, 1200 - (now - lastBvmtCallAt));
+      if(bvmtInFlight || waitMs > 0){
+        return new Promise(resolve => setTimeout(() => {
+          lastBvmtCallAt = Date.now();
+          bvmtInFlight = true;
+          origFetch(input, init).finally(() => { bvmtInFlight = false; }).then(resolve, () => resolve(makeSilentSseResponse()));
+        }, Math.max(waitMs, 600)));
       }
       bvmtInFlight = true;
       lastBvmtCallAt = now;
@@ -34,6 +46,7 @@
   };
 })();
 </script>
+
 <!-- CH_CACHE_PURGE_V2_START -->
 <script>
 (function() {
