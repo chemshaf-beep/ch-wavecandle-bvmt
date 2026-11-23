@@ -6681,6 +6681,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 </script>
 
+
 <script id="ch-axis-expand-future">
 (function(){
   let currentExpandMode = "AUTO"; // AUTO | FUTUR25 | FUTUR50
@@ -6696,6 +6697,55 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }
   }
 
+  function nextBusinessDay(d){
+    const nxt = new Date(d.getTime());
+    do { nxt.setDate(nxt.getDate() + 1); } while (nxt.getDay() === 0 || nxt.getDay() === 6);
+    return nxt;
+  }
+
+  function generateFutureCategoryLabels(lastLabel, count, granVal){
+    const labels = [];
+    const raw = String(lastLabel || "").trim();
+    const mDate = raw.match(/(\d{2})\/(\d{2})(?:\/(\d{4}))?/);
+    const mTime = raw.match(/(\d{2}):(\d{2})/);
+    const nowYear = new Date().getFullYear();
+
+    let curDate = mDate
+      ? new Date(Number(mDate.at(3) || nowYear), Number(mDate.at(2)) - 1, Number(mDate.at(1)))
+      : new Date();
+    let curMin = mTime ? (Number(mTime.at(1)) * 60 + Number(mTime.at(2))) : (14 * 60);
+
+    const isSubDay = /^(1M|5M|15M|30M|1H|H|HEURE)/i.test(granVal || "") || Boolean(mTime);
+    const stepMin = /1M/i.test(granVal) ? 1 : (/5M/i.test(granVal) ? 5 : (/15M/i.test(granVal) ? 15 : (/30M/i.test(granVal) ? 30 : 60)));
+    const stepDays = /SEM|WEEK/i.test(granVal) ? 7 : (/MOIS|MONTH/i.test(granVal) ? 30 : 1);
+
+    for(let i = 0; i < count; i++){
+      if(isSubDay){
+        curMin += stepMin;
+        if(curMin > 15 * 60){
+          curDate = nextBusinessDay(curDate);
+          curMin = 9 * 60;
+        }
+        const dd = String(curDate.getDate()).padStart(2, "0");
+        const mm = String(curDate.getMonth() + 1).padStart(2, "0");
+        const hh = String(Math.floor(curMin / 60)).padStart(2, "0");
+        const mi = String(curMin % 60).padStart(2, "0");
+        labels.push(mDate ? `dd/{mm} hh:{mi}` : `hh:{mi}`);
+      } else {
+        if(stepDays === 1){
+          curDate = nextBusinessDay(curDate);
+        } else {
+          curDate.setDate(curDate.getDate() + stepDays);
+          while(curDate.getDay() === 0 || curDate.getDay() === 6) curDate.setDate(curDate.getDate() + 1);
+        }
+        const dd = String(curDate.getDate()).padStart(2, "0");
+        const mm = String(curDate.getMonth() + 1).padStart(2, "0");
+        labels.push(`dd/{mm}`);
+      }
+    }
+    return labels;
+  }
+
   function applyAxisExpansion(){
     if(applyingAxis || typeof chart === "undefined" || !chart) return;
     if(currentExpandMode === "AUTO"){
@@ -6706,17 +6756,18 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
     applyingAxis = true;
     try {
-      // 1. Partir du rendu natif exact pour obtenir les vraies bornes X et Y de la seance
       redrawNative();
       const opt = chart.getOption();
       const x0 = opt?.xAxis?.at(0);
       const y0 = opt?.yAxis?.at(0);
       if(!x0 || !y0) return;
 
+      const hVal = document.getElementById("selHorizon")?.value || "";
+      const granVal = document.getElementById("selGranularite")?.value || "";
       const futRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
-      const yPadRatio = currentExpandMode === "FUTUR50" ? 0.12 : 0.05;
+      const yPadRatio = currentExpandMode === "FUTUR50" ? 0.14 : 0.06;
 
-      // Calculer les bornes Y reelles des prix
+      // 1. Calculer les bornes Y (prix) élargies (valable dans tous les modes)
       let minP = typeof y0.min === "number" ? y0.min : Infinity;
       let maxP = typeof y0.max === "number" ? y0.max : -Infinity;
       if((minP === Infinity || maxP === -Infinity) && typeof globalData !== "undefined" && globalData){
@@ -6731,18 +6782,16 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         ? [{ min: Number(Math.max(0.01, minP - spanY * yPadRatio).toFixed(3)), max: Number((maxP + spanY * yPadRatio).toFixed(3)), scale: false }]
         : [{}];
 
-      // Calculer l'extension future sur l'axe X (numerique en secondes OU categories en multi-seances)
-      if(x0.type === "category" && Array.isArray(x0.data) && x0.data.length > 0){
+      // 2. Elargir X UNIQUEMENT en mode MULTI-SEANCES avec vraies dates/heures ouvrées futures
+      if(hVal === "MULTI" && x0.type === "category" && Array.isArray(x0.data) && x0.data.length > 0){
         const extra = Math.max(3, Math.round(x0.data.length * futRatio));
-        const extData = x0.data.slice();
-        for(let i = 1; i <= extra; i++) extData.push("+" + i);
+        const lastLbl = x0.data.at(-1);
+        const futLabels = generateFutureCategoryLabels(lastLbl, extra, granVal);
+        const extData = x0.data.concat(futLabels);
         chart.setOption({ xAxis: [{ data: extData, max: extData.length - 1 }], yAxis: yPatch });
       } else {
-        const curMinX = typeof x0.min === "number" ? x0.min : 32400; // 09:00:00
-        const curMaxX = typeof x0.max === "number" ? x0.max : 54000; // 15:00:00
-        const spanX = Math.max(3600, curMaxX - curMinX);
-        const newMaxX = Math.round(curMaxX + spanX * futRatio);
-        chart.setOption({ xAxis: [{ min: curMinX, max: newMaxX }], yAxis: yPatch });
+        // En Séance Unique ou Live : conserver strictement 09:00 -> 15:00 et élargir uniquement les prix (Y)
+        chart.setOption({ yAxis: yPatch });
       }
 
       if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
@@ -6758,11 +6807,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
     const sel = document.createElement("select");
     sel.id = "selExpandAxes";
-    sel.title = "Élargir l'espace futur (droite) et l'amplitude des prix (haut/bas) pour tracer des tendances futures";
+    sel.title = "Élargir l'amplitude des prix (Séance/Live) et l'horizon futur daté (Multi-Séances)";
     sel.innerHTML = `
       <option value="AUTO" selected>📐 Axes : Auto</option>
-      <option value="FUTUR25">📐 Axes : Élargi (+25% Futur)</option>
-      <option value="FUTUR50">📐 Axes : Projection (+50% Futur)</option>
+      <option value="FUTUR25">📐 Axes : Élargi (+25%)</option>
+      <option value="FUTUR50">📐 Axes : Projection (+50%)</option>
     `;
     sel.onchange = function(){
       currentExpandMode = sel.value;
