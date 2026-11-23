@@ -6778,8 +6778,26 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         });
       }
       const spanY = (minP !== Infinity && maxP !== -Infinity) ? Math.max(0.02, maxP - minP) : 0.5;
+      let targetMinY = minP - spanY * yPadRatio;
+      let targetMaxY = maxP + spanY * yPadRatio;
+      // En Seance Unique ou Live : respecter les paliers BVMT (+/-3% / +/-6.09%) en seance normale, mais liberer automatiquement en cas d'IPO / augmentation de capital (>6.1%)
+      if(hVal !== "MULTI" && minP !== Infinity && maxP !== -Infinity){
+        const refP = Number(globalData?.cours_ref || globalData?.ouverture || ((minP + maxP) / 2));
+        const realMovePct = Math.max(Math.abs(maxP - refP) / refP, Math.abs(refP - minP) / refP);
+        if(realMovePct <= 0.0615){
+          // Seance standard BVMT : palier 1 (+/-3%) ou palier 2 (+/-6.09%), ou +/-10% en mode Projection
+          const capPct = currentExpandMode === "FUTUR50" ? 0.10 : (realMovePct > 0.0305 ? 0.0609 : 0.03);
+          targetMinY = Math.max(refP * (1 - capPct), Math.min(minP, targetMinY));
+          targetMaxY = Math.min(refP * (1 + capPct), Math.max(maxP, targetMaxY));
+        } else {
+          // Regime exceptionnel (Introduction en bourse, augmentation de capital, avis special BVMT) : elargissement libre proportionnel
+          const excPad = currentExpandMode === "FUTUR50" ? 0.25 : 0.12;
+          targetMinY = minP - spanY * excPad;
+          targetMaxY = maxP + spanY * excPad;
+        }
+      }
       const yPatch = (minP !== Infinity && maxP !== -Infinity)
-        ? [{ min: Number(Math.max(0.01, minP - spanY * yPadRatio).toFixed(3)), max: Number((maxP + spanY * yPadRatio).toFixed(3)), scale: false }]
+        ? [{ min: Number(Math.max(0.01, targetMinY).toFixed(3)), max: Number(targetMaxY.toFixed(3)), scale: false }]
         : [{}];
 
       // 2. Elargir X UNIQUEMENT en mode MULTI-SEANCES avec vraies dates/heures ouvrées futures
@@ -6843,6 +6861,63 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     injectAxisExpandControl();
     hookChartSetOption();
   }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<script id="ch-pie-labels-follow">
+(function(){
+  let lastCenterKey = "";
+  function syncPieTitlesWithDisk(){
+    if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
+    try {
+      const opt = chart.getOption();
+      const pieS = (opt.series || []).find(s => s && s.type === "pie" && Array.isArray(s.center));
+      if(!pieS) return;
+      const w = chart.getWidth();
+      const h = chart.getHeight();
+      const cxRaw = pieS.center;
+      const cyRaw = pieS.center;
+      const cx = typeof cxRaw === "string" && cxRaw.endsWith("%") ? (parseFloat(cxRaw) / 100) * w : Number(cxRaw);
+      const cy = typeof cyRaw === "string" && cyRaw.endsWith("%") ? (parseFloat(cyRaw) / 100) * h : Number(cyRaw);
+      const rArr = Array.isArray(pieS.radius) ? pieS.radius : [0, pieS.radius || 55];
+      const rOuterRaw = rArr.at(-1);
+      const rPx = typeof rOuterRaw === "string" && rOuterRaw.endsWith("%") ? (parseFloat(rOuterRaw) / 100) * Math.min(w, h) : Number(rOuterRaw || 55);
+      if(isNaN(cx) || isNaN(cy)) return;
+
+      const key = `\${Math.round(cx)}_\({Math.round(cy)}_\){Math.round(rPx)}`;
+      if(key === lastCenterKey) return;
+
+      const graphics = opt.graphic;
+      if(!Array.isArray(graphics) || graphics.length === 0) return;
+
+      let updated = false;
+      const newGraphics = graphics.map(gGroup => {
+        if(!gGroup || !Array.isArray(gGroup.elements)) return gGroup;
+        const newEls = gGroup.elements.map(el => {
+          const txt = String(el?.style?.text || "");
+          if(/Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(txt)){
+            updated = true;
+            return Object.assign({}, el, { left: Math.round(cx), top: Math.max(8, Math.round(cy - rPx - 22)), style: Object.assign({}, el.style, { textAlign: "center" }) });
+          }
+          if(/Agressivité/i.test(txt)){
+            updated = true;
+            return Object.assign({}, el, { left: Math.round(cx), top: Math.round(cy + rPx + 10), style: Object.assign({}, el.style, { textAlign: "center" }) });
+          }
+          return el;
+        });
+        return Object.assign({}, gGroup, { elements: newEls });
+      });
+
+      if(updated){
+        lastCenterKey = key;
+        chart.setOption({ graphic: newGraphics });
+      }
+    } catch(e){}
+  }
+
+  window.addEventListener("load", () => {
+    setInterval(syncPieTitlesWithDisk, 120);
+    window.addEventListener("pointerup", () => { lastCenterKey = ""; setTimeout(syncPieTitlesWithDisk, 30); });
+  });
 })();
 </script>
 </body>
