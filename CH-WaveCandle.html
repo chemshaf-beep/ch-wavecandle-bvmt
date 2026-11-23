@@ -5932,7 +5932,19 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         }
       });
     }
-    const userDrawings = Array.isArray(window.dessinsUtilisateur) ? JSON.parse(JSON.stringify(window.dessinsUtilisateur)) : []; return { markLines: markLines, customSeries: customSeries, userDrawings: userDrawings };
+    const userDrawings = Array.isArray(window.dessinsUtilisateur) ? JSON.parse(JSON.stringify(window.dessinsUtilisateur)) : [];
+    const ctxState = {
+      ticker: document.getElementById("selTicker")?.value || "",
+      horizon: document.getElementById("selHorizon")?.value || "",
+      dateSeance: document.getElementById("txtDateSeance")?.value || "",
+      granularite: document.getElementById("selGranularite")?.value || "",
+      granulariteIntra: document.getElementById("selGranulariteIntra")?.value || "",
+      modeRendu: document.getElementById("selModeRendu")?.value || "",
+      filtreBlocs: document.getElementById("selFiltreBlocs")?.value || "",
+      posCamembert: document.getElementById("selPosCamembert")?.value || "",
+      expandAxes: document.getElementById("selExpandAxes")?.value || ""
+    };
+    return { markLines: markLines, customSeries: customSeries, userDrawings: userDrawings, ctxState: ctxState };
   }
 
   function restoreNativeChartDrawings(captured){
@@ -5982,16 +5994,50 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     return l;
   }
 
+  function setSelectIfChanged(id, val){
+    if(!val) return false;
+    const el = document.getElementById(id);
+    if(!el) return false;
+    const opt = Array.from(el.options).find(o => o.value === val || (o.textContent || "").trim() === val);
+    if(opt && el.value !== opt.value){
+      el.value = opt.value;
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+    return false;
+  }
+
   function applyPreset(pr){
     if(!pr) return;
-    const ms = getModeSelect();
-    if(ms && pr.mode){
-      const opt = Array.from(ms.options).find(o => o.value === pr.mode || (o.textContent||"").trim() === pr.mode);
-      if(opt){ ms.value = opt.value; ms.dispatchEvent(new Event("change", { bubbles: true })); }
+    const ctx = (pr.captured && pr.captured.ctxState) ? pr.captured.ctxState : {};
+    const targetTicker = ctx.ticker || pr.ticker || "";
+
+    // 1. Basculer automatiquement sur la valeur (ticker) si differente de la valeur actuelle
+    const tickerChanged = setSelectIfChanged("selTicker", targetTicker);
+
+    // 2. Appliquer l'horizon (UNIQUE / MULTI / LIVE) et la date de seance si applicable
+    const horizonChanged = setSelectIfChanged("selHorizon", ctx.horizon);
+    if(ctx.dateSeance && document.getElementById("txtDateSeance")){
+      const inpD = document.getElementById("txtDateSeance");
+      if(inpD.value !== ctx.dateSeance){
+        inpD.value = ctx.dateSeance;
+        if((ctx.horizon === "UNIQUE" || !ctx.horizon) && document.getElementById("btnChargerDate")){
+          document.getElementById("btnChargerDate").click();
+        }
+      }
     }
+
+    // 3. Appliquer la periode de bougies, le mode de rendu, le filtre de blocs et le camembert
+    setSelectIfChanged("selGranularite", ctx.granularite);
+    setSelectIfChanged("selGranulariteIntra", ctx.granulariteIntra);
+    setSelectIfChanged("selModeRendu", ctx.modeRendu || pr.mode);
+    setSelectIfChanged("selFiltreBlocs", ctx.filtreBlocs);
+    setSelectIfChanged("selPosCamembert", ctx.posCamembert);
+
+    // 4. Appliquer les indicateurs coches
     if(Array.isArray(pr.indicators)){
       document.querySelectorAll("input[type='checkbox']").forEach(cb => {
-        if(cb.id === "chCandleLblCb") return;
+        if(cb.id === "chCandleLblCb" || /étiquette/i.test((cb.parentElement && cb.parentElement.textContent) || cb.id || "")) return;
         const lbl = cb.closest("label") || cb.parentElement;
         const txt = lbl ? (lbl.textContent || "").trim() : "";
         if(!txt || txt.length >= 48) return;
@@ -5999,7 +6045,14 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         if(cb.checked !== want) cb.click();
       });
     }
-    setTimeout(() => restoreNativeChartDrawings(pr.captured), 280);
+
+    // 5. Attendre la fin du chargement des donnees (si changement de valeur ou d'horizon), puis restaurer les axes et tous les traces
+    const delayMs = (tickerChanged || horizonChanged) ? 550 : 220;
+    setTimeout(() => {
+      setSelectIfChanged("selExpandAxes", ctx.expandAxes);
+      restoreNativeChartDrawings(pr.captured);
+      setTimeout(() => restoreNativeChartDrawings(pr.captured), 250);
+    }, delayMs);
   }
 
   function renderList(list){
