@@ -7068,6 +7068,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+
 <script id="ch-pie-and-trendline-pro">
 (function(){
   // === PARTIE A : GESTION AFFICHAGE / MASQUAGE DU CAMEMBERT ===
@@ -7078,9 +7079,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     const hidePie = (sel.value === "MASQUE");
     try {
       const opt = chart.getOption();
-      let changed = false;
-
       if(Array.isArray(opt.series)){
+        let changed = false;
         const sPatch = opt.series.map(s => {
           if(s && s.type === "pie"){
             changed = true;
@@ -7094,7 +7094,98 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       if(Array.isArray(opt.title) && opt.title.length > 0){
         let tChanged = false;
         const newTitles = opt.title.map(t => {
-          const full = `\${t?.text || ""} \({t?.subtext \vert{}\vert{} ""}`; if(/\d{2}\/\d{2}/.test(full) \vert{}\vert{} /Agressivité/i.test(full)){ tChanged = true; return Object.assign({}, t, { show: !hidePie }); } return t; }); if(tChanged) chart.setOption({ title: newTitles }); }  if(Array.isArray(opt.graphic) && opt.graphic.length > 0){ let gChanged = false; const toggleEl = (el) => { if(!el) return el; if(Array.isArray(el.elements)) return Object.assign({}, el, { elements: el.elements.map(toggleEl) }); const txt = String(el?.style?.text \vert{}\vert{} el?.text \vert{}\vert{} ""); if(/\d{2}\/\d{2}/.test(txt) \vert{}\vert{} /Agressivité/i.test(txt)){ gChanged = true; return Object.assign({}, el, { invisible: hidePie }); } return el; }; const newGraphics = opt.graphic.map(toggleEl); if(gChanged) chart.setOption({ graphic: newGraphics }); } } catch(e){} }  // === PARTIE B : TETES DE FLECHE & ETIQUETTES INCLINEES SELON L'ANGLE DES DROITES DE TENDANCE === function renderTrendArrowsAndSlopedLabels(){ if(typeof chart === "undefined" \vert{}\vert{} !chart \vert{}\vert{} typeof dessinsUtilisateur === "undefined" \vert{}\vert{} !Array.isArray(dessinsUtilisateur)) return; try { const opt = chart.getOption(); const existingG = Array.isArray(opt.graphic) ? opt.graphic.filter(g => g && g.id !== "ch_trend_arrows_group") : []; const arrowElements = []; const showLabels = document.getElementById("chkAfficherEtiquettes") ? document.getElementById("chkAfficherEtiquettes").checked : true;  dessinsUtilisateur.forEach((d, idx) => { if(!d) return; const t = String(d.type \vert{}\vert{} "").toUpperCase(); // Cibler les droites de tendance, segments et canaux if(!/(TENDANCE\vert{}TREND\vert{}DROITE\vert{}SEGMENT\vert{}CANAL)/.test(t)) return; if(d.x1 === undefined \vert{}\vert{} d.y1 === undefined \vert{}\vert{} d.x2 === undefined \vert{}\vert{} d.y2 === undefined) return;  const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]); const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]); if(!Array.isArray(p1) \vert{}\vert{} !Array.isArray(p2) \vert{}\vert{} isNaN(p1) \vert{}\vert{} isNaN(p1) \vert{}\vert{} isNaN(p2) \vert{}\vert{} isNaN(p2)) return;  const dx = p2 - p1; const dy = p2 - p1; const dist = Math.hypot(dx, dy); if(dist < 12) return;  const angle = Math.atan2(dy, dx); const isUp = (Number(d.y2) >= Number(d.y1)); const col = d.color \vert{}\vert{} d.couleur \vert{}\vert{} (isUp ? "#00E676" : "#FF5252");  // 1. Pointe de fleche triangulaire orientee exactement selon l'angle de la droite au point (p2, p2) const arrowLen = 13; const arrowHalfW = 5.5; const ux = Math.cos(angle); const uy = Math.sin(angle); const px = -uy; const py = ux;  const tip = [p2, p2]; const leftPt = [p2 - ux * arrowLen + px * arrowHalfW, p2 - uy * arrowLen + py * arrowHalfW]; const rightPt = [p2 - ux * arrowLen - px * arrowHalfW, p2 - uy * arrowLen - py * arrowHalfW];  arrowElements.push({ type: "polygon", id: "ch_arrow_" + idx, silent: true, z: 120, shape: { points: [tip, leftPt, rightPt] }, style: { fill: col, stroke: col, lineWidth: 1 } });  // 2. Etiquette rapprochee (10px au-dessus du milieu du trait) et inclinee exactement avec le meme angle if(showLabels){ let textAngle = -angle; // ECharts rotation est anti-horaire en radians // Garder le texte toujours lisible a l'endroit (jamais retourne a 180 degres) if(textAngle > Math.PI / 2) textAngle -= Math.PI; if(textAngle < -Math.PI / 2) textAngle += Math.PI;  // Vecteur normal pointant vers le haut de l'ecran let nx = Math.sin(angle); let ny = -Math.cos(angle); if(ny > 0){ nx = -nx; ny = -ny; }  const midX = (p1 + p2) / 2 + nx * 10; const midY = (p1 + p2) / 2 + ny * 10; const pDeb = Number(d.y1).toFixed(2); const pFin = Number(d.y2).toFixed(2); const pct = Number(d.y1) > 0 ? (((Number(d.y2) - Number(d.y1)) / Number(d.y1)) * 100).toFixed(2) : "0.00"; const signe = Number(pct) >= 0 ? "+" : ""; const lblTxt = d.label \vert{}\vert{} `\){isUp ? "↗ Tendance" : "↘ Tendance"} (pDeb → {pFin} | signe{pct}%)`;
+          const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
+          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full)){
+            tChanged = true;
+            return Object.assign({}, t, { show: !hidePie });
+          }
+          return t;
+        });
+        if(tChanged) chart.setOption({ title: newTitles });
+      }
+
+      if(Array.isArray(opt.graphic) && opt.graphic.length > 0){
+        let gChanged = false;
+        const toggleEl = (el) => {
+          if(!el) return el;
+          if(Array.isArray(el.elements)) return Object.assign({}, el, { elements: el.elements.map(toggleEl) });
+          const txt = String((el.style && el.style.text) || el.text || "");
+          if(/\d{2}\/\d{2}/.test(txt) || /Agressivité/i.test(txt)){
+            gChanged = true;
+            return Object.assign({}, el, { invisible: hidePie });
+          }
+          return el;
+        };
+        const newGraphics = opt.graphic.map(toggleEl);
+        if(gChanged) chart.setOption({ graphic: newGraphics });
+      }
+    } catch(e){}
+  }
+
+  // === PARTIE B : TETES DE FLECHE & ETIQUETTES INCLINEES SELON L'ANGLE DES DROITES DE TENDANCE ===
+  function renderTrendArrowsAndSlopedLabels(){
+    if(typeof chart === "undefined" || !chart || typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
+    try {
+      const opt = chart.getOption();
+      const existingG = Array.isArray(opt.graphic) ? opt.graphic.filter(g => g && g.id !== "ch_trend_arrows_group") : [];
+      const arrowElements = [];
+      const showLabels = document.getElementById("chkAfficherEtiquettes") ? document.getElementById("chkAfficherEtiquettes").checked : true;
+
+      dessinsUtilisateur.forEach((d, idx) => {
+        if(!d) return;
+        const t = String(d.type || "").toUpperCase();
+        if(!/(TENDANCE|TREND|DROITE|SEGMENT|CANAL)/.test(t)) return;
+        if(d.x1 === undefined || d.y1 === undefined || d.x2 === undefined || d.y2 === undefined) return;
+
+        const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
+        const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
+        if(!Array.isArray(p1) || !Array.isArray(p2) || isNaN(p1) || isNaN(p1) || isNaN(p2) || isNaN(p2)) return;
+
+        const dx = p2 - p1;
+        const dy = p2 - p1;
+        const dist = Math.hypot(dx, dy);
+        if(dist < 12) return;
+
+        const angle = Math.atan2(dy, dx);
+        const isUp = (Number(d.y2) >= Number(d.y1));
+        const col = d.color || d.couleur || (isUp ? "#00E676" : "#FF5252");
+
+        const arrowLen = 13;
+        const arrowHalfW = 5.5;
+        const ux = Math.cos(angle);
+        const uy = Math.sin(angle);
+        const px = -uy;
+        const py = ux;
+
+        const tip = [p2, p2];
+        const leftPt = [p2 - ux * arrowLen + px * arrowHalfW, p2 - uy * arrowLen + py * arrowHalfW];
+        const rightPt = [p2 - ux * arrowLen - px * arrowHalfW, p2 - uy * arrowLen - py * arrowHalfW];
+
+        arrowElements.push({
+          type: "polygon",
+          id: "ch_arrow_" + idx,
+          silent: true,
+          z: 120,
+          shape: { points: [tip, leftPt, rightPt] },
+          style: { fill: col, stroke: col, lineWidth: 1 }
+        });
+
+        if(showLabels){
+          let textAngle = -angle;
+          if(textAngle > Math.PI / 2) textAngle -= Math.PI;
+          if(textAngle < -Math.PI / 2) textAngle += Math.PI;
+
+          let nx = Math.sin(angle);
+          let ny = -Math.cos(angle);
+          if(ny > 0){ nx = -nx; ny = -ny; }
+
+          const midX = (p1 + p2) / 2 + nx * 10;
+          const midY = (p1 + p2) / 2 + ny * 10;
+          const pDeb = Number(d.y1).toFixed(2);
+          const pFin = Number(d.y2).toFixed(2);
+          const pct = Number(d.y1) > 0 ? (((Number(d.y2) - Number(d.y1)) / Number(d.y1)) * 100).toFixed(2) : "0.00";
+          const signe = Number(pct) >= 0 ? "+" : "";
+          const lblTxt = d.label || ((isUp ? "↗ Tendance" : "↘ Tendance") + " (" + pDeb + " → " + pFin + " | " + signe + pct + "%)");
 
           arrowElements.push({
             type: "text",
@@ -7127,7 +7218,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     } catch(e){}
   }
 
-  // Envelopper rafraichirDessinsGraphique pour dessiner automatiquement les fleches et etiquettes inclinees
   function hookDessinsRefresh(){
     if(typeof window.rafraichirDessinsGraphique === "function" && !window.rafraichirDessinsGraphique.__chArrowWrapped){
       const origRef = window.rafraichirDessinsGraphique;
