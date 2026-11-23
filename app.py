@@ -3066,6 +3066,12 @@ def _rpc_data(payload_json: str):
         if cmd == "index":
             return json.dumps({"status": 200, "data": _construire_index()})
         rel_path = str(b.get("path", "")).lstrip("/")
+        if DATE_JOUR_STR in rel_path and "temp_" not in rel_path:
+            try:
+                if os.path.isfile(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 250:
+                    shutil.copy2(FICHIER_HISTO_RAMDISK, FICHIER_HISTO_SEANCE)
+            except Exception:
+                pass
         # 1. Lecture stricte depuis _BASE_DIR (inclut Historique/...)
         fp = os.path.abspath(os.path.join(_BASE_DIR, rel_path.replace("/", os.sep)))
         if fp.startswith(_BASE_DIR) and os.path.isfile(fp):
