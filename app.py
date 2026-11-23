@@ -1413,6 +1413,11 @@ def boucle_background_aspiration_falcon():
             BUFFER_TEXTE_RESEAU_FALCON = "SbeMarket SheetValeur;Etat;Qt. A;Achat;Vente;Qt.V;Clôture;CTO;VTO;Ouverture;Dernier;Var.;CMP;Qté;Volume;P. Haut;P. Bas;Seuil.S. Haut;Seuil.S. Bas;Seuil.D. Haut;Seuil.D. Bas;Heure\n"
 
     while True:
+            _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+            _now_tn = datetime.datetime.now(_tz_tn)
+            if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
+                time.sleep(2.0)
+                continue
         try:
             if MODE_SIMULATION_ACTIF:
                 # --- MODE SIMULATION : Lecture asynchrone du grand livre de simulation ---
@@ -1743,10 +1748,20 @@ def boucle_synchro_github():
     try: sync_github_cloud()
     except Exception: pass
     while True:
+            _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+            _now_tn = datetime.datetime.now(_tz_tn)
+            if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
+                time.sleep(2.0)
+                continue
         time.sleep(60)
         try: sync_github_cloud()
         except Exception: pass
     while True:
+            _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+            _now_tn = datetime.datetime.now(_tz_tn)
+            if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
+                time.sleep(2.0)
+                continue
         time.sleep(60)
         try: sync_github_cloud()
         except Exception: pass
@@ -1887,6 +1902,11 @@ def lancer_collecteur_bvmt():
 
     # Boucle souveraine de sûreté cadencée
     while True:
+            _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+            _now_tn = datetime.datetime.now(_tz_tn)
+            if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
+                time.sleep(2.0)
+                continue
         try: 
             maintenant_obj = datetime.datetime.now()
             heure_courante_pc = maintenant_obj.strftime("%H:%M:%S")
@@ -2025,6 +2045,11 @@ _generer_index_et_whitelist()
 
 def _boucle_index_cloud():
     while True:
+            _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+            _now_tn = datetime.datetime.now(_tz_tn)
+            if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
+                time.sleep(2.0)
+                continue
         try:
             _generer_index_et_whitelist()
         except Exception as ex:

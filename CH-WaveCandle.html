@@ -1,6 +1,39 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<script id="ch-anti-crash-live">
+(function(){
+  let bvmtInFlight = false;
+  let lastBvmtCallAt = 0;
+
+  function isBefore0830Tunis(){
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+    return (d.getDay() === 0 || d.getDay() === 6 || (d.getHours() * 60 + d.getMinutes()) < 510);
+  }
+
+  // Intercepteur anti-saturation sur /gradio_api/call/bvmt_data et /bvmt_api/index
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    const url = typeof input === "string" ? input : (input && input.url ? input.url : "");
+    const isLivePoll = url.includes("bvmt_data") || url.includes("live=1");
+    if(isLivePoll){
+      const now = Date.now();
+      // 1. Avant 08h30 (Tunis), couper les rafales live=1 pour ne pas charger le faux fichier du jour ni saturer le serveur
+      if(isBefore0830Tunis() && url.includes("live=1")){
+        return Promise.resolve(new Response(JSON.stringify({ status: 204, skipped: true }), { status: 200, headers: { "Content-Type": "application/json" } }));
+      }
+      // 2. Empecher l'empilement de requetes bvmt_data simultanees (cause du crash Failed to fetch)
+      if(bvmtInFlight || (now - lastBvmtCallAt) < 1200){
+        return Promise.resolve(new Response(JSON.stringify({ status: 429, busy: true }), { status: 200, headers: { "Content-Type": "application/json" } }));
+      }
+      bvmtInFlight = true;
+      lastBvmtCallAt = now;
+      return origFetch(input, init).finally(() => { bvmtInFlight = false; });
+    }
+    return origFetch(input, init);
+  };
+})();
+</script>
 <!-- CH_CACHE_PURGE_V2_START -->
 <script>
 (function() {
