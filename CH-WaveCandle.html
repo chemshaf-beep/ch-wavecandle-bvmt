@@ -1386,7 +1386,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
     <option value="SANS_BLOCS">Ticks : Sans gros blocs</option>
     <option value="BLOCS_SEULS">Ticks : Gros blocs seuls</option>
   </select>
-  <select id="selPosCamembert" title="Position du camembert d'agressivité"><option value="AUTO" selected>Camembert : Auto</option><option value="MANUEL">Camembert : Manuel (Glisser)</option><option value="HD">Camembert : Haut-Droite</option><option value="BD">Camembert : Bas-Droite</option><option value="HG">Camembert : Haut-Gauche</option><option value="BG">Camembert : Bas-Gauche</option><option value="CH">Camembert : Centre-Haut</option><option value="CB">Camembert : Centre-Bas</option></select><select id="selModeRendu">
+  <select id="selPosCamembert" title="Position du camembert d'agressivité"><option value="AUTO" selected>Camembert : Auto</option><option value="MANUEL">Camembert : Manuel (Glisser)</option><option value="HD">Camembert : Haut-Droite</option><option value="BD">Camembert : Bas-Droite</option><option value="HG">Camembert : Haut-Gauche</option><option value="BG">Camembert : Bas-Gauche</option><option value="CH">Camembert : Centre-Haut</option><option value="CB">Camembert : Centre-Bas</option><option value="MASQUE">Camembert : Masqué</option></select><select id="selModeRendu">
     <option value="VAGUES">Mode : Vagues Polygonales</option>
     <option value="BULLES">Mode : Bulles Volumétriques</option>
     <option value="CHANDELIERS">Mode : Chandeliers 3D</option>
@@ -6684,109 +6684,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 
 
-<script id="ch-pie-labels-follow">
-(function(){
-  let lastCenterKey = "";
 
-  function getPieCenterPx(opt){
-    const pieS = (opt.series || []).find(s => s && s.type === "pie" && Array.isArray(s.center));
-    if(!pieS) return null;
-    const w = chart.getWidth();
-    const h = chart.getHeight();
-    const cxRaw = pieS.center[0];
-    const cyRaw = pieS.center[1];
-    const cx = (typeof cxRaw === "string" && cxRaw.endsWith("%")) ? (parseFloat(cxRaw) / 100) * w : Number(cxRaw);
-    const cy = (typeof cyRaw === "string" && cyRaw.endsWith("%")) ? (parseFloat(cyRaw) / 100) * h : Number(cyRaw);
-    const rArr = Array.isArray(pieS.radius) ? pieS.radius : [0, pieS.radius || 55];
-    const rOuterRaw = rArr[rArr.length - 1];
-    const rPx = (typeof rOuterRaw === "string" && rOuterRaw.endsWith("%")) ? (parseFloat(rOuterRaw) / 100) * Math.min(w, h) : Number(rOuterRaw || 55);
-    if(isNaN(cx) || isNaN(cy)) return null;
-    return { cx, cy, rPx };
-  }
-
-  function syncPieTitlesWithDisk(){
-    if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
-    try {
-      const opt = chart.getOption();
-      const pos = getPieCenterPx(opt);
-      if(!pos) return;
-      const key = `\${Math.round(pos.cx)}_\({Math.round(pos.cy)}_\){Math.round(pos.rPx)}`;
-      if(key === lastCenterKey) return;
-
-      const patch = {};
-      let changed = false;
-
-      // 1. Synchroniser opt.title (ou se trouvent generalement les 2 titres du camembert)
-      if(Array.isArray(opt.title) && opt.title.length > 0){
-        const newTitles = opt.title.map(t => {
-          const full = `\({t?.text \vert{}\vert{} ""} \){t?.subtext || ""}`;
-          if(/Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}|Agressivité/i.test(full)){
-            changed = true;
-            const isTopOnly = /Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(t?.text || "") && !/Agressivité/i.test(t?.text || "");
-            return Object.assign({}, t, {
-              left: Math.round(pos.cx),
-              top: isTopOnly ? Math.max(8, Math.round(pos.cy - pos.rPx - 24)) : Math.round(pos.cy + pos.rPx + 10),
-              textAlign: "center"
-            });
-          }
-          return t;
-        });
-        if(changed) patch.title = newTitles;
-      }
-
-      // 2. Synchroniser aussi opt.graphic si present
-      if(Array.isArray(opt.graphic) && opt.graphic.length > 0){
-        let gChanged = false;
-        const newGraphics = opt.graphic.map(gGroup => {
-          if(!gGroup || !Array.isArray(gGroup.elements)) return gGroup;
-          const newEls = gGroup.elements.map(el => {
-            const txt = String(el?.style?.text || "");
-            if(/Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(txt)){
-              gChanged = true;
-              return Object.assign({}, el, { left: Math.round(pos.cx), top: Math.max(8, Math.round(pos.cy - pos.rPx - 24)) });
-            }
-            if(/Agressivité/i.test(txt)){
-              gChanged = true;
-              return Object.assign({}, el, { left: Math.round(pos.cx), top: Math.round(pos.cy + pos.rPx + 10) });
-            }
-            return el;
-          });
-          return Object.assign({}, gGroup, { elements: newEls });
-        });
-        if(gChanged){ patch.graphic = newGraphics; changed = true; }
-      }
-
-      if(changed){
-        lastCenterKey = key;
-        chart.setOption(patch);
-      }
-    } catch(e){}
-  }
-
-  // Retour propre a la position d'origine quand l'utilisateur repasse sur "Camembert : Auto"
-  function bindPiePosSelect(){
-    const sel = document.getElementById("selPosCamembert");
-    if(!sel || sel.__chAutoResetBound) return;
-    sel.__chAutoResetBound = true;
-    sel.addEventListener("change", () => {
-      lastCenterKey = "";
-      if(sel.value === "AUTO" && typeof globalData !== "undefined" && globalData){
-        const hVal = document.getElementById("selHorizon")?.value || "";
-        if(hVal === "MULTI" && typeof dessinerChandeliersMulti === "function") dessinerChandeliersMulti(globalData);
-        else if(typeof dessinerGraphique === "function") dessinerGraphique(globalData);
-      }
-      setTimeout(syncPieTitlesWithDisk, 40);
-    });
-  }
-
-  window.addEventListener("load", () => {
-    bindPiePosSelect();
-    setInterval(syncPieTitlesWithDisk, 100);
-    window.addEventListener("pointerup", () => { lastCenterKey = ""; setTimeout(syncPieTitlesWithDisk, 25); });
-  });
-  new MutationObserver(bindPiePosSelect).observe(document.body, { childList: true, subtree: true });
-})();
-</script>
 <script id="ch-axis-expand-future">
 (function(){
   let currentExpandMode = "AUTO"; // AUTO | FUTUR25 | FUTUR50 | MOIS3 | MOIS6 | AN1
@@ -6989,6 +6887,279 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     injectAxisExpandControl();
     bindNativeRedrawHooks();
   }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<script id="ch-pie-labels-follow">
+(function(){
+  let lastCenterKey = "";
+  let savedManualCenter = null; // [xPx, yPx] memorise apres un glisser-deposer
+
+  function parseCoord(val, total){
+    if(typeof val === "number") return val;
+    if(typeof val === "string"){
+      const s = val.trim();
+      if(s.endsWith("%")) return (parseFloat(s) / 100) * total;
+      const n = parseFloat(s);
+      if(!isNaN(n)) return n;
+    }
+    return NaN;
+  }
+
+  function getPieMetrics(opt){
+    const pieS = (opt.series || []).find(s => s && s.type === "pie" && Array.isArray(s.center));
+    if(!pieS) return null;
+    const w = chart.getWidth();
+    const h = chart.getHeight();
+    const cx = parseCoord(pieS.center, w);
+    const cy = parseCoord(pieS.center, h);
+    const rArr = Array.isArray(pieS.radius) ? pieS.radius : [0, pieS.radius || 55];
+    const rOuterRaw = rArr[rArr.length - 1];
+    const rPx = parseCoord(rOuterRaw, Math.min(w, h)) || 55;
+    if(isNaN(cx) || isNaN(cy)) return null;
+    return { cx, cy, rPx };
+  }
+
+  function syncPieTitlesWithDisk(forceApply){
+    if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
+    try {
+      const opt = chart.getOption();
+      const pos = getPieMetrics(opt);
+      if(!pos) return;
+
+      const sel = document.getElementById("selPosCamembert");
+      if(sel && sel.value === "MANUEL"){
+        savedManualCenter = [Math.round(pos.cx), Math.round(pos.cy)];
+      }
+
+      const key = `\${Math.round(pos.cx)}_\({Math.round(pos.cy)}_\){Math.round(pos.rPx)}`;
+      if(!forceApply && key === lastCenterKey) return;
+
+      const topY = Math.max(8, Math.round(pos.cy - pos.rPx - 24));
+      const botY = Math.round(pos.cy + pos.rPx + 10);
+      const centerX = Math.round(pos.cx);
+
+      const patch = {};
+      let changed = false;
+
+      // 1. Synchroniser TOUTES les entrees de opt.title (titre du haut + sous-titre/bloc Agressivite du bas)
+      if(Array.isArray(opt.title) && opt.title.length > 0){
+        const newTitles = opt.title.map((t, idx) => {
+          const txt = String(t?.text || "");
+          const sub = String(t?.subtext || "");
+          const combined = `txt {sub}`;
+          const isTopDate = /\d{2}\/\d{2}/.test(txt) && !/Agressivité/i.test(txt);
+          const isBotAgr = /Agressivité/i.test(combined);
+          if(isTopDate || isBotAgr){
+            changed = true;
+            return Object.assign({}, t, {
+              left: centerX,
+              top: isBotAgr && !isTopDate ? botY : topY,
+              textAlign: "center",
+              itemGap: Math.round(pos.rPx * 2 + 16)
+            });
+          }
+          return t;
+        });
+        if(changed) patch.title = newTitles;
+      }
+
+      // 2. Synchroniser TOUTES les entrees de opt.graphic (y compris groupes imbriques et textes autonomes)
+      if(Array.isArray(opt.graphic) && opt.graphic.length > 0){
+        let gChanged = false;
+        const patchEl = (el) => {
+          if(!el) return el;
+          if(Array.isArray(el.elements)){
+            return Object.assign({}, el, { elements: el.elements.map(patchEl) });
+          }
+          const txt = String(el?.style?.text || el?.text || "");
+          if(/\d{2}\/\d{2}/.test(txt) && !/Agressivité/i.test(txt)){
+            gChanged = true;
+            return Object.assign({}, el, {
+              left: centerX,
+              top: topY,
+              x: centerX,
+              y: topY,
+              style: Object.assign({}, el.style, { textAlign: "center" })
+            });
+          }
+          if(/Agressivité/i.test(txt)){
+            gChanged = true;
+            return Object.assign({}, el, {
+              left: centerX,
+              top: botY,
+              x: centerX,
+              y: botY,
+              style: Object.assign({}, el.style, { textAlign: "center" })
+            });
+          }
+          return el;
+        };
+        const newGraphics = opt.graphic.map(patchEl);
+        if(gChanged){ patch.graphic = newGraphics; changed = true; }
+      }
+
+      if(changed){
+        lastCenterKey = key;
+        chart.setOption(patch);
+      }
+    } catch(e){}
+  }
+
+  // Envelopper les fonctions de dessin pour preserver la position manuelle glissee si mode MANUEL actif
+  function wrapRedrawKeepManualPie(){
+    ["dessinerGraphique", "dessinerChandeliersMulti"].forEach(fnName => {
+      if(typeof window[fnName] === "function" && !window[fnName].__chPieManualWrapped){
+        const orig = window[fnName];
+        const wrapped = function(){
+          const res = orig.apply(this, arguments);
+          const sel = document.getElementById("selPosCamembert");
+          if(sel && sel.value === "MANUEL" && Array.isArray(savedManualCenter) && typeof chart !== "undefined" && chart){
+            try {
+              const opt = chart.getOption();
+              const pieIdx = (opt.series || []).findIndex(s => s && s.type === "pie");
+              if(pieIdx >= 0){
+                const sPatch = opt.series.map((s, i) => i === pieIdx ? { center: savedManualCenter } : {});
+                chart.setOption({ series: sPatch });
+              }
+            } catch(e){}
+          }
+          setTimeout(() => syncPieTitlesWithDisk(true), 25);
+          return res;
+        };
+        wrapped.__chPieManualWrapped = true;
+        window[fnName] = wrapped;
+      }
+    });
+  }
+
+  function bindPiePosSelect(){
+    const sel = document.getElementById("selPosCamembert");
+    if(!sel || sel.__chAutoResetBound) return;
+    sel.__chAutoResetBound = true;
+    sel.addEventListener("change", () => {
+      lastCenterKey = "";
+      if(sel.value === "AUTO"){
+        savedManualCenter = null;
+        if(typeof globalData !== "undefined" && globalData){
+          const hVal = document.getElementById("selHorizon")?.value || "";
+          if(hVal === "MULTI" && typeof dessinerChandeliersMulti === "function") dessinerChandeliersMulti(globalData);
+          else if(typeof dessinerGraphique === "function") dessinerGraphique(globalData);
+        }
+      }
+      setTimeout(() => syncPieTitlesWithDisk(true), 40);
+    });
+  }
+
+  window.addEventListener("load", () => {
+    bindPiePosSelect();
+    wrapRedrawKeepManualPie();
+    setInterval(() => syncPieTitlesWithDisk(false), 80);
+    window.addEventListener("pointermove", (ev) => {
+      if(ev.buttons === 1) syncPieTitlesWithDisk(false);
+    });
+    window.addEventListener("pointerup", () => {
+      lastCenterKey = "";
+      setTimeout(() => syncPieTitlesWithDisk(true), 20);
+    });
+  });
+  new MutationObserver(() => {
+    bindPiePosSelect();
+    wrapRedrawKeepManualPie();
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<script id="ch-pie-and-trendline-pro">
+(function(){
+  // === PARTIE A : GESTION AFFICHAGE / MASQUAGE DU CAMEMBERT ===
+  function applyPieVisibility(){
+    if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
+    const sel = document.getElementById("selPosCamembert");
+    if(!sel) return;
+    const hidePie = (sel.value === "MASQUE");
+    try {
+      const opt = chart.getOption();
+      let changed = false;
+
+      if(Array.isArray(opt.series)){
+        const sPatch = opt.series.map(s => {
+          if(s && s.type === "pie"){
+            changed = true;
+            return { silent: hidePie, label: { show: !hidePie }, labelLine: { show: !hidePie }, itemStyle: { opacity: hidePie ? 0 : 1 } };
+          }
+          return {};
+        });
+        if(changed) chart.setOption({ series: sPatch });
+      }
+
+      if(Array.isArray(opt.title) && opt.title.length > 0){
+        let tChanged = false;
+        const newTitles = opt.title.map(t => {
+          const full = `\${t?.text || ""} \({t?.subtext \vert{}\vert{} ""}`; if(/\d{2}\/\d{2}/.test(full) \vert{}\vert{} /Agressivité/i.test(full)){ tChanged = true; return Object.assign({}, t, { show: !hidePie }); } return t; }); if(tChanged) chart.setOption({ title: newTitles }); }  if(Array.isArray(opt.graphic) && opt.graphic.length > 0){ let gChanged = false; const toggleEl = (el) => { if(!el) return el; if(Array.isArray(el.elements)) return Object.assign({}, el, { elements: el.elements.map(toggleEl) }); const txt = String(el?.style?.text \vert{}\vert{} el?.text \vert{}\vert{} ""); if(/\d{2}\/\d{2}/.test(txt) \vert{}\vert{} /Agressivité/i.test(txt)){ gChanged = true; return Object.assign({}, el, { invisible: hidePie }); } return el; }; const newGraphics = opt.graphic.map(toggleEl); if(gChanged) chart.setOption({ graphic: newGraphics }); } } catch(e){} }  // === PARTIE B : TETES DE FLECHE & ETIQUETTES INCLINEES SELON L'ANGLE DES DROITES DE TENDANCE === function renderTrendArrowsAndSlopedLabels(){ if(typeof chart === "undefined" \vert{}\vert{} !chart \vert{}\vert{} typeof dessinsUtilisateur === "undefined" \vert{}\vert{} !Array.isArray(dessinsUtilisateur)) return; try { const opt = chart.getOption(); const existingG = Array.isArray(opt.graphic) ? opt.graphic.filter(g => g && g.id !== "ch_trend_arrows_group") : []; const arrowElements = []; const showLabels = document.getElementById("chkAfficherEtiquettes") ? document.getElementById("chkAfficherEtiquettes").checked : true;  dessinsUtilisateur.forEach((d, idx) => { if(!d) return; const t = String(d.type \vert{}\vert{} "").toUpperCase(); // Cibler les droites de tendance, segments et canaux if(!/(TENDANCE\vert{}TREND\vert{}DROITE\vert{}SEGMENT\vert{}CANAL)/.test(t)) return; if(d.x1 === undefined \vert{}\vert{} d.y1 === undefined \vert{}\vert{} d.x2 === undefined \vert{}\vert{} d.y2 === undefined) return;  const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]); const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]); if(!Array.isArray(p1) \vert{}\vert{} !Array.isArray(p2) \vert{}\vert{} isNaN(p1) \vert{}\vert{} isNaN(p1) \vert{}\vert{} isNaN(p2) \vert{}\vert{} isNaN(p2)) return;  const dx = p2 - p1; const dy = p2 - p1; const dist = Math.hypot(dx, dy); if(dist < 12) return;  const angle = Math.atan2(dy, dx); const isUp = (Number(d.y2) >= Number(d.y1)); const col = d.color \vert{}\vert{} d.couleur \vert{}\vert{} (isUp ? "#00E676" : "#FF5252");  // 1. Pointe de fleche triangulaire orientee exactement selon l'angle de la droite au point (p2, p2) const arrowLen = 13; const arrowHalfW = 5.5; const ux = Math.cos(angle); const uy = Math.sin(angle); const px = -uy; const py = ux;  const tip = [p2, p2]; const leftPt = [p2 - ux * arrowLen + px * arrowHalfW, p2 - uy * arrowLen + py * arrowHalfW]; const rightPt = [p2 - ux * arrowLen - px * arrowHalfW, p2 - uy * arrowLen - py * arrowHalfW];  arrowElements.push({ type: "polygon", id: "ch_arrow_" + idx, silent: true, z: 120, shape: { points: [tip, leftPt, rightPt] }, style: { fill: col, stroke: col, lineWidth: 1 } });  // 2. Etiquette rapprochee (10px au-dessus du milieu du trait) et inclinee exactement avec le meme angle if(showLabels){ let textAngle = -angle; // ECharts rotation est anti-horaire en radians // Garder le texte toujours lisible a l'endroit (jamais retourne a 180 degres) if(textAngle > Math.PI / 2) textAngle -= Math.PI; if(textAngle < -Math.PI / 2) textAngle += Math.PI;  // Vecteur normal pointant vers le haut de l'ecran let nx = Math.sin(angle); let ny = -Math.cos(angle); if(ny > 0){ nx = -nx; ny = -ny; }  const midX = (p1 + p2) / 2 + nx * 10; const midY = (p1 + p2) / 2 + ny * 10; const pDeb = Number(d.y1).toFixed(2); const pFin = Number(d.y2).toFixed(2); const pct = Number(d.y1) > 0 ? (((Number(d.y2) - Number(d.y1)) / Number(d.y1)) * 100).toFixed(2) : "0.00"; const signe = Number(pct) >= 0 ? "+" : ""; const lblTxt = d.label \vert{}\vert{} `\){isUp ? "↗ Tendance" : "↘ Tendance"} (pDeb → {pFin} | signe{pct}%)`;
+
+          arrowElements.push({
+            type: "text",
+            id: "ch_trend_lbl_" + idx,
+            silent: true,
+            z: 121,
+            x: midX,
+            y: midY,
+            rotation: textAngle,
+            style: {
+              text: lblTxt,
+              fill: col,
+              font: "bold 11px Consolas, monospace",
+              textAlign: "center",
+              textVerticalAlign: "middle",
+              backgroundColor: "rgba(11, 17, 32, 0.78)",
+              padding:,
+              borderRadius: 3
+            }
+          });
+        }
+      });
+
+      existingG.push({
+        type: "group",
+        id: "ch_trend_arrows_group",
+        elements: arrowElements
+      });
+      chart.setOption({ graphic: existingG });
+    } catch(e){}
+  }
+
+  // Envelopper rafraichirDessinsGraphique pour dessiner automatiquement les fleches et etiquettes inclinees
+  function hookDessinsRefresh(){
+    if(typeof window.rafraichirDessinsGraphique === "function" && !window.rafraichirDessinsGraphique.__chArrowWrapped){
+      const origRef = window.rafraichirDessinsGraphique;
+      const wrapped = function(){
+        const res = origRef.apply(this, arguments);
+        setTimeout(() => {
+          renderTrendArrowsAndSlopedLabels();
+          applyPieVisibility();
+        }, 15);
+        return res;
+      };
+      wrapped.__chArrowWrapped = true;
+      window.rafraichirDessinsGraphique = wrapped;
+    }
+  }
+
+  function initBind(){
+    const selPie = document.getElementById("selPosCamembert");
+    if(selPie && !selPie.__chHideHooked){
+      selPie.__chHideHooked = true;
+      selPie.addEventListener("change", () => setTimeout(applyPieVisibility, 30));
+    }
+    hookDessinsRefresh();
+  }
+
+  window.addEventListener("load", () => {
+    initBind();
+    setTimeout(() => { initBind(); applyPieVisibility(); renderTrendArrowsAndSlopedLabels(); }, 500);
+    window.addEventListener("pointermove", (ev) => { if(ev.buttons === 1) renderTrendArrowsAndSlopedLabels(); });
+    window.addEventListener("pointerup", () => setTimeout(renderTrendArrowsAndSlopedLabels, 20));
+  });
+  new MutationObserver(initBind).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
