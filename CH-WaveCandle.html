@@ -6894,60 +6894,76 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 
 
+
 <script id="ch-pie-and-trendline-pro">
 (function(){
-  function applyPieVisibility(){
+  function fixAndTogglePie(){
     if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
     const sel = document.getElementById("selPosCamembert");
-    if(!sel) return;
-    const hidePie = (sel.value === "MASQUE");
+    const hidePie = sel ? (sel.value === "MASQUE") : false;
     try {
       const opt = chart.getOption();
       if(Array.isArray(opt.series)){
-        let changed = false;
-        const sPatch = opt.series.map(s => {
-          if(s && s.type === "pie"){
-            changed = true;
-            return { silent: hidePie, label: { show: !hidePie }, labelLine: { show: !hidePie }, itemStyle: { opacity: hidePie ? 0 : 1 } };
-          }
-          return {};
-        });
-        if(changed) chart.setOption({ series: sPatch });
+        const sPatch = opt.series.map(s => (s && s.type === "pie")
+          ? { silent: hidePie, label: { show: !hidePie }, labelLine: { show: !hidePie }, itemStyle: { opacity: hidePie ? 0 : 1 } }
+          : {});
+        chart.setOption({ series: sPatch });
       }
-      if(Array.isArray(opt.title) && opt.title.length > 0){
-        let tChanged = false;
-        const newTitles = opt.title.map(t => {
-          const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
-          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full) || /Séance/i.test(full)){
-            tChanged = true;
-            return Object.assign({}, t, {
-              show: !hidePie,
-              textStyle: Object.assign({}, t.textStyle, hidePie ? { color: "transparent" } : { color: "#F59E0B" }),
-              subtextStyle: Object.assign({}, t.subtextStyle, hidePie ? { color: "transparent" } : { color: "#EF4444" })
-            });
-          }
-          return t;
-        });
-        if(tChanged) chart.setOption({ title: newTitles });
-      }
-      if(Array.isArray(opt.graphic) && opt.graphic.length > 0){
-        let gChanged = false;
+
+      let hasGraphicDate = false;
+      if(Array.isArray(opt.graphic)){
+        const scanEl = (el) => {
+          if(!el) return;
+          if(Array.isArray(el.elements)) el.elements.forEach(scanEl);
+          const txt = String((el.style && el.style.text) || el.text || "");
+          if(/\d{2}\/\d{2}/.test(txt) || /Séance/i.test(txt)) hasGraphicDate = true;
+        };
+        opt.graphic.forEach(scanEl);
+
         const toggleEl = (el) => {
           if(!el) return el;
           if(Array.isArray(el.elements)) return Object.assign({}, el, { elements: el.elements.map(toggleEl) });
           const txt = String((el.style && el.style.text) || el.text || "");
           if(/\d{2}\/\d{2}/.test(txt) || /Agressivité/i.test(txt) || /Séance/i.test(txt)){
-            gChanged = true;
             return Object.assign({}, el, { invisible: hidePie, style: Object.assign({}, el.style, { opacity: hidePie ? 0 : 1 }) });
           }
           return el;
         };
-        const newGraphics = opt.graphic.map(toggleEl);
-        if(gChanged) chart.setOption({ graphic: newGraphics });
+        chart.setOption({ graphic: opt.graphic.map(toggleEl) });
+      }
+
+      if(Array.isArray(opt.title) && opt.title.length > 0){
+        let seenDateInTitle = hasGraphicDate;
+        const newTitles = opt.title.map(t => {
+          const txt = String(t && t.text ? t.text : "");
+          const sub = String(t && t.subtext ? t.subtext : "");
+          const full = txt + " " + sub;
+          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full) || /Séance/i.test(full)){
+            const isDupDate = (/\d{2}\/\d{2}/.test(txt) || /Séance/i.test(txt)) && seenDateInTitle;
+            if(/\d{2}\/\d{2}/.test(txt) || /Séance/i.test(txt)) seenDateInTitle = true;
+            const hideThis = hidePie || isDupDate;
+            return Object.assign({}, t, {
+              show: !hideThis,
+              text: isDupDate ? "" : txt,
+              textStyle: Object.assign({}, t.textStyle, hideThis ? { color: "transparent" } : { color: "#F59E0B" }),
+              subtextStyle: Object.assign({}, t.subtextStyle, hidePie ? { color: "transparent" } : { color: "#EF4444" })
+            });
+          }
+          return t;
+        });
+        chart.setOption({ title: newTitles });
       }
     } catch(e){}
   }
-  window.__chApplyPieVisibility = applyPieVisibility;
+  window.__chFixAndTogglePie = fixAndTogglePie;
+  function getCurrentTool(){
+    if(typeof outilActif === "function"){
+      try { return String(outilActif() || "").toUpperCase(); } catch(e){}
+    }
+    const sel = document.getElementById("selOutilDessin") || Array.from(document.querySelectorAll("select")).find(s => Array.from(s.options).some(o => o.value === "CRAYON_LIBRE"));
+    return sel ? String(sel.value || "").toUpperCase() : "";
+  }
+
   function renderCustomShapesAndArrows(){
     if(typeof chart === "undefined" || !chart || typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
     try {
@@ -7022,7 +7038,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           return;
         }
 
-        // 3. DROITES DE TENDANCE (fleche + etiquette inclinee)
+        // 3. DROITES DE TENDANCE (tete de fleche + etiquette inclinee)
         if(!/(LIGNE|TENDANCE|TREND|DROITE|SEGMENT|CANAL)/.test(t)) return;
         if(d.x1 === undefined || d.y1 === undefined || d.x2 === undefined || d.y2 === undefined) return;
 
@@ -7100,11 +7116,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     } catch(e){}
   }
   let activeFreeDrawing = null;
-  function getActiveToolUpper(){
-    const selOutil = Array.from(document.querySelectorAll("select")).find(s => Array.from(s.options).some(o => o.value === "CRAYON_LIBRE" || /Main libre/i.test(o.textContent || "")));
-    return selOutil ? String(selOutil.value || "").toUpperCase() : "";
-  }
-
   function bindFreehandAndCurveMouse(){
     if(typeof chart === "undefined" || !chart || !chart.getZr) return;
     const zr = chart.getZr();
@@ -7112,10 +7123,25 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     zr.__chFreeCurveBound = true;
 
     zr.on("mousedown", (params) => {
-      const outil = getActiveToolUpper();
+      const outil = getCurrentTool();
       if(outil !== "CRAYON_LIBRE" && outil !== "COURBE_LIBRE") return;
       const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
       if(!Array.isArray(pt) || isNaN(pt.at(0)) || isNaN(pt.at(1))) return;
+
+      if(Array.isArray(dessinsUtilisateur) && dessinsUtilisateur.length > 0){
+        const last = dessinsUtilisateur.at(-1);
+        if(last && last.type === outil){
+          if(outil === "CRAYON_LIBRE"){
+            last.points = [[pt.at(0), pt.at(1)]];
+            last.color = "#38BDF8";
+          } else {
+            last.color = "#A855F7";
+          }
+          activeFreeDrawing = last;
+          renderCustomShapesAndArrows();
+          return;
+        }
+      }
 
       activeFreeDrawing = (outil === "CRAYON_LIBRE")
         ? { type: "CRAYON_LIBRE", points: [[pt.at(0), pt.at(1)]], color: "#38BDF8" }
@@ -7135,17 +7161,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
     zr.on("mouseup", () => {
       if(activeFreeDrawing){
-        if(Array.isArray(dessinsUtilisateur)){
-          const refX = activeFreeDrawing.x1 !== undefined ? activeFreeDrawing.x1 : (activeFreeDrawing.points && activeFreeDrawing.points.at(0) ? activeFreeDrawing.points.at(0).at(0) : NaN);
-          for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
-            const item = dessinsUtilisateur.at(i);
-            if(item && item !== activeFreeDrawing && item.type !== "CRAYON_LIBRE" && item.type !== "COURBE_LIBRE" && item.type !== "SUPPORT" && item.type !== "RESISTANCE"){
-              if(!isNaN(refX) && Math.abs(Number(item.x1) - Number(refX)) < 0.01){
-                dessinsUtilisateur.splice(i, 1);
-              }
-            }
-          }
-        }
         activeFreeDrawing = null;
         if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
       }
@@ -7156,13 +7171,13 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     const selPie = document.getElementById("selPosCamembert");
     if(selPie && !selPie.__chHideHooked){
       selPie.__chHideHooked = true;
-      selPie.addEventListener("change", () => setTimeout(() => window.__chApplyPieVisibility && window.__chApplyPieVisibility(), 25));
+      selPie.addEventListener("change", () => setTimeout(() => window.__chFixAndTogglePie && window.__chFixAndTogglePie(), 25));
     }
     if(typeof window.rafraichirDessinsGraphique === "function" && !window.rafraichirDessinsGraphique.__chArrowWrapped){
       const origRef = window.rafraichirDessinsGraphique;
       const wrapped = function(){
         const res = origRef.apply(this, arguments);
-        setTimeout(() => { renderCustomShapesAndArrows(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); }, 15);
+        setTimeout(() => { renderCustomShapesAndArrows(); if(window.__chFixAndTogglePie) window.__chFixAndTogglePie(); }, 15);
         return res;
       };
       wrapped.__chArrowWrapped = true;
@@ -7173,11 +7188,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
   window.addEventListener("load", () => {
     initAll();
-    setTimeout(() => { initAll(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); renderCustomShapesAndArrows(); }, 400);
+    setTimeout(() => { initAll(); if(window.__chFixAndTogglePie) window.__chFixAndTogglePie(); renderCustomShapesAndArrows(); }, 400);
     window.addEventListener("pointermove", (ev) => { if(ev.buttons === 1) renderCustomShapesAndArrows(); });
-    window.addEventListener("pointerup", () => setTimeout(() => { renderCustomShapesAndArrows(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); }, 20));
+    window.addEventListener("pointerup", () => setTimeout(() => { renderCustomShapesAndArrows(); if(window.__chFixAndTogglePie) window.__chFixAndTogglePie(); }, 20));
   });
-  new MutationObserver(() => { initAll(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); }).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(() => { initAll(); if(window.__chFixAndTogglePie) window.__chFixAndTogglePie(); }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
