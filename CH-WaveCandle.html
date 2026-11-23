@@ -6287,19 +6287,27 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }
 
   // 2. Appliquer la couleur Verte (#10B981) pour Support et Rouge (#EF4444) pour Resistance sur les traces ECharts (graphic & markLine)
+  function isAlreadyColored(c){
+    if(!c) return false;
+    const up = String(c).toUpperCase();
+    return up === "#10B981" || up === "#EF4444";
+  }
   function recolorNode(obj, colorHex){
     if(!obj || typeof obj !== "object") return;
     if(Array.isArray(obj)){ obj.forEach(x => recolorNode(x, colorHex)); return; }
+    if(obj.__chLockedColor) return;
+    let applied = false;
     if(obj.style && typeof obj.style === "object"){
-      if(obj.style.stroke) obj.style.stroke = colorHex;
-      if(obj.style.fill && obj.type === "text") obj.style.fill = colorHex;
+      if(obj.style.stroke && !isAlreadyColored(obj.style.stroke)){ obj.style.stroke = colorHex; applied = true; }
+      if(obj.style.fill && obj.type === "text" && !isAlreadyColored(obj.style.fill)){ obj.style.fill = colorHex; applied = true; }
     }
-    if(obj.lineStyle && typeof obj.lineStyle === "object" && obj.lineStyle.color){
-      obj.lineStyle.color = colorHex;
+    if(obj.lineStyle && typeof obj.lineStyle === "object" && obj.lineStyle.color && !isAlreadyColored(obj.lineStyle.color)){
+      obj.lineStyle.color = colorHex; applied = true;
     }
-    if(obj.label && typeof obj.label === "object" && obj.label.color){
-      obj.label.color = colorHex;
+    if(obj.label && typeof obj.label === "object" && obj.label.color && !isAlreadyColored(obj.label.color)){
+      obj.label.color = colorHex; applied = true;
     }
+    if(applied) obj.__chLockedColor = colorHex;
     if(Array.isArray(obj.children)) obj.children.forEach(c => recolorNode(c, colorHex));
     if(Array.isArray(obj.elements)) obj.elements.forEach(c => recolorNode(c, colorHex));
   }
