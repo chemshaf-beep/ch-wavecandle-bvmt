@@ -1404,7 +1404,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
     <option value="AUCUN" selected>&#128433;&#65039; Curseur (Zoom)</option>
     <option value="TENDANCE">&#8599;&#65039; Trait de tendance</option>
     <option value="SUPPORT">🟢 Support</option>
-    <option value="RESISTANCE">🔴 Résistance</option>
+    <option value="RESISTANCE">🔴 Résistance</option><option value="CRAYON_LIBRE">✍️ Crayon (Trait libre)</option><option value="COURBE_LIBRE">〰️ Courbe (Arc lisse)</option>
     <option value="RECTANGLE">&#9645; Zone / Rectangle</option>
     <option value="MESURE">&#128207; Règle de mesure</option>
   </select>
@@ -7069,9 +7069,10 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 })();
 </script>
 
+
 <script id="ch-pie-and-trendline-pro">
 (function(){
-  // === PARTIE A : GESTION AFFICHAGE / MASQUAGE DU CAMEMBERT ===
+  // === PARTIE A : MASQUAGE TOTAL DU CAMEMBERT ET DE SES 2 TITRES ===
   function applyPieVisibility(){
     if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
     const sel = document.getElementById("selPosCamembert");
@@ -7084,7 +7085,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const sPatch = opt.series.map(s => {
           if(s && s.type === "pie"){
             changed = true;
-            return { silent: hidePie, label: { show: !hidePie }, labelLine: { show: !hidePie }, itemStyle: { opacity: hidePie ? 0 : 1 } };
+            return {
+              silent: hidePie,
+              label: { show: !hidePie },
+              labelLine: { show: !hidePie },
+              itemStyle: { opacity: hidePie ? 0 : 1 }
+            };
           }
           return {};
         });
@@ -7095,9 +7101,13 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         let tChanged = false;
         const newTitles = opt.title.map(t => {
           const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
-          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full)){
+          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full) || /Séance/i.test(full)){
             tChanged = true;
-            return Object.assign({}, t, { show: !hidePie });
+            return Object.assign({}, t, {
+              show: !hidePie,
+              textStyle: Object.assign({}, t.textStyle, hidePie ? { color: "transparent" } : { color: "#F59E0B" }),
+              subtextStyle: Object.assign({}, t.subtextStyle, hidePie ? { color: "transparent" } : { color: "#EF4444" })
+            });
           }
           return t;
         });
@@ -7110,9 +7120,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           if(!el) return el;
           if(Array.isArray(el.elements)) return Object.assign({}, el, { elements: el.elements.map(toggleEl) });
           const txt = String((el.style && el.style.text) || el.text || "");
-          if(/\d{2}\/\d{2}/.test(txt) || /Agressivité/i.test(txt)){
+          if(/\d{2}\/\d{2}/.test(txt) || /Agressivité/i.test(txt) || /Séance/i.test(txt)){
             gChanged = true;
-            return Object.assign({}, el, { invisible: hidePie });
+            return Object.assign({}, el, {
+              invisible: hidePie,
+              style: Object.assign({}, el.style, { opacity: hidePie ? 0 : 1 })
+            });
           }
           return el;
         };
@@ -7121,9 +7134,9 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       }
     } catch(e){}
   }
-
-  // === PARTIE B : TETES DE FLECHE & ETIQUETTES INCLINEES SELON L'ANGLE DES DROITES DE TENDANCE ===
-  function renderTrendArrowsAndSlopedLabels(){
+  window.__chApplyPieVisibility = applyPieVisibility;
+  // === PARTIE B : TETES DE FLECHE, ETIQUETTES INCLINEES, CRAYON LIBRE ET COURBES ===
+  function renderCustomShapesAndArrows(){
     if(typeof chart === "undefined" || !chart || typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
     try {
       const opt = chart.getOption();
@@ -7134,7 +7147,70 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       dessinsUtilisateur.forEach((d, idx) => {
         if(!d) return;
         const t = String(d.type || "").toUpperCase();
-        if(!/(TENDANCE|TREND|DROITE|SEGMENT|CANAL)/.test(t)) return;
+
+        // 1. CRAYON LIBRE (trace a main levee)
+        if(t === "CRAYON_LIBRE" && Array.isArray(d.points) && d.points.length > 1){
+          const pxPts = d.points
+            .map(pt => chart.convertToPixel({ seriesIndex: 0 }, [pt, pt]))
+            .filter(p => Array.isArray(p) && !isNaN(p) && !isNaN(p));
+          if(pxPts.length > 1){
+            const col = d.color || d.couleur || "#38BDF8";
+            arrowElements.push({
+              type: "polyline",
+              id: "ch_freehand_" + idx,
+              silent: true,
+              z: 118,
+              shape: { points: pxPts, smooth: 0.25 },
+              style: { stroke: col, lineWidth: 2.2, fill: "none" }
+            });
+          }
+          return;
+        }
+
+        // 2. COURBE LISSE (arc / bezier avec fleche au bout)
+        if(t === "COURBE_LIBRE" && d.x1 !== undefined && d.y1 !== undefined && d.x2 !== undefined && d.y2 !== undefined){
+          const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
+          const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
+          if(Array.isArray(p1) && Array.isArray(p2) && !isNaN(p1) && !isNaN(p2)){
+            const col = d.color || d.couleur || "#A855F7";
+            const midX = (p1 + p2) / 2;
+            const midY = (p1 + p2) / 2;
+            const dist = Math.hypot(p2 - p1, p2 - p1);
+            const bulge = d.bulge !== undefined ? Number(d.bulge) : Math.max(28, dist * 0.28);
+            const cpx = midX;
+            const cpy = midY + (Number(d.y2) >= Number(d.y1) ? bulge : -bulge);
+
+            arrowElements.push({
+              type: "bezierCurve",
+              id: "ch_curve_" + idx,
+              silent: true,
+              z: 118,
+              shape: { x1: p1, y1: p1, x2: p2, y2: p2, cpx1: cpx, cpy1: cpy },
+              style: { stroke: col, lineWidth: 2.2, fill: "none" }
+            });
+
+            const ang = Math.atan2(p2 - cpy, p2 - cpx);
+            const aLen = 12, aW = 5;
+            arrowElements.push({
+              type: "polygon",
+              id: "ch_curve_arr_" + idx,
+              silent: true,
+              z: 119,
+              shape: {
+                points: [
+                  [p2, p2],
+                  [p2 - Math.cos(ang)*aLen - Math.sin(ang)*aW, p2 - Math.sin(ang)*aLen + Math.cos(ang)*aW],
+                  [p2 - Math.cos(ang)*aLen + Math.sin(ang)*aW, p2 - Math.sin(ang)*aLen - Math.cos(ang)*aW]
+                ]
+              },
+              style: { fill: col, stroke: col, lineWidth: 1 }
+            });
+          }
+          return;
+        }
+
+        // 3. DROITES DE TENDANCE (tete de fleche + etiquette inclinee)
+        if(!/(LIGNE|TENDANCE|TREND|DROITE|SEGMENT|CANAL)/.test(t)) return;
         if(d.x1 === undefined || d.y1 === undefined || d.x2 === undefined || d.y2 === undefined) return;
 
         const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
@@ -7143,30 +7219,28 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
         const dx = p2 - p1;
         const dy = p2 - p1;
-        const dist = Math.hypot(dx, dy);
-        if(dist < 12) return;
+        if(Math.hypot(dx, dy) < 10) return;
 
         const angle = Math.atan2(dy, dx);
         const isUp = (Number(d.y2) >= Number(d.y1));
         const col = d.color || d.couleur || (isUp ? "#00E676" : "#FF5252");
 
-        const arrowLen = 13;
-        const arrowHalfW = 5.5;
-        const ux = Math.cos(angle);
-        const uy = Math.sin(angle);
-        const px = -uy;
-        const py = ux;
-
-        const tip = [p2, p2];
-        const leftPt = [p2 - ux * arrowLen + px * arrowHalfW, p2 - uy * arrowLen + py * arrowHalfW];
-        const rightPt = [p2 - ux * arrowLen - px * arrowHalfW, p2 - uy * arrowLen - py * arrowHalfW];
+        const arrowLen = 14, arrowHalfW = 6;
+        const ux = Math.cos(angle), uy = Math.sin(angle);
+        const px = -uy, py = ux;
 
         arrowElements.push({
           type: "polygon",
           id: "ch_arrow_" + idx,
           silent: true,
           z: 120,
-          shape: { points: [tip, leftPt, rightPt] },
+          shape: {
+            points: [
+              [p2, p2],
+              [p2 - ux * arrowLen + px * arrowHalfW, p2 - uy * arrowLen + py * arrowHalfW],
+              [p2 - ux * arrowLen - px * arrowHalfW, p2 - uy * arrowLen - py * arrowHalfW]
+            ]
+          },
           style: { fill: col, stroke: col, lineWidth: 1 }
         });
 
@@ -7175,17 +7249,15 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           if(textAngle > Math.PI / 2) textAngle -= Math.PI;
           if(textAngle < -Math.PI / 2) textAngle += Math.PI;
 
-          let nx = Math.sin(angle);
-          let ny = -Math.cos(angle);
+          let nx = Math.sin(angle), ny = -Math.cos(angle);
           if(ny > 0){ nx = -nx; ny = -ny; }
 
           const midX = (p1 + p2) / 2 + nx * 10;
           const midY = (p1 + p2) / 2 + ny * 10;
-          const pDeb = Number(d.y1).toFixed(2);
-          const pFin = Number(d.y2).toFixed(2);
-          const pct = Number(d.y1) > 0 ? (((Number(d.y2) - Number(d.y1)) / Number(d.y1)) * 100).toFixed(2) : "0.00";
-          const signe = Number(pct) >= 0 ? "+" : "";
-          const lblTxt = d.label || ((isUp ? "↗ Tendance" : "↘ Tendance") + " (" + pDeb + " → " + pFin + " | " + signe + pct + "%)");
+          const diff = Number(d.y2) - Number(d.y1);
+          const pct = Number(d.y1) > 0 ? ((diff / Number(d.y1)) * 100).toFixed(2) : "0.00";
+          const signe = diff >= 0 ? "+" : "";
+          const lblTxt = d.label || (signe + diff.toFixed(2) + " TND (" + signe + pct + "%)");
 
           arrowElements.push({
             type: "text",
@@ -7201,7 +7273,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
               font: "bold 11px Consolas, monospace",
               textAlign: "center",
               textVerticalAlign: "middle",
-              backgroundColor: "rgba(11, 17, 32, 0.78)",
+              backgroundColor: "rgba(11, 17, 32, 0.80)",
               padding: 4,
               borderRadius: 3
             }
@@ -7209,47 +7281,74 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         }
       });
 
-      existingG.push({
-        type: "group",
-        id: "ch_trend_arrows_group",
-        elements: arrowElements
-      });
+      existingG.push({ type: "group", id: "ch_trend_arrows_group", elements: arrowElements });
       chart.setOption({ graphic: existingG });
     } catch(e){}
   }
 
-  function hookDessinsRefresh(){
+  let activeFreeDrawing = null;
+  function bindFreehandAndCurveMouse(){
+    if(typeof chart === "undefined" || !chart || !chart.getZr) return;
+    const zr = chart.getZr();
+    if(!zr || zr.__chFreeCurveBound) return;
+    zr.__chFreeCurveBound = true;
+
+    zr.on("mousedown", (params) => {
+      const selOutil = document.querySelector("select[id*='Outil'], select[id*='outil'], #selOutilDessin");
+      const outil = selOutil ? String(selOutil.value || "").toUpperCase() : "";
+      if(outil !== "CRAYON_LIBRE" && outil !== "COURBE_LIBRE") return;
+      const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
+      if(!Array.isArray(pt) || isNaN(pt) || isNaN(pt)) return;
+      activeFreeDrawing = (outil === "CRAYON_LIBRE")
+        ? { type: "CRAYON_LIBRE", points: [[pt, pt]], color: "#38BDF8" }
+        : { type: "COURBE_LIBRE", x1: pt, y1: pt, x2: pt, y2: pt, color: "#A855F7" };
+      dessinsUtilisateur.push(activeFreeDrawing);
+      renderCustomShapesAndArrows();
+    });
+
+    zr.on("mousemove", (params) => {
+      if(!activeFreeDrawing) return;
+      const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
+      if(!Array.isArray(pt) || isNaN(pt) || isNaN(pt)) return;
+      if(activeFreeDrawing.type === "CRAYON_LIBRE") activeFreeDrawing.points.push([pt, pt]);
+      else { activeFreeDrawing.x2 = pt; activeFreeDrawing.y2 = pt; }
+      renderCustomShapesAndArrows();
+    });
+
+    zr.on("mouseup", () => {
+      if(activeFreeDrawing){
+        activeFreeDrawing = null;
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+      }
+    });
+  }
+
+  function initAll(){
+    const selPie = document.getElementById("selPosCamembert");
+    if(selPie && !selPie.__chHideHooked){
+      selPie.__chHideHooked = true;
+      selPie.addEventListener("change", () => setTimeout(() => window.__chApplyPieVisibility && window.__chApplyPieVisibility(), 25));
+    }
     if(typeof window.rafraichirDessinsGraphique === "function" && !window.rafraichirDessinsGraphique.__chArrowWrapped){
       const origRef = window.rafraichirDessinsGraphique;
       const wrapped = function(){
         const res = origRef.apply(this, arguments);
-        setTimeout(() => {
-          renderTrendArrowsAndSlopedLabels();
-          applyPieVisibility();
-        }, 15);
+        setTimeout(() => { renderCustomShapesAndArrows(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); }, 15);
         return res;
       };
       wrapped.__chArrowWrapped = true;
       window.rafraichirDessinsGraphique = wrapped;
     }
-  }
-
-  function initBind(){
-    const selPie = document.getElementById("selPosCamembert");
-    if(selPie && !selPie.__chHideHooked){
-      selPie.__chHideHooked = true;
-      selPie.addEventListener("change", () => setTimeout(applyPieVisibility, 30));
-    }
-    hookDessinsRefresh();
+    bindFreehandAndCurveMouse();
   }
 
   window.addEventListener("load", () => {
-    initBind();
-    setTimeout(() => { initBind(); applyPieVisibility(); renderTrendArrowsAndSlopedLabels(); }, 500);
-    window.addEventListener("pointermove", (ev) => { if(ev.buttons === 1) renderTrendArrowsAndSlopedLabels(); });
-    window.addEventListener("pointerup", () => setTimeout(renderTrendArrowsAndSlopedLabels, 20));
+    initAll();
+    setTimeout(() => { initAll(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); renderCustomShapesAndArrows(); }, 400);
+    window.addEventListener("pointermove", (ev) => { if(ev.buttons === 1) renderCustomShapesAndArrows(); });
+    window.addEventListener("pointerup", () => setTimeout(() => { renderCustomShapesAndArrows(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); }, 20));
   });
-  new MutationObserver(initBind).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(() => { initAll(); if(window.__chApplyPieVisibility) window.__chApplyPieVisibility(); }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
