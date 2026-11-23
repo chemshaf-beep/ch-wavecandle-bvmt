@@ -6680,5 +6680,127 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   new MutationObserver(hookBtnChargerDate).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+<script id="ch-axis-expand-future">
+(function(){
+  let currentExpandMode = "AUTO"; // AUTO | FUTUR25 | FUTUR50
+  let applyingAxis = false;
+
+  function computeDataBounds(){
+    if(typeof globalData === "undefined" || !globalData) return null;
+    let maxIdx = 0;
+    let minP = Infinity, maxP = -Infinity;
+
+    if(Array.isArray(globalData.vagues) && globalData.vagues.length > 0){
+      globalData.vagues.forEach((v, idx) => {
+        if(idx > maxIdx) maxIdx = idx;
+        const vals = [v.prix_deb, v.prix_fin, v.min, v.max, v.open, v.close, v.low, v.high].map(Number).filter(n => !isNaN(n) && n > 0);
+        vals.forEach(n => { if(n < minP) minP = n; if(n > maxP) maxP = n; });
+      });
+    }
+    if(Array.isArray(globalData.bougies) && globalData.bougies.length > 0){
+      maxIdx = Math.max(maxIdx, globalData.bougies.length - 1);
+      globalData.bougies.forEach(b => {
+        const vals = (Array.isArray(b) ? b : [b.open, b.close, b.low, b.high]).map(Number).filter(n => !isNaN(n) && n > 0);
+        vals.forEach(n => { if(n < minP) minP = n; if(n > maxP) maxP = n; });
+      });
+    }
+    if(typeof chart !== "undefined" && chart && typeof chart.getOption === "function"){
+      const opt = chart.getOption();
+      const xData = opt?.xAxis?.at(0)?.data;
+      if(Array.isArray(xData) && xData.length > 0) maxIdx = Math.max(maxIdx, xData.length - 1);
+    }
+    if(minP === Infinity || maxP === -Infinity || maxIdx <= 0) return null;
+    return { maxIdx, minP, maxP };
+  }
+
+  function applyAxisExpansion(){
+    if(applyingAxis || typeof chart === "undefined" || !chart || typeof chart.setOption !== "function") return;
+    const b = computeDataBounds();
+    if(!b) return;
+    applyingAxis = true;
+    try {
+      if(currentExpandMode === "AUTO"){
+        chart.setOption({
+          xAxis: [{ max: null }],
+          yAxis: [{ min: null, max: null, scale: true }]
+        });
+      } else {
+        const futRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
+        const yPadRatio = currentExpandMode === "FUTUR50" ? 0.12 : 0.05;
+        const extraBars = Math.max(4, Math.round((b.maxIdx + 1) * futRatio));
+        const spanY = Math.max(0.02, b.maxP - b.minP);
+        const newMinY = Number(Math.max(0.01, b.minP - spanY * yPadRatio - b.minP * (yPadRatio * 0.25)).toFixed(3));
+        const newMaxY = Number((b.maxP + spanY * yPadRatio + b.maxP * (yPadRatio * 0.25)).toFixed(3));
+
+        // Etendre xAxis.data avec des emplacements futurs si l'axe est de type category
+        const opt = chart.getOption();
+        const x0 = opt?.xAxis?.at(0) || {};
+        if(Array.isArray(x0.data) && x0.data.length > 0){
+          const baseLen = b.maxIdx + 1;
+          const cleanData = x0.data.slice(0, baseLen);
+          for(let i = 1; i <= extraBars; i++) cleanData.push("+" + i);
+          chart.setOption({
+            xAxis: [{ data: cleanData, max: cleanData.length - 1 }],
+            yAxis: [{ min: newMinY, max: newMaxY, scale: false }]
+          });
+        } else {
+          chart.setOption({
+            xAxis: [{ max: b.maxIdx + extraBars }],
+            yAxis: [{ min: newMinY, max: newMaxY, scale: false }]
+          });
+        }
+      }
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+    } catch(e){} finally {
+      setTimeout(() => { applyingAxis = false; }, 80);
+    }
+  }
+
+  function injectAxisExpandControl(){
+    if(document.getElementById("selExpandAxes")) return;
+    const modeSel = document.getElementById("selModeRendu") || document.getElementById("selPosCamembert");
+    if(!modeSel || !modeSel.parentElement) return;
+
+    const sel = document.createElement("select");
+    sel.id = "selExpandAxes";
+    sel.title = "Élargir l'espace futur (droite) et l'amplitude des prix (haut/bas) pour tracer des tendances futures";
+    sel.innerHTML = `
+      <option value="AUTO" selected>📐 Axes : Auto</option>
+      <option value="FUTUR25">📐 Axes : Élargi (+25% Futur)</option>
+      <option value="FUTUR50">📐 Axes : Projection (+50% Futur)</option>
+    `;
+    sel.onchange = function(){
+      currentExpandMode = sel.value;
+      applyAxisExpansion();
+    };
+    modeSel.parentElement.insertBefore(sel, modeSel.nextSibling);
+  }
+
+  // Reappliquer automatiquement l'elargissement apres chaque redessin du graphique
+  const hookChartSetOption = () => {
+    if(typeof chart !== "undefined" && chart && !chart.__chAxisHooked){
+      chart.__chAxisHooked = true;
+      const origSetOption = chart.setOption.bind(chart);
+      chart.setOption = function(){
+        const res = origSetOption.apply(this, arguments);
+        if(!applyingAxis && currentExpandMode !== "AUTO"){
+          setTimeout(applyAxisExpansion, 30);
+        }
+        return res;
+      };
+    }
+  };
+
+  window.addEventListener("load", () => {
+    injectAxisExpandControl();
+    hookChartSetOption();
+    setTimeout(() => { injectAxisExpandControl(); hookChartSetOption(); }, 600);
+  });
+  new MutationObserver(() => {
+    injectAxisExpandControl();
+    hookChartSetOption();
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
