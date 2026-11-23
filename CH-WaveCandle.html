@@ -1909,6 +1909,7 @@ function construireElementsDessin() {
   return elems;
 }
 
+window.rafraichirDessinsGraphique = rafraichirDessinsGraphique;
 function rafraichirDessinsGraphique() {
   if (!chart) return;
   const btnU = document.getElementById('btnUndoDessin');
@@ -5931,7 +5932,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         }
       });
     }
-    return { markLines: markLines, customSeries: customSeries };
+    const userDrawings = Array.isArray(window.dessinsUtilisateur) ? JSON.parse(JSON.stringify(window.dessinsUtilisateur)) : []; return { markLines: markLines, customSeries: customSeries, userDrawings: userDrawings };
   }
 
   function restoreNativeChartDrawings(captured){
@@ -5949,6 +5950,12 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     }
     if(Array.isArray(captured.customSeries) && captured.customSeries.length > 0){
       inst.setOption({ series: captured.customSeries });
+    }
+    if(Array.isArray(captured.userDrawings)){
+      window.dessinsUtilisateur = JSON.parse(JSON.stringify(captured.userDrawings));
+      if(typeof window.rafraichirDessinsGraphique === "function"){
+        window.rafraichirDessinsGraphique();
+      }
     }
   }
   async function rpc(p){ return (window.core && typeof window.core.rpc === "function") ? await window.core.rpc(p) : null; }
@@ -6006,7 +6013,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     box.innerHTML = "";
     list.forEach(pr => {
       const same = (pr.ticker || "").toUpperCase() === tk.toUpperCase();
-      const nbTraces = pr.captured && Array.isArray(pr.captured.markLines) ? pr.captured.markLines.reduce((acc, m) => acc + (m.data ? m.data.length : 0), 0) : 0;
+      const nbTraces = (pr.captured && Array.isArray(pr.captured.markLines) ? pr.captured.markLines.reduce((acc, m) => acc + (m.data ? m.data.length : 0), 0) : 0) + (pr.captured && Array.isArray(pr.captured.userDrawings) ? pr.captured.userDrawings.length : 0);
       const row = document.createElement("div");
       row.style.cssText = "background:#1E293B;border:1px solid " + (same ? "#38BDF8" : "#334155") + ";border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;";
       const info = document.createElement("div"); info.style.cssText = "flex:1;min-width:180px;";
@@ -6060,7 +6067,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       };
     }
     const cap = captureNativeChartDrawings();
-    const nbTraces = cap.markLines.reduce((acc, m) => acc + (m.data ? m.data.length : 0), 0);
+    const nbTraces = cap.markLines.reduce((acc, m) => acc + (m.data ? m.data.length : 0), 0) + (Array.isArray(cap.userDrawings) ? cap.userDrawings.length : 0);
     const inds = getCheckedIndicators();
     document.getElementById("chPrSummary").textContent = "Configuration actuelle détectée (" + getActiveTicker() + ") : " + nbTraces + " tracé(s) • " + (inds.length ? inds.join(", ") : "Aucun indicateur");
     m.style.display = "flex";
