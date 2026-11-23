@@ -6682,9 +6682,114 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 </script>
 
 
+
+
+<script id="ch-pie-labels-follow">
+(function(){
+  let lastCenterKey = "";
+
+  function getPieCenterPx(opt){
+    const pieS = (opt.series || []).find(s => s && s.type === "pie" && Array.isArray(s.center));
+    if(!pieS) return null;
+    const w = chart.getWidth();
+    const h = chart.getHeight();
+    const cxRaw = pieS.center[0];
+    const cyRaw = pieS.center[1];
+    const cx = (typeof cxRaw === "string" && cxRaw.endsWith("%")) ? (parseFloat(cxRaw) / 100) * w : Number(cxRaw);
+    const cy = (typeof cyRaw === "string" && cyRaw.endsWith("%")) ? (parseFloat(cyRaw) / 100) * h : Number(cyRaw);
+    const rArr = Array.isArray(pieS.radius) ? pieS.radius : [0, pieS.radius || 55];
+    const rOuterRaw = rArr[rArr.length - 1];
+    const rPx = (typeof rOuterRaw === "string" && rOuterRaw.endsWith("%")) ? (parseFloat(rOuterRaw) / 100) * Math.min(w, h) : Number(rOuterRaw || 55);
+    if(isNaN(cx) || isNaN(cy)) return null;
+    return { cx, cy, rPx };
+  }
+
+  function syncPieTitlesWithDisk(){
+    if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
+    try {
+      const opt = chart.getOption();
+      const pos = getPieCenterPx(opt);
+      if(!pos) return;
+      const key = `\${Math.round(pos.cx)}_\({Math.round(pos.cy)}_\){Math.round(pos.rPx)}`;
+      if(key === lastCenterKey) return;
+
+      const patch = {};
+      let changed = false;
+
+      // 1. Synchroniser opt.title (ou se trouvent generalement les 2 titres du camembert)
+      if(Array.isArray(opt.title) && opt.title.length > 0){
+        const newTitles = opt.title.map(t => {
+          const full = `\({t?.text \vert{}\vert{} ""} \){t?.subtext || ""}`;
+          if(/Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}|Agressivité/i.test(full)){
+            changed = true;
+            const isTopOnly = /Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(t?.text || "") && !/Agressivité/i.test(t?.text || "");
+            return Object.assign({}, t, {
+              left: Math.round(pos.cx),
+              top: isTopOnly ? Math.max(8, Math.round(pos.cy - pos.rPx - 24)) : Math.round(pos.cy + pos.rPx + 10),
+              textAlign: "center"
+            });
+          }
+          return t;
+        });
+        if(changed) patch.title = newTitles;
+      }
+
+      // 2. Synchroniser aussi opt.graphic si present
+      if(Array.isArray(opt.graphic) && opt.graphic.length > 0){
+        let gChanged = false;
+        const newGraphics = opt.graphic.map(gGroup => {
+          if(!gGroup || !Array.isArray(gGroup.elements)) return gGroup;
+          const newEls = gGroup.elements.map(el => {
+            const txt = String(el?.style?.text || "");
+            if(/Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(txt)){
+              gChanged = true;
+              return Object.assign({}, el, { left: Math.round(pos.cx), top: Math.max(8, Math.round(pos.cy - pos.rPx - 24)) });
+            }
+            if(/Agressivité/i.test(txt)){
+              gChanged = true;
+              return Object.assign({}, el, { left: Math.round(pos.cx), top: Math.round(pos.cy + pos.rPx + 10) });
+            }
+            return el;
+          });
+          return Object.assign({}, gGroup, { elements: newEls });
+        });
+        if(gChanged){ patch.graphic = newGraphics; changed = true; }
+      }
+
+      if(changed){
+        lastCenterKey = key;
+        chart.setOption(patch);
+      }
+    } catch(e){}
+  }
+
+  // Retour propre a la position d'origine quand l'utilisateur repasse sur "Camembert : Auto"
+  function bindPiePosSelect(){
+    const sel = document.getElementById("selPosCamembert");
+    if(!sel || sel.__chAutoResetBound) return;
+    sel.__chAutoResetBound = true;
+    sel.addEventListener("change", () => {
+      lastCenterKey = "";
+      if(sel.value === "AUTO" && typeof globalData !== "undefined" && globalData){
+        const hVal = document.getElementById("selHorizon")?.value || "";
+        if(hVal === "MULTI" && typeof dessinerChandeliersMulti === "function") dessinerChandeliersMulti(globalData);
+        else if(typeof dessinerGraphique === "function") dessinerGraphique(globalData);
+      }
+      setTimeout(syncPieTitlesWithDisk, 40);
+    });
+  }
+
+  window.addEventListener("load", () => {
+    bindPiePosSelect();
+    setInterval(syncPieTitlesWithDisk, 100);
+    window.addEventListener("pointerup", () => { lastCenterKey = ""; setTimeout(syncPieTitlesWithDisk, 25); });
+  });
+  new MutationObserver(bindPiePosSelect).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 <script id="ch-axis-expand-future">
 (function(){
-  let currentExpandMode = "AUTO"; // AUTO | FUTUR25 | FUTUR50
+  let currentExpandMode = "AUTO"; // AUTO | FUTUR25 | FUTUR50 | MOIS3 | MOIS6 | AN1
   let applyingAxis = false;
 
   function redrawNative(){
@@ -6718,6 +6823,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     const isSubDay = /^(1M|5M|15M|30M|1H|H|HEURE)/i.test(granVal || "") || Boolean(mTime);
     const stepMin = /1M/i.test(granVal) ? 1 : (/5M/i.test(granVal) ? 5 : (/15M/i.test(granVal) ? 15 : (/30M/i.test(granVal) ? 30 : 60)));
     const stepDays = /SEM|WEEK/i.test(granVal) ? 7 : (/MOIS|MONTH/i.test(granVal) ? 30 : 1);
+    const showYear = count > 90;
 
     for(let i = 0; i < count; i++){
       if(isSubDay){
@@ -6740,7 +6846,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         }
         const dd = String(curDate.getDate()).padStart(2, "0");
         const mm = String(curDate.getMonth() + 1).padStart(2, "0");
-        labels.push(dd + "/" + mm);
+        const yy = String(curDate.getFullYear()).slice(-2);
+        labels.push(showYear ? (dd + "/" + mm + "/" + yy) : (dd + "/" + mm));
       }
     }
     return labels;
@@ -6764,10 +6871,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
       const hVal = document.getElementById("selHorizon")?.value || "";
       const granVal = document.getElementById("selGranularite")?.value || "";
-      const futRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
-      const yPadRatio = currentExpandMode === "FUTUR50" ? 0.50 : 0.25;
 
-      // 1. Calculer les bornes Y (prix) élargies (valable dans tous les modes)
+      const ratioMap = { FUTUR25: 0.25, FUTUR50: 0.50, MOIS3: 0.75, MOIS6: 1.10, AN1: 1.60 };
+      const yPadRatio = ratioMap[currentExpandMode] || 0.25;
+
+      // 1. Calculer les bornes Y (prix) élargies
       let minP = typeof y0.min === "number" ? y0.min : Infinity;
       let maxP = typeof y0.max === "number" ? y0.max : -Infinity;
       if((minP === Infinity || maxP === -Infinity) && typeof globalData !== "undefined" && globalData){
@@ -6780,35 +6888,48 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const spanY = (minP !== Infinity && maxP !== -Infinity) ? Math.max(0.02, maxP - minP) : 0.5;
       let targetMinY = minP - spanY * yPadRatio;
       let targetMaxY = maxP + spanY * yPadRatio;
+
       // En Seance Unique ou Live : respecter les paliers BVMT (+/-3% / +/-6.09%) en seance normale, mais liberer automatiquement en cas d'IPO / augmentation de capital (>6.1%)
       if(hVal !== "MULTI" && minP !== Infinity && maxP !== -Infinity){
         const refP = Number(globalData?.cours_ref || globalData?.ouverture || ((minP + maxP) / 2));
         const realMovePct = Math.max(Math.abs(maxP - refP) / refP, Math.abs(refP - minP) / refP);
         if(realMovePct <= 0.0615){
-          // Seance standard BVMT : palier 1 (+/-3%) ou palier 2 (+/-6.09%), ou +/-10% en mode Projection
-          const capPct = currentExpandMode === "FUTUR50" ? 0.10 : (realMovePct > 0.0305 ? 0.0609 : 0.03);
+          const capPct = currentExpandMode === "FUTUR25" ? (realMovePct > 0.0305 ? 0.0609 : 0.03) : 0.10;
           targetMinY = Math.max(refP * (1 - capPct), Math.min(minP, targetMinY));
           targetMaxY = Math.min(refP * (1 + capPct), Math.max(maxP, targetMaxY));
         } else {
-          // Regime exceptionnel (Introduction en bourse, augmentation de capital, avis special BVMT) : elargissement libre proportionnel
-          const excPad = currentExpandMode === "FUTUR50" ? 0.25 : 0.12;
+          const excPad = currentExpandMode === "FUTUR25" ? 0.12 : 0.25;
           targetMinY = minP - spanY * excPad;
           targetMaxY = maxP + spanY * excPad;
         }
       }
+
       const yPatch = (minP !== Infinity && maxP !== -Infinity)
         ? [{ min: Number(Math.max(0.01, targetMinY).toFixed(3)), max: Number(targetMaxY.toFixed(3)), scale: false }]
         : [{}];
 
-      // 2. Elargir X UNIQUEMENT en mode MULTI-SEANCES avec vraies dates/heures ouvrées futures
+      // 2. Elargir X en MULTI-SEANCES et mettre a jour dataZoom pour garder le zoom 100% actif
       if(hVal === "MULTI" && x0.type === "category" && Array.isArray(x0.data) && x0.data.length > 0){
-        const extra = Math.max(3, Math.round(x0.data.length * futRatio));
+        let extra = Math.max(4, Math.round(x0.data.length * 0.25));
+        if(currentExpandMode === "FUTUR50") extra = Math.max(8, Math.round(x0.data.length * 0.50));
+        else if(currentExpandMode === "MOIS3") extra = 65;   // ~3 mois ouvrés
+        else if(currentExpandMode === "MOIS6") extra = 130;  // ~6 mois ouvrés
+        else if(currentExpandMode === "AN1") extra = 252;    // ~1 an ouvré
+
         const lastLbl = x0.data.at(-1);
         const futLabels = generateFutureCategoryLabels(lastLbl, extra, granVal);
         const extData = x0.data.concat(futLabels);
-        chart.setOption({ xAxis: [{ data: extData, max: extData.length - 1 }], yAxis: yPatch });
+
+        const dzPatch = Array.isArray(opt.dataZoom)
+          ? opt.dataZoom.map(() => ({ start: 0, end: 100, startValue: null, endValue: null }))
+          : undefined;
+
+        chart.setOption({
+          xAxis: [{ data: extData, max: extData.length - 1 }],
+          yAxis: yPatch,
+          ...(dzPatch ? { dataZoom: dzPatch } : {})
+        });
       } else {
-        // En Séance Unique ou Live : conserver strictement 09:00 -> 15:00 et élargir uniquement les prix (Y)
         chart.setOption({ yAxis: yPatch });
       }
 
@@ -6825,11 +6946,14 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
     const sel = document.createElement("select");
     sel.id = "selExpandAxes";
-    sel.title = "Élargir l'amplitude des prix (Séance/Live) et l'horizon futur daté (Multi-Séances)";
+    sel.title = "Élargir l'amplitude des prix et l'horizon futur (jusqu'à +1 An en Multi-Séances) tout en gardant le zoom actif";
     sel.innerHTML = `
       <option value="AUTO" selected>📐 Axes : Auto</option>
       <option value="FUTUR25">📐 Axes : Élargi (+25%)</option>
       <option value="FUTUR50">📐 Axes : Projection (+50%)</option>
+      <option value="MOIS3">📐 Projection : +3 Mois</option>
+      <option value="MOIS6">📐 Projection : +6 Mois</option>
+      <option value="AN1">📐 Projection : +1 An</option>
     `;
     sel.onchange = function(){
       currentExpandMode = sel.value;
@@ -6838,86 +6962,33 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     modeSel.parentElement.insertBefore(sel, modeSel.nextSibling);
   }
 
-  const hookChartSetOption = () => {
-    if(typeof chart !== "undefined" && chart && !chart.__chAxisHooked){
-      chart.__chAxisHooked = true;
-      const origSetOption = chart.setOption.bind(chart);
-      chart.setOption = function(){
-        const res = origSetOption.apply(this, arguments);
-        if(!applyingAxis && currentExpandMode !== "AUTO"){
-          setTimeout(applyAxisExpansion, 30);
-        }
-        return res;
-      };
-    }
-  };
-
-  window.addEventListener("load", () => {
-    injectAxisExpandControl();
-    hookChartSetOption();
-    setTimeout(() => { injectAxisExpandControl(); hookChartSetOption(); }, 600);
-  });
-  new MutationObserver(() => {
-    injectAxisExpandControl();
-    hookChartSetOption();
-  }).observe(document.body, { childList: true, subtree: true });
-})();
-</script>
-<script id="ch-pie-labels-follow">
-(function(){
-  let lastCenterKey = "";
-  function syncPieTitlesWithDisk(){
-    if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
-    try {
-      const opt = chart.getOption();
-      const pieS = (opt.series || []).find(s => s && s.type === "pie" && Array.isArray(s.center));
-      if(!pieS) return;
-      const w = chart.getWidth();
-      const h = chart.getHeight();
-      const cxRaw = pieS.center;
-      const cyRaw = pieS.center;
-      const cx = typeof cxRaw === "string" && cxRaw.endsWith("%") ? (parseFloat(cxRaw) / 100) * w : Number(cxRaw);
-      const cy = typeof cyRaw === "string" && cyRaw.endsWith("%") ? (parseFloat(cyRaw) / 100) * h : Number(cyRaw);
-      const rArr = Array.isArray(pieS.radius) ? pieS.radius : [0, pieS.radius || 55];
-      const rOuterRaw = rArr.at(-1);
-      const rPx = typeof rOuterRaw === "string" && rOuterRaw.endsWith("%") ? (parseFloat(rOuterRaw) / 100) * Math.min(w, h) : Number(rOuterRaw || 55);
-      if(isNaN(cx) || isNaN(cy)) return;
-
-      const key = `\${Math.round(cx)}_\({Math.round(cy)}_\){Math.round(rPx)}`;
-      if(key === lastCenterKey) return;
-
-      const graphics = opt.graphic;
-      if(!Array.isArray(graphics) || graphics.length === 0) return;
-
-      let updated = false;
-      const newGraphics = graphics.map(gGroup => {
-        if(!gGroup || !Array.isArray(gGroup.elements)) return gGroup;
-        const newEls = gGroup.elements.map(el => {
-          const txt = String(el?.style?.text || "");
-          if(/Séance\s+\d{2}\/\d{2}|\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(txt)){
-            updated = true;
-            return Object.assign({}, el, { left: Math.round(cx), top: Math.max(8, Math.round(cy - rPx - 22)), style: Object.assign({}, el.style, { textAlign: "center" }) });
+  // Reappliquer uniquement lors d'un changement de donnees/mode (et JAMAIS pendant un zoom utilisateur !)
+  function bindNativeRedrawHooks(){
+    ["dessinerGraphique", "dessinerChandeliersMulti"].forEach(fnName => {
+      if(typeof window[fnName] === "function" && !window[fnName].__chAxisWrapped){
+        const origFn = window[fnName];
+        const wrapped = function(){
+          const res = origFn.apply(this, arguments);
+          if(!applyingAxis && currentExpandMode !== "AUTO"){
+            setTimeout(applyAxisExpansion, 20);
           }
-          if(/Agressivité/i.test(txt)){
-            updated = true;
-            return Object.assign({}, el, { left: Math.round(cx), top: Math.round(cy + rPx + 10), style: Object.assign({}, el.style, { textAlign: "center" }) });
-          }
-          return el;
-        });
-        return Object.assign({}, gGroup, { elements: newEls });
-      });
-
-      if(updated){
-        lastCenterKey = key;
-        chart.setOption({ graphic: newGraphics });
+          return res;
+        };
+        wrapped.__chAxisWrapped = true;
+        window[fnName] = wrapped;
       }
-    } catch(e){}
+    });
   }
 
   window.addEventListener("load", () => {
-    setInterval(syncPieTitlesWithDisk, 120);
-    window.addEventListener("pointerup", () => { lastCenterKey = ""; setTimeout(syncPieTitlesWithDisk, 30); });
+    injectAxisExpandControl();
+    bindNativeRedrawHooks();
+    setTimeout(() => { injectAxisExpandControl(); bindNativeRedrawHooks(); }, 600);
   });
+  new MutationObserver(() => {
+    injectAxisExpandControl();
+    bindNativeRedrawHooks();
+  }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
