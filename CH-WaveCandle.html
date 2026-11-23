@@ -1734,12 +1734,14 @@ let selectedDrawIdx = -1;
 function lisserPointsCrayon(pts) {
   if (!Array.isArray(pts) || pts.length < 3) return pts;
   let cur = pts.slice();
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < 3; pass++) {
     const nxt = [cur.at(0)];
-    for (let i = 0; i < cur.length - 1; i++) {
-      const a = cur.at(i), b = cur.at(i + 1);
-      nxt.push([0.75 * a.at(0) + 0.25 * b.at(0), 0.75 * a.at(1) + 0.25 * b.at(1)]);
-      nxt.push([0.25 * a.at(0) + 0.75 * b.at(0), 0.25 * a.at(1) + 0.75 * b.at(1)]);
+    for (let i = 1; i < cur.length - 1; i++) {
+      const prev = cur.at(i - 1), curr = cur.at(i), next = cur.at(i + 1);
+      nxt.push([
+        0.25 * prev.at(0) + 0.50 * curr.at(0) + 0.25 * next.at(0),
+        0.25 * prev.at(1) + 0.50 * curr.at(1) + 0.25 * next.at(1)
+      ]);
     }
     nxt.push(cur.at(cur.length - 1));
     cur = nxt;
@@ -1758,13 +1760,12 @@ function construireElementsDessin() {
     if (!d) return;
     const estSelectionne = estMainLibre && (idx === selectedDrawIdx || (dessinEnCours && idx === tous.length - 1));
 
-    // 1. CRAYON LIBRE LISSE (sans zigzags)
     if (d.type === 'CRAYON_LIBRE' && Array.isArray(d.points) && d.points.length > 1) {
       const rawPx = [];
       d.points.forEach(pt => {
         const p = chart.convertToPixel({ seriesIndex: 0 }, [pt.at(0), pt.at(1)]);
         if (Array.isArray(p) && !isNaN(p.at(0)) && !isNaN(p.at(1))) {
-          if (rawPx.length === 0 || Math.hypot(p.at(0) - rawPx[rawPx.length - 1].at(0), p.at(1) - rawPx[rawPx.length - 1].at(1)) >= 10) {
+          if (rawPx.length === 0 || Math.hypot(p.at(0) - rawPx[rawPx.length - 1].at(0), p.at(1) - rawPx[rawPx.length - 1].at(1)) >= 18) {
             rawPx.push([p.at(0), p.at(1)]);
           }
         }
@@ -1773,17 +1774,18 @@ function construireElementsDessin() {
         const pxPts = lisserPointsCrayon(rawPx);
         const colC = clair ? '#0284C7' : '#38BDF8';
         const chC = [
-          { type: 'polyline', shape: { points: pxPts, smooth: 0.85 }, style: { stroke: colC, lineWidth: estSelectionne ? 3.2 : 2.5, fill: 'none', lineCap: 'round', lineJoin: 'round' } }
+          { type: 'polyline', shape: { points: pxPts, smooth: 0.35 }, style: { stroke: colC, lineWidth: estSelectionne ? 3.5 : 2.6, fill: 'none', lineCap: 'round', lineJoin: 'round' } }
         ];
         if (estSelectionne) {
           const pDeb = pxPts.at(0), pFin = pxPts[pxPts.length - 1];
-          chC.push({ type: 'circle', shape: { cx: pDeb.at(0), cy: pDeb.at(1), r: 5.5 }, style: { fill: '#FFFFFF', stroke: colC, lineWidth: 2 } });
-          chC.push({ type: 'circle', shape: { cx: pFin.at(0), cy: pFin.at(1), r: 5.5 }, style: { fill: '#FFFFFF', stroke: colC, lineWidth: 2 } });
+          chC.push({ type: 'circle', shape: { cx: pDeb.at(0), cy: pDeb.at(1), r: 6 }, style: { fill: '#FFFFFF', stroke: colC, lineWidth: 2.2 } });
+          chC.push({ type: 'circle', shape: { cx: pFin.at(0), cy: pFin.at(1), r: 6 }, style: { fill: '#FFFFFF', stroke: colC, lineWidth: 2.2 } });
         }
         elems.push({ id: 'usr_draw_' + idx, type: 'group', silent: true, z: 112, children: chC });
       }
       return;
     }
+
     const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
     const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
     if (!Array.isArray(p1) || !Array.isArray(p2) || isNaN(p1.at(0)) || isNaN(p1.at(1)) || isNaN(p2.at(0)) || isNaN(p2.at(1))) return;
@@ -1809,45 +1811,48 @@ function construireElementsDessin() {
     } else if (d.type === 'RECTANGLE') {
       const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
       const chR = [
-        { type: 'rect', shape: { x: rx, y: ry, width: rw, height: rh }, style: { fill: clair ? 'rgba(2,132,199,0.12)' : 'rgba(0,229,255,0.12)', stroke: clair ? '#0284C7' : '#00E5FF', lineWidth: estSelectionne ? 2 : 1.4 } },
+        { type: 'rect', shape: { x: rx, y: ry, width: rw, height: rh }, style: { fill: clair ? 'rgba(2,132,199,0.12)' : 'rgba(0,229,255,0.12)', stroke: clair ? '#0284C7' : '#00E5FF', lineWidth: estSelectionne ? 2.4 : 1.4 } },
         { type: 'text', style: { text: Math.max(d.y1, d.y2).toFixed(2) + " ↔ " + Math.min(d.y1, d.y2).toFixed(2) + " (" + signe + pctPrix.toFixed(2) + "%)", x: rx + rw / 2, y: ry - 5, fill: clair ? '#0369A1' : '#00E5FF', font: 'bold 10.5px Consolas', textAlign: 'center', textVerticalAlign: 'bottom' } }
       ];
       if (estSelectionne) {
-        chR.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 5.5 }, style: { fill: '#FFFFFF', stroke: '#00E5FF', lineWidth: 2 } });
-        chR.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 5.5 }, style: { fill: '#FFFFFF', stroke: '#00E5FF', lineWidth: 2 } });
+        chR.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 6 }, style: { fill: '#FFFFFF', stroke: '#00E5FF', lineWidth: 2.2 } });
+        chR.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 6 }, style: { fill: '#FFFFFF', stroke: '#00E5FF', lineWidth: 2.2 } });
       }
       elems.push({ id: 'usr_draw_' + idx, type: 'group', silent: true, z: 105, children: chR });
-    } else if (d.type === 'COURBE_LIBRE') {
+    }
+    else if (d.type === 'COURBE_LIBRE') {
       const dist = Math.hypot(x2 - x1, y2 - y1);
       if (dist < 4) return;
       if (!d.ctrlEdited) {
-        const midPxX = (x1 + x2) / 2;
-        const midPxY = (y1 + y2) / 2;
         const nx = -(y2 - y1) / dist;
         const ny = (x2 - x1) / dist;
-        const bulgePx = Math.max(36, dist * 0.32);
+        const bulgePx = Math.max(38, dist * 0.32);
         const signBulge = (ny > 0) ? 1 : -1;
-        const ctrlData = chart.convertFromPixel({ seriesIndex: 0 }, [midPxX + nx * bulgePx * signBulge, midPxY + ny * bulgePx * signBulge]);
-        if (Array.isArray(ctrlData) && !isNaN(ctrlData.at(0)) && !isNaN(ctrlData.at(1))) {
-          d.cx = ctrlData.at(0);
-          d.cy = ctrlData.at(1);
-        }
+        const p13 = chart.convertFromPixel({ seriesIndex: 0 }, [x1 + (x2 - x1) * 0.33 + nx * bulgePx * signBulge, y1 + (y2 - y1) * 0.33 + ny * bulgePx * signBulge]);
+        const p23 = chart.convertFromPixel({ seriesIndex: 0 }, [x1 + (x2 - x1) * 0.67 + nx * bulgePx * signBulge, y1 + (y2 - y1) * 0.67 + ny * bulgePx * signBulge]);
+        if (Array.isArray(p13) && !isNaN(p13.at(0))) { d.cx = p13.at(0); d.cy = p13.at(1); }
+        if (Array.isArray(p23) && !isNaN(p23.at(0))) { d.cx2 = p23.at(0); d.cy2 = p23.at(1); }
       }
-      const pCtrl = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
-      const cpx = Array.isArray(pCtrl) && !isNaN(pCtrl.at(0)) ? pCtrl.at(0) : (x1 + x2) / 2;
-      const cpy = Array.isArray(pCtrl) && !isNaN(pCtrl.at(1)) ? pCtrl.at(1) : (y1 + y2) / 2;
-      const ang = Math.atan2(y2 - cpy, x2 - cpx);
+      const pCtrl1 = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
+      const pCtrl2 = chart.convertToPixel({ seriesIndex: 0 }, [d.cx2 !== undefined ? d.cx2 : d.cx, d.cy2 !== undefined ? d.cy2 : d.cy]);
+      const cpx1 = Array.isArray(pCtrl1) && !isNaN(pCtrl1.at(0)) ? pCtrl1.at(0) : (x1 + x2) / 2;
+      const cpy1 = Array.isArray(pCtrl1) && !isNaN(pCtrl1.at(1)) ? pCtrl1.at(1) : (y1 + y2) / 2;
+      const cpx2 = Array.isArray(pCtrl2) && !isNaN(pCtrl2.at(0)) ? pCtrl2.at(0) : cpx1;
+      const cpy2 = Array.isArray(pCtrl2) && !isNaN(pCtrl2.at(1)) ? pCtrl2.at(1) : cpy1;
+
+      const ang = Math.atan2(y2 - cpy2, x2 - cpx2);
       const aLen = 13, aW = 5.5;
       const chB = [
-        { type: 'bezierCurve', shape: { x1, y1, x2, y2, cpx1: cpx, cpy1: cpy }, style: { stroke: colLigne, lineWidth: estSelectionne ? 3 : 2.5, fill: 'none' } },
+        { type: 'bezierCurve', shape: { x1, y1, x2, y2, cpx1: cpx1, cpy1: cpy1, cpx2: cpx2, cpy2: cpy2 }, style: { stroke: colLigne, lineWidth: estSelectionne ? 3.2 : 2.5, fill: 'none' } },
         { type: 'polygon', shape: { points: [[x2, y2], [x2 - Math.cos(ang)*aLen - Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen + Math.cos(ang)*aW], [x2 - Math.cos(ang)*aLen + Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen - Math.cos(ang)*aW]] }, style: { fill: colLigne } }
       ];
       if (estSelectionne || dessinEnCours === d) {
-        chB.push({ type: 'line', shape: { x1: x1, y1: y1, x2: cpx, y2: cpy }, style: { stroke: colLigne, lineWidth: 1, lineDash: Array.of(3, 3) } });
-        chB.push({ type: 'line', shape: { x1: cpx, y1: cpy, x2: x2, y2: y2 }, style: { stroke: colLigne, lineWidth: 1, lineDash: Array.of(3, 3) } });
-        chB.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 5.5 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2 } });
-        chB.push({ type: 'circle', shape: { cx: cpx, cy: cpy, r: 6.5 }, style: { fill: '#FACC15', stroke: colLigne, lineWidth: 2 } });
-        chB.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 5.5 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2 } });
+        chB.push({ type: 'line', shape: { x1: x1, y1: y1, x2: cpx1, y2: cpy1 }, style: { stroke: colLigne, lineWidth: 1, lineDash: Array.of(3, 3) } });
+        chB.push({ type: 'line', shape: { x1: cpx2, y1: cpy2, x2: x2, y2: y2 }, style: { stroke: colLigne, lineWidth: 1, lineDash: Array.of(3, 3) } });
+        chB.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
+        chB.push({ type: 'circle', shape: { cx: cpx1, cy: cpy1, r: 6.5 }, style: { fill: '#FACC15', stroke: colLigne, lineWidth: 2 } });
+        chB.push({ type: 'circle', shape: { cx: cpx2, cy: cpy2, r: 6.5 }, style: { fill: '#FB923C', stroke: colLigne, lineWidth: 2 } });
+        chB.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
       }
       elems.push({ id: 'usr_draw_' + idx, type: 'group', silent: true, z: 112, children: chB });
     } else {
@@ -1867,11 +1872,11 @@ function construireElementsDessin() {
       const midY = (y1 + y2) / 2 + ny * 10;
 
       const children = [
-        { type: 'line', shape: { x1, y1, x2, y2 }, style: { stroke: colLigne, lineWidth: estSelectionne ? 2.8 : 2.2, lineDash: estMesure ? Array.of(4, 3) : Array.of() } }
+        { type: 'line', shape: { x1, y1, x2, y2 }, style: { stroke: colLigne, lineWidth: estSelectionne ? 3.2 : 2.2, lineDash: estMesure ? Array.of(4, 3) : Array.of() } }
       ];
       if (estSelectionne) {
-        children.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 5.5 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2 } });
-        children.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 5.5 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2 } });
+        children.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
+        children.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
       } else {
         children.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 3.5 }, style: { fill: colLigne } });
       }
@@ -3895,7 +3900,7 @@ window.addEventListener('load', () => {
       appliquerStatsBandeau({ ...globalData.stats, h_deb: globalData.stats.h_deb_derniere, h_fin: globalData.stats.h_fin_derniere });
       dessinerGraphique(globalData);
       const stEl = document.getElementById("statusText");
-      if (stEl) stEl.innerText = (snap.status || "Séance locale chargée") + " • Vérification serveur...";
+      if (stEl) stEl.innerText = (snap.status || "Séance locale chargée") + " ";
     } catch (_) {}
   }
 
@@ -7115,15 +7120,37 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 
 
+
+
+
+
 <script id="ch-pie-visibility-clean">
 (function(){
   function applyPieClean(){
     if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
     const sel = document.getElementById("selPosCamembert");
+    const hidePie = sel ? (sel.value === "MASQUE") : false;
     try {
-      const opt0 = chart.getOption();
-      if(Array.isArray(opt0.title) && opt0.title.length > 0){
-        const cleanedTitles = opt0.title.map(t => {
+      const opt = chart.getOption();
+      if(Array.isArray(opt.series)){
+        const pieOnly = opt.series
+          .filter(s => s && s.type === "pie")
+          .map(s => {
+            if(!s.__origRadius && Array.isArray(s.radius) && s.radius.at(1) > 0) s.__origRadius = s.radius.slice();
+            return {
+              id: s.id,
+              name: s.name,
+              silent: hidePie,
+              radius: hidePie ? Array.of(0, 0) : (s.__origRadius || s.radius || Array.of(0, 55)),
+              label: { show: !hidePie },
+              labelLine: { show: !hidePie },
+              itemStyle: { opacity: hidePie ? 0 : 1 }
+            };
+          });
+        if(pieOnly.length > 0) chart.setOption({ series: pieOnly });
+      }
+      if(Array.isArray(opt.title) && opt.title.length > 0){
+        const cleanedTitles = opt.title.map(t => {
           const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
           if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full) || /Séance/i.test(full)){
             return Object.assign({}, t, { show: false, text: "", subtext: "" });
@@ -7131,30 +7158,6 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           return t;
         });
         chart.setOption({ title: cleanedTitles });
-      }
-    } catch(e){}
-    const hidePie = sel ? (sel.value === "MASQUE") : false;
-    try {
-      const opt = chart.getOption();
-      if(Array.isArray(opt.series)){
-        const sPatch = opt.series.map(s => (s && s.type === "pie")
-          ? { silent: hidePie, label: { show: !hidePie }, labelLine: { show: !hidePie }, itemStyle: { opacity: hidePie ? 0 : 1 } }
-          : {});
-        chart.setOption({ series: sPatch });
-      }
-      if(Array.isArray(opt.title) && opt.title.length > 0){
-        const newTitles = opt.title.map(t => {
-          const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
-          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full) || /Séance/i.test(full)){
-            return Object.assign({}, t, {
-              show: !hidePie,
-              textStyle: Object.assign({}, t.textStyle, { color: hidePie ? "transparent" : "#F59E0B" }),
-              subtextStyle: Object.assign({}, t.subtextStyle, { color: hidePie ? "transparent" : "#EF4444" })
-            });
-          }
-          return t;
-        });
-        chart.setOption({ title: newTitles });
       }
       if(Array.isArray(opt.graphic)){
         const toggleEl = (el) => {
@@ -7171,38 +7174,15 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     } catch(e){}
   }
 
-  function forceEtiquettesCheckedOnBoot(){
-    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
-    if(chk && !chk.__chBootChecked){
-      chk.__chBootChecked = true;
-      chk.checked = true;
-      chk.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-  }
   window.addEventListener("load", () => {
-    forceEtiquettesCheckedOnBoot();
-    setTimeout(forceEtiquettesCheckedOnBoot, 500);
+    const chk = Array.from(document.querySelectorAll("input[type='checkbox']")).find(c => /étiquette/i.test((c.parentElement && c.parentElement.textContent) || c.id || ""));
+    if(chk && !chk.checked){ chk.checked = true; chk.dispatchEvent(new Event("change", { bubbles: true })); }
     const sel = document.getElementById("selPosCamembert");
-    try {
-      const opt0 = chart.getOption();
-      if(Array.isArray(opt0.title) && opt0.title.length > 0){
-        const cleanedTitles = opt0.title.map(t => {
-          const full = (t && t.text ? t.text : "") + " " + (t && t.subtext ? t.subtext : "");
-          if(/\d{2}\/\d{2}/.test(full) || /Agressivité/i.test(full) || /Séance/i.test(full)){
-            return Object.assign({}, t, { show: false, text: "", subtext: "" });
-          }
-          return t;
-        });
-        chart.setOption({ title: cleanedTitles });
-      }
-    } catch(e){}
     if(sel) sel.addEventListener("change", () => setTimeout(applyPieClean, 25));
-    setInterval(applyPieClean, 250);
+    setInterval(applyPieClean, 300);
   });
 })();
 </script>
-
-
 <script id="ch-adjust-handles-interact">
 (function(){
   let dragTarget = null;
@@ -7213,6 +7193,50 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     let t = ((px - x1)*(x2 - x1) + (py - y1)*(y2 - y1)) / l2;
     t = Math.max(0, Math.min(1, t));
     return Math.hypot(px - (x1 + t*(x2 - x1)), py - (y1 + t*(y2 - y1)));
+  }
+
+  function hitTestDrawing(mx, my, hitRadius){
+    if(!Array.isArray(dessinsUtilisateur)) return null;
+    for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
+      const d = dessinsUtilisateur.at(i);
+      if(!d || d.type === "SUPPORT" || d.type === "RESISTANCE") continue;
+
+      if(d.type === "CRAYON_LIBRE" && Array.isArray(d.points) && d.points.length > 1){
+        for(let k = 0; k < d.points.length; k++){
+          const ptK = d.points.at(k);
+          const px = chart.convertToPixel({ seriesIndex: 0 }, [ptK.at(0), ptK.at(1)]);
+          if(Array.isArray(px) && Math.hypot(mx - px.at(0), my - px.at(1)) <= hitRadius){
+            return { idx: i, pointKey: "all" };
+          }
+        }
+        continue;
+      }
+
+      if(d.type === "COURBE_LIBRE"){
+        if(d.cx !== undefined && d.cy !== undefined){
+          const pc1 = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
+          if(Array.isArray(pc1) && Math.hypot(mx - pc1.at(0), my - pc1.at(1)) <= hitRadius) return { idx: i, pointKey: "ctrl1" };
+        }
+        if(d.cx2 !== undefined && d.cy2 !== undefined){
+          const pc2 = chart.convertToPixel({ seriesIndex: 0 }, [d.cx2, d.cy2]);
+          if(Array.isArray(pc2) && Math.hypot(mx - pc2.at(0), my - pc2.at(1)) <= hitRadius) return { idx: i, pointKey: "ctrl2" };
+        }
+      }
+
+      const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
+      const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
+      if(Array.isArray(p1) && Math.hypot(mx - p1.at(0), my - p1.at(1)) <= hitRadius) return { idx: i, pointKey: "p1" };
+      if(Array.isArray(p2) && Math.hypot(mx - p2.at(0), my - p2.at(1)) <= hitRadius) return { idx: i, pointKey: "p2" };
+
+      if(Array.isArray(p1) && Array.isArray(p2)){
+        if(distToSegment(mx, my, p1.at(0), p1.at(1), p2.at(0), p2.at(1)) <= hitRadius) return { idx: i, pointKey: "body" };
+        if(d.type === "COURBE_LIBRE" && d.cx !== undefined && d.cy !== undefined){
+          const pc1 = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
+          if(Array.isArray(pc1) && distToSegment(mx, my, p1.at(0), p1.at(1), pc1.at(0), pc1.at(1)) <= hitRadius) return { idx: i, pointKey: "body" };
+        }
+      }
+    }
+    return null;
   }
 
   function bindHandleDragging(){
@@ -7233,101 +7257,51 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
     zr.on("mousedown", (params) => {
       if(typeof outilActif !== "function") return;
-      if(outilActif() !== "AUCUN"){
-        selectedDrawIdx = -1;
-        return;
-      }
-      if(!Array.isArray(dessinsUtilisateur) || dessinsUtilisateur.length === 0) return;
+      if(outilActif() !== "AUCUN"){ selectedDrawIdx = -1; return; }
 
       const mx = params.offsetX, my = params.offsetY;
-      const hitRadius = 12;
-
-      if(selectedDrawIdx >= 0 && selectedDrawIdx < dessinsUtilisateur.length){
-        const d = dessinsUtilisateur.at(selectedDrawIdx);
-        if(d && d.type !== "SUPPORT" && d.type !== "RESISTANCE"){
-          if(d.type === "COURBE_LIBRE" && d.cx !== undefined && d.cy !== undefined){
-            const pCtrl = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
-            if(Array.isArray(pCtrl) && Math.hypot(mx - pCtrl.at(0), my - pCtrl.at(1)) <= hitRadius + 3){
-              d.ctrlEdited = true;
-              dragTarget = { idx: selectedDrawIdx, pointKey: "ctrl" };
-              return;
-            }
-          }
-          const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
-          if(Array.isArray(p1) && Math.hypot(mx - p1.at(0), my - p1.at(1)) <= hitRadius){
-            dragTarget = { idx: selectedDrawIdx, pointKey: "p1" };
-            return;
-          }
-          const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
-          if(Array.isArray(p2) && Math.hypot(mx - p2.at(0), my - p2.at(1)) <= hitRadius){
-            dragTarget = { idx: selectedDrawIdx, pointKey: "p2" };
-            return;
-          }
+      const hit = hitTestDrawing(mx, my, 22);
+      if(!hit){
+        if(selectedDrawIdx !== -1){
+          selectedDrawIdx = -1;
+          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
         }
+        return;
       }
 
-      let foundIdx = -1;
-      for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
-        const d = dessinsUtilisateur.at(i);
-        if(!d || d.type === "SUPPORT" || d.type === "RESISTANCE") continue;
+      selectedDrawIdx = hit.idx;
+      const d = dessinsUtilisateur.at(hit.idx);
+      const pt0 = chart.convertFromPixel({ seriesIndex: 0 }, [mx, my]);
 
-        if(d.type === "CRAYON_LIBRE" && Array.isArray(d.points) && d.points.length > 1){
-          const pt0 = chart.convertFromPixel({ seriesIndex: 0 }, [mx, my]);
-          for(let k = 0; k < d.points.length; k++){
-            const ptK = d.points.at(k);
-            const px = chart.convertToPixel({ seriesIndex: 0 }, [ptK.at(0), ptK.at(1)]);
-            if(Array.isArray(px) && Math.hypot(mx - px.at(0), my - px.at(1)) <= hitRadius){
-              foundIdx = i;
-              dragTarget = { idx: i, pointKey: "all", startDataX: pt0.at(0), startDataY: pt0.at(1), origPoints: d.points.map(p => [p.at(0), p.at(1)]) };
-              break;
-            }
-          }
-          if(foundIdx >= 0) break;
-          continue;
-        }
-
-        const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
-        const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
-        if(Array.isArray(p1) && Array.isArray(p2)){
-          if(Math.hypot(mx - p1.at(0), my - p1.at(1)) <= hitRadius){
-            foundIdx = i; dragTarget = { idx: i, pointKey: "p1" }; break;
-          }
-          if(Math.hypot(mx - p2.at(0), my - p2.at(1)) <= hitRadius){
-            foundIdx = i; dragTarget = { idx: i, pointKey: "p2" }; break;
-          }
-          if(d.type === "COURBE_LIBRE" && d.cx !== undefined && d.cy !== undefined){
-            const pCtrl = chart.convertToPixel({ seriesIndex: 0 }, [d.cx, d.cy]);
-            if(Array.isArray(pCtrl) && Math.hypot(mx - pCtrl.at(0), my - pCtrl.at(1)) <= hitRadius + 3){
-              d.ctrlEdited = true; foundIdx = i; dragTarget = { idx: i, pointKey: "ctrl" }; break;
-            }
-          }
-          if(distToSegment(mx, my, p1.at(0), p1.at(1), p2.at(0), p2.at(1)) <= 10){
-            foundIdx = i; break;
-          }
-        }
+      if(hit.pointKey === "all" && d && Array.isArray(d.points)){
+        dragTarget = { idx: hit.idx, pointKey: "all", startDataX: pt0.at(0), startDataY: pt0.at(1), origPoints: d.points.map(p => [p.at(0), p.at(1)]) };
+      } else if(hit.pointKey !== "body"){
+        if(hit.pointKey === "ctrl1" || hit.pointKey === "ctrl2") d.ctrlEdited = true;
+        dragTarget = { idx: hit.idx, pointKey: hit.pointKey };
       }
-
-      if(selectedDrawIdx !== foundIdx){
-        selectedDrawIdx = foundIdx;
-        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
-      }
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
     });
 
     zr.on("mousemove", (params) => {
-      if(!dragTarget) return;
+      const mx = params.offsetX, my = params.offsetY;
+      if(!dragTarget){
+        if(typeof outilActif === "function" && outilActif() === "AUCUN"){
+          const over = hitTestDrawing(mx, my, 20);
+          zr.setCursorStyle(over ? "pointer" : "default");
+        }
+        return;
+      }
+
       const d = dessinsUtilisateur.at(dragTarget.idx);
-      if(!d) { dragTarget = null; return; }
-      const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
+      if(!d){ dragTarget = null; return; }
+      const pt = chart.convertFromPixel({ seriesIndex: 0 }, [mx, my]);
       if(!Array.isArray(pt) || isNaN(pt.at(0)) || isNaN(pt.at(1))) return;
 
-      if(dragTarget.pointKey === "p1"){
-        d.x1 = pt.at(0); d.y1 = pt.at(1);
-      } else if(dragTarget.pointKey === "p2"){
-        d.x2 = pt.at(0); d.y2 = pt.at(1);
-      } else if(dragTarget.pointKey === "ctrl"){
-        d.ctrlEdited = true;
-        d.cx = pt.at(0); d.cy = pt.at(1);
-      } else if(dragTarget.pointKey === "all" && Array.isArray(dragTarget.origPoints)){
+      if(dragTarget.pointKey === "p1"){ d.x1 = pt.at(0); d.y1 = pt.at(1); }
+      else if(dragTarget.pointKey === "p2"){ d.x2 = pt.at(0); d.y2 = pt.at(1); }
+      else if(dragTarget.pointKey === "ctrl1"){ d.ctrlEdited = true; d.cx = pt.at(0); d.cy = pt.at(1); }
+      else if(dragTarget.pointKey === "ctrl2"){ d.ctrlEdited = true; d.cx2 = pt.at(0); d.cy2 = pt.at(1); }
+      else if(dragTarget.pointKey === "all" && Array.isArray(dragTarget.origPoints)){
         const dx = pt.at(0) - dragTarget.startDataX;
         const dy = pt.at(1) - dragTarget.startDataY;
         d.points = dragTarget.origPoints.map(op => [op.at(0) + dx, op.at(1) + dy]);
