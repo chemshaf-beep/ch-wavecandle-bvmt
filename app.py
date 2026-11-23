@@ -1955,6 +1955,25 @@ def lancer_collecteur_bvmt():
         FICHIER_SYNTHESE_CLOTURE = os.path.join(REPERTOIRE_SYNTHESE, f"synthese_cloture_simulation_{DATE_JOUR_STR}.csv")
         FICHIER_ETAT_RAM = os.path.join(REPERTOIRE_JSON, f"bourse_state_RAM_simulation_{DATE_JOUR_STR}.json")
 
+    # Tirer la derniere version depuis GH_DATA_REPO (chemshaf-beep/ch-wavecandle-data) avant l'amorce RAM
+    try:
+        _tk_boot = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
+        _rp_boot = (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip() or globals().get("GH_REPO", "").strip()
+        _rp_boot = _rp_boot.replace("https://github.com", "").replace("http://github.com", "").strip("/")
+        if _tk_boot and _rp_boot:
+            _rel_boot = f"Historique/bourse_historique_reel/{PREFIXE_LOG}{DATE_JOUR_STR}.csv"
+            _u_boot = f"https://github.com{_rp_boot}/contents/{_rel_boot}"
+            _h_boot = {"Authorization": f"Bearer {_tk_boot}", "Accept": "application/vnd.github.raw+json", "User-Agent": "CH-WaveCandle-HFT"}
+            with urllib.request.urlopen(urllib.request.Request(_u_boot, headers=_h_boot), timeout=12) as _rb:
+                _raw_csv = _rb.read()
+                if len(_raw_csv) > 250:
+                    os.makedirs(os.path.dirname(FICHIER_HISTO_SEANCE), exist_ok=True)
+                    with open(FICHIER_HISTO_SEANCE, "wb") as _fw:
+                        _fw.write(_raw_csv)
+                    print(f"[☁️ PULL-BOOT] Derniere version recuperee depuis {_rp_boot} ({len(_raw_csv)} octets).")
+    except Exception as _ep_boot:
+        print(f"[!] Pull boot info : {_ep_boot}")
+
     if not os.path.exists(FICHIER_HISTO_RAMDISK) and os.path.isfile(FICHIER_HISTO_SEANCE) and os.path.getsize(FICHIER_HISTO_SEANCE) > 250:
         try:
             shutil.copy2(FICHIER_HISTO_SEANCE, FICHIER_HISTO_RAMDISK)
