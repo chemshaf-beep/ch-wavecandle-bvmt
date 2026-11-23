@@ -6659,9 +6659,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const origTxt = btn.textContent;
       btn.textContent = "⏳...";
       try {
-        const targetPath = (compact === todayCompact)
-          ? ("temp_bourse_historique_reel_" + compact + ".csv")
-          : (sObj.rel_path || sObj.path || ("bourse_historique_reel/bourse_historique_reel_" + compact + ".csv"));
+        const targetPath = sObj.rel_path || sObj.path || ("bourse_historique_reel/bourse_historique_reel_" + compact + ".csv");
         const freshTxt = await fetchFreshCsvViaRpc(targetPath);
         if(freshTxt){
           sObj.handle = {

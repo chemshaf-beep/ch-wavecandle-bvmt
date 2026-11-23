@@ -1731,6 +1731,28 @@ def _sync_vers_repo_bvmt_principal(tk, headers, rel, b64):
             pass
     except Exception:
         pass
+def _fusionner_ram_vers_seance():
+    try:
+        if not os.path.isfile(FICHIER_HISTO_RAMDISK) or os.path.getsize(FICHIER_HISTO_RAMDISK) <= 250:
+            return
+        if not os.path.isfile(FICHIER_HISTO_SEANCE) or os.path.getsize(FICHIER_HISTO_SEANCE) <= 250:
+            _fusionner_ram_vers_seance()
+            return
+        with open(FICHIER_HISTO_SEANCE, "r", encoding="utf-8-sig", errors="replace") as f_old:
+            lignes_old = [l for l in f_old.read().splitlines() if l.strip()]
+        with open(FICHIER_HISTO_RAMDISK, "r", encoding="utf-8-sig", errors="replace") as f_new:
+            lignes_new = [l for l in f_new.read().splitlines() if l.strip()]
+        if not lignes_old:
+            _fusionner_ram_vers_seance()
+            return
+        header = lignes_old
+        vus = set(lignes_old[1:])
+        ajouts = [l for l in lignes_new[1:] if l not in vus]
+        if ajouts:
+            with open(FICHIER_HISTO_SEANCE, "w", encoding="utf-8", newline="\n") as f_out:
+                f_out.write("\n".join(lignes_old + ajouts) + "\n")
+    except Exception:
+        pass
 def sync_github_cloud():
     global _LAST_GH_SYNC
     tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
@@ -1742,7 +1764,7 @@ def sync_github_cloud():
     try:
         if os.path.isfile(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 250:
             if not os.path.isfile(FICHIER_HISTO_SEANCE) or (time.time() - os.path.getmtime(FICHIER_HISTO_SEANCE)) >= 5.0:
-                shutil.copy2(FICHIER_HISTO_RAMDISK, FICHIER_HISTO_SEANCE)
+                _fusionner_ram_vers_seance()
     except Exception:
         pass
     if (time.time() - _LAST_GH_SYNC) < 120:
@@ -1753,7 +1775,7 @@ def sync_github_cloud():
     if _now_tn_sync.weekday() < 5 and (_now_tn_sync.hour * 60 + _now_tn_sync.minute) >= 510:
         try:
             if os.path.isfile(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 250:
-                shutil.copy2(FICHIER_HISTO_RAMDISK, FICHIER_HISTO_SEANCE)
+                _fusionner_ram_vers_seance()
         except Exception:
             pass
     date_jour = datetime.datetime.now().strftime("%d%m%Y")
@@ -3069,7 +3091,7 @@ def _rpc_data(payload_json: str):
         if DATE_JOUR_STR in rel_path and "temp_" not in rel_path:
             try:
                 if os.path.isfile(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 250:
-                    shutil.copy2(FICHIER_HISTO_RAMDISK, FICHIER_HISTO_SEANCE)
+                    _fusionner_ram_vers_seance()
             except Exception:
                 pass
         # 1. Lecture stricte depuis _BASE_DIR (inclut Historique/...)
