@@ -6889,185 +6889,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
-<script id="ch-pie-labels-follow">
-(function(){
-  let lastCenterKey = "";
-  let savedManualCenter = null; // [xPx, yPx] memorise apres un glisser-deposer
 
-  function parseCoord(val, total){
-    if(typeof val === "number") return val;
-    if(typeof val === "string"){
-      const s = val.trim();
-      if(s.endsWith("%")) return (parseFloat(s) / 100) * total;
-      const n = parseFloat(s);
-      if(!isNaN(n)) return n;
-    }
-    return NaN;
-  }
 
-  function getPieMetrics(opt){
-    const pieS = (opt.series || []).find(s => s && s.type === "pie" && Array.isArray(s.center));
-    if(!pieS) return null;
-    const w = chart.getWidth();
-    const h = chart.getHeight();
-    const cx = parseCoord(pieS.center, w);
-    const cy = parseCoord(pieS.center, h);
-    const rArr = Array.isArray(pieS.radius) ? pieS.radius : [0, pieS.radius || 55];
-    const rOuterRaw = rArr[rArr.length - 1];
-    const rPx = parseCoord(rOuterRaw, Math.min(w, h)) || 55;
-    if(isNaN(cx) || isNaN(cy)) return null;
-    return { cx, cy, rPx };
-  }
-
-  function syncPieTitlesWithDisk(forceApply){
-    if(typeof chart === "undefined" || !chart || typeof chart.getOption !== "function") return;
-    try {
-      const opt = chart.getOption();
-      const pos = getPieMetrics(opt);
-      if(!pos) return;
-
-      const sel = document.getElementById("selPosCamembert");
-      if(sel && sel.value === "MANUEL"){
-        savedManualCenter = [Math.round(pos.cx), Math.round(pos.cy)];
-      }
-
-      const key = `\${Math.round(pos.cx)}_\({Math.round(pos.cy)}_\){Math.round(pos.rPx)}`;
-      if(!forceApply && key === lastCenterKey) return;
-
-      const topY = Math.max(8, Math.round(pos.cy - pos.rPx - 24));
-      const botY = Math.round(pos.cy + pos.rPx + 10);
-      const centerX = Math.round(pos.cx);
-
-      const patch = {};
-      let changed = false;
-
-      // 1. Synchroniser TOUTES les entrees de opt.title (titre du haut + sous-titre/bloc Agressivite du bas)
-      if(Array.isArray(opt.title) && opt.title.length > 0){
-        const newTitles = opt.title.map((t, idx) => {
-          const txt = String(t?.text || "");
-          const sub = String(t?.subtext || "");
-          const combined = `txt {sub}`;
-          const isTopDate = /\d{2}\/\d{2}/.test(txt) && !/Agressivité/i.test(txt);
-          const isBotAgr = /Agressivité/i.test(combined);
-          if(isTopDate || isBotAgr){
-            changed = true;
-            return Object.assign({}, t, {
-              left: centerX,
-              top: isBotAgr && !isTopDate ? botY : topY,
-              textAlign: "center",
-              itemGap: Math.round(pos.rPx * 2 + 16)
-            });
-          }
-          return t;
-        });
-        if(changed) patch.title = newTitles;
-      }
-
-      // 2. Synchroniser TOUTES les entrees de opt.graphic (y compris groupes imbriques et textes autonomes)
-      if(Array.isArray(opt.graphic) && opt.graphic.length > 0){
-        let gChanged = false;
-        const patchEl = (el) => {
-          if(!el) return el;
-          if(Array.isArray(el.elements)){
-            return Object.assign({}, el, { elements: el.elements.map(patchEl) });
-          }
-          const txt = String(el?.style?.text || el?.text || "");
-          if(/\d{2}\/\d{2}/.test(txt) && !/Agressivité/i.test(txt)){
-            gChanged = true;
-            return Object.assign({}, el, {
-              left: centerX,
-              top: topY,
-              x: centerX,
-              y: topY,
-              style: Object.assign({}, el.style, { textAlign: "center" })
-            });
-          }
-          if(/Agressivité/i.test(txt)){
-            gChanged = true;
-            return Object.assign({}, el, {
-              left: centerX,
-              top: botY,
-              x: centerX,
-              y: botY,
-              style: Object.assign({}, el.style, { textAlign: "center" })
-            });
-          }
-          return el;
-        };
-        const newGraphics = opt.graphic.map(patchEl);
-        if(gChanged){ patch.graphic = newGraphics; changed = true; }
-      }
-
-      if(changed){
-        lastCenterKey = key;
-        chart.setOption(patch);
-      }
-    } catch(e){}
-  }
-
-  // Envelopper les fonctions de dessin pour preserver la position manuelle glissee si mode MANUEL actif
-  function wrapRedrawKeepManualPie(){
-    ["dessinerGraphique", "dessinerChandeliersMulti"].forEach(fnName => {
-      if(typeof window[fnName] === "function" && !window[fnName].__chPieManualWrapped){
-        const orig = window[fnName];
-        const wrapped = function(){
-          const res = orig.apply(this, arguments);
-          const sel = document.getElementById("selPosCamembert");
-          if(sel && sel.value === "MANUEL" && Array.isArray(savedManualCenter) && typeof chart !== "undefined" && chart){
-            try {
-              const opt = chart.getOption();
-              const pieIdx = (opt.series || []).findIndex(s => s && s.type === "pie");
-              if(pieIdx >= 0){
-                const sPatch = opt.series.map((s, i) => i === pieIdx ? { center: savedManualCenter } : {});
-                chart.setOption({ series: sPatch });
-              }
-            } catch(e){}
-          }
-          setTimeout(() => syncPieTitlesWithDisk(true), 25);
-          return res;
-        };
-        wrapped.__chPieManualWrapped = true;
-        window[fnName] = wrapped;
-      }
-    });
-  }
-
-  function bindPiePosSelect(){
-    const sel = document.getElementById("selPosCamembert");
-    if(!sel || sel.__chAutoResetBound) return;
-    sel.__chAutoResetBound = true;
-    sel.addEventListener("change", () => {
-      lastCenterKey = "";
-      if(sel.value === "AUTO"){
-        savedManualCenter = null;
-        if(typeof globalData !== "undefined" && globalData){
-          const hVal = document.getElementById("selHorizon")?.value || "";
-          if(hVal === "MULTI" && typeof dessinerChandeliersMulti === "function") dessinerChandeliersMulti(globalData);
-          else if(typeof dessinerGraphique === "function") dessinerGraphique(globalData);
-        }
-      }
-      setTimeout(() => syncPieTitlesWithDisk(true), 40);
-    });
-  }
-
-  window.addEventListener("load", () => {
-    bindPiePosSelect();
-    wrapRedrawKeepManualPie();
-    setInterval(() => syncPieTitlesWithDisk(false), 80);
-    window.addEventListener("pointermove", (ev) => {
-      if(ev.buttons === 1) syncPieTitlesWithDisk(false);
-    });
-    window.addEventListener("pointerup", () => {
-      lastCenterKey = "";
-      setTimeout(() => syncPieTitlesWithDisk(true), 20);
-    });
-  });
-  new MutationObserver(() => {
-    bindPiePosSelect();
-    wrapRedrawKeepManualPie();
-  }).observe(document.body, { childList: true, subtree: true });
-})();
-</script>
 
 
 
@@ -7137,11 +6960,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         if(!d) return;
         const t = String(d.type || "").toUpperCase();
 
-        // 1. CRAYON LIBRE (trace a main levee)
+        // 1. CRAYON LIBRE
         if(t === "CRAYON_LIBRE" && Array.isArray(d.points) && d.points.length > 1){
           const pxPts = d.points
-            .map(pt => chart.convertToPixel({ seriesIndex: 0 }, [pt, pt]))
-            .filter(p => Array.isArray(p) && !isNaN(p) && !isNaN(p));
+            .map(pt => chart.convertToPixel({ seriesIndex: 0 }, [pt.at(0), pt.at(1)]))
+            .filter(p => Array.isArray(p) && !isNaN(p.at(0)) && !isNaN(p.at(1)));
           if(pxPts.length > 1){
             const col = d.color || d.couleur || "#38BDF8";
             arrowElements.push({
@@ -7156,15 +6979,16 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           return;
         }
 
-        // 2. COURBE LISSE (arc / bezier avec fleche)
+        // 2. COURBE LISSE
         if(t === "COURBE_LIBRE" && d.x1 !== undefined && d.y1 !== undefined && d.x2 !== undefined && d.y2 !== undefined){
           const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
           const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
-          if(Array.isArray(p1) && Array.isArray(p2) && !isNaN(p1) && !isNaN(p2)){
+          if(Array.isArray(p1) && Array.isArray(p2) && !isNaN(p1.at(0)) && !isNaN(p2.at(0))){
+            const x1 = p1.at(0), y1 = p1.at(1), x2 = p2.at(0), y2 = p2.at(1);
             const col = d.color || d.couleur || "#A855F7";
-            const midX = (p1 + p2) / 2;
-            const midY = (p1 + p2) / 2;
-            const dist = Math.hypot(p2 - p1, p2 - p1);
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+            const dist = Math.hypot(x2 - x1, y2 - y1);
             const bulge = Math.max(32, dist * 0.30);
             const cpx = midX;
             const cpy = midY + (Number(d.y2) >= Number(d.y1) ? bulge : -bulge);
@@ -7174,11 +6998,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
               id: "ch_curve_" + idx,
               silent: true,
               z: 118,
-              shape: { x1: p1, y1: p1, x2: p2, y2: p2, cpx1: cpx, cpy1: cpy },
+              shape: { x1: x1, y1: y1, x2: x2, y2: y2, cpx1: cpx, cpy1: cpy },
               style: { stroke: col, lineWidth: 2.5, fill: "none" }
             });
 
-            const ang = Math.atan2(p2 - cpy, p2 - cpx);
+            const ang = Math.atan2(y2 - cpy, x2 - cpx);
             const aLen = 13, aW = 5.5;
             arrowElements.push({
               type: "polygon",
@@ -7187,9 +7011,9 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
               z: 119,
               shape: {
                 points: [
-                  [p2, p2],
-                  [p2 - Math.cos(ang)*aLen - Math.sin(ang)*aW, p2 - Math.sin(ang)*aLen + Math.cos(ang)*aW],
-                  [p2 - Math.cos(ang)*aLen + Math.sin(ang)*aW, p2 - Math.sin(ang)*aLen - Math.cos(ang)*aW]
+                  [x2, y2],
+                  [x2 - Math.cos(ang)*aLen - Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen + Math.cos(ang)*aW],
+                  [x2 - Math.cos(ang)*aLen + Math.sin(ang)*aW, y2 - Math.sin(ang)*aLen - Math.cos(ang)*aW]
                 ]
               },
               style: { fill: col, stroke: col, lineWidth: 1 }
@@ -7198,16 +7022,17 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           return;
         }
 
-        // 3. DROITES DE TENDANCE (tete de fleche + etiquette inclinee)
+        // 3. DROITES DE TENDANCE (fleche + etiquette inclinee)
         if(!/(LIGNE|TENDANCE|TREND|DROITE|SEGMENT|CANAL)/.test(t)) return;
         if(d.x1 === undefined || d.y1 === undefined || d.x2 === undefined || d.y2 === undefined) return;
 
         const p1 = chart.convertToPixel({ seriesIndex: 0 }, [d.x1, d.y1]);
         const p2 = chart.convertToPixel({ seriesIndex: 0 }, [d.x2, d.y2]);
-        if(!Array.isArray(p1) || !Array.isArray(p2) || isNaN(p1) || isNaN(p1) || isNaN(p2) || isNaN(p2)) return;
+        if(!Array.isArray(p1) || !Array.isArray(p2) || isNaN(p1.at(0)) || isNaN(p1.at(1)) || isNaN(p2.at(0)) || isNaN(p2.at(1))) return;
 
-        const dx = p2 - p1;
-        const dy = p2 - p1;
+        const x1 = p1.at(0), y1 = p1.at(1), x2 = p2.at(0), y2 = p2.at(1);
+        const dx = x2 - x1;
+        const dy = y2 - y1;
         if(Math.hypot(dx, dy) < 10) return;
 
         const angle = Math.atan2(dy, dx);
@@ -7225,9 +7050,9 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           z: 120,
           shape: {
             points: [
-              [p2, p2],
-              [p2 - ux * arrowLen + px * arrowHalfW, p2 - uy * arrowLen + py * arrowHalfW],
-              [p2 - ux * arrowLen - px * arrowHalfW, p2 - uy * arrowLen - py * arrowHalfW]
+              [x2, y2],
+              [x2 - ux * arrowLen + px * arrowHalfW, y2 - uy * arrowLen + py * arrowHalfW],
+              [x2 - ux * arrowLen - px * arrowHalfW, y2 - uy * arrowLen - py * arrowHalfW]
             ]
           },
           style: { fill: col, stroke: col, lineWidth: 1 }
@@ -7241,8 +7066,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           let nx = Math.sin(angle), ny = -Math.cos(angle);
           if(ny > 0){ nx = -nx; ny = -ny; }
 
-          const midX = (p1 + p2) / 2 + nx * 11;
-          const midY = (p1 + p2) / 2 + ny * 11;
+          const midX = (x1 + x2) / 2 + nx * 10;
+          const midY = (y1 + y2) / 2 + ny * 10;
           const diff = Number(d.y2) - Number(d.y1);
           const pct = Number(d.y1) > 0 ? ((diff / Number(d.y1)) * 100).toFixed(2) : "0.00";
           const signe = diff >= 0 ? "+" : "";
@@ -7276,7 +7101,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   }
   let activeFreeDrawing = null;
   function getActiveToolUpper(){
-    const selOutil = document.querySelector("select[id*='Outil'], select[id*='outil'], #selOutilDessin");
+    const selOutil = Array.from(document.querySelectorAll("select")).find(s => Array.from(s.options).some(o => o.value === "CRAYON_LIBRE" || /Main libre/i.test(o.textContent || "")));
     return selOutil ? String(selOutil.value || "").toUpperCase() : "";
   }
 
@@ -7290,18 +7115,11 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const outil = getActiveToolUpper();
       if(outil !== "CRAYON_LIBRE" && outil !== "COURBE_LIBRE") return;
       const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
-      if(!Array.isArray(pt) || isNaN(pt) || isNaN(pt)) return;
-
-      if(Array.isArray(dessinsUtilisateur) && dessinsUtilisateur.length > 0){
-        const last = dessinsUtilisateur[dessinsUtilisateur.length - 1];
-        if(last && last !== activeFreeDrawing && last.x1 === last.x2 && last.y1 === last.y2){
-          dessinsUtilisateur.pop();
-        }
-      }
+      if(!Array.isArray(pt) || isNaN(pt.at(0)) || isNaN(pt.at(1))) return;
 
       activeFreeDrawing = (outil === "CRAYON_LIBRE")
-        ? { type: "CRAYON_LIBRE", points: [[pt, pt]], color: "#38BDF8" }
-        : { type: "COURBE_LIBRE", x1: pt, y1: pt, x2: pt, y2: pt, color: "#A855F7" };
+        ? { type: "CRAYON_LIBRE", points: [[pt.at(0), pt.at(1)]], color: "#38BDF8" }
+        : { type: "COURBE_LIBRE", x1: pt.at(0), y1: pt.at(1), x2: pt.at(0), y2: pt.at(1), color: "#A855F7" };
       dessinsUtilisateur.push(activeFreeDrawing);
       renderCustomShapesAndArrows();
     });
@@ -7309,24 +7127,20 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     zr.on("mousemove", (params) => {
       if(!activeFreeDrawing) return;
       const pt = chart.convertFromPixel({ seriesIndex: 0 }, [params.offsetX, params.offsetY]);
-      if(!Array.isArray(pt) || isNaN(pt) || isNaN(pt)) return;
-      if(activeFreeDrawing.type === "CRAYON_LIBRE"){
-        activeFreeDrawing.points.push([pt, pt]);
-      } else {
-        activeFreeDrawing.x2 = pt;
-        activeFreeDrawing.y2 = pt;
-      }
+      if(!Array.isArray(pt) || isNaN(pt.at(0)) || isNaN(pt.at(1))) return;
+      if(activeFreeDrawing.type === "CRAYON_LIBRE") activeFreeDrawing.points.push([pt.at(0), pt.at(1)]);
+      else { activeFreeDrawing.x2 = pt.at(0); activeFreeDrawing.y2 = pt.at(1); }
       renderCustomShapesAndArrows();
     });
 
     zr.on("mouseup", () => {
       if(activeFreeDrawing){
         if(Array.isArray(dessinsUtilisateur)){
+          const refX = activeFreeDrawing.x1 !== undefined ? activeFreeDrawing.x1 : (activeFreeDrawing.points && activeFreeDrawing.points.at(0) ? activeFreeDrawing.points.at(0).at(0) : NaN);
           for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
-            const item = dessinsUtilisateur[i];
+            const item = dessinsUtilisateur.at(i);
             if(item && item !== activeFreeDrawing && item.type !== "CRAYON_LIBRE" && item.type !== "COURBE_LIBRE" && item.type !== "SUPPORT" && item.type !== "RESISTANCE"){
-              const refX = activeFreeDrawing.x1 !== undefined ? activeFreeDrawing.x1 : (activeFreeDrawing.points && activeFreeDrawing.points ? activeFreeDrawing.points : NaN);
-              if(!isNaN(refX) && Math.abs(Number(item.x1) - Number(refX)) < 0.001){
+              if(!isNaN(refX) && Math.abs(Number(item.x1) - Number(refX)) < 0.01){
                 dessinsUtilisateur.splice(i, 1);
               }
             }
