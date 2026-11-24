@@ -1,0 +1,1 @@
+[System.IO.File]::WriteAllText("$PWD\index.html", '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=CH-WaveCandle.html"><script>location.replace("CH-WaveCandle.html");</script>', (New-Object System.Text.UTF8Encoding($false))); Write-Host "[OK] index.html de redirection cree !" -ForegroundColor Green
