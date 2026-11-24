@@ -7769,5 +7769,183 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   });
 })();
 </script>
+
+<script id="ch-institutional-ui-refactor">
+(function(){
+  if(!document.getElementById("ch-inst-ui-css")){
+    const st = document.createElement("style");
+    st.id = "ch-inst-ui-css";
+    st.textContent = `
+      .topbar { display:flex !important; flex-wrap:wrap !important; align-items:center !important; gap:5px !important; padding:5px 8px !important; }
+      .topbar select, .topbar button, .topbar .btn-action { height:26px !important; padding:2px 7px !important; font-size:11.5px !important; line-height:1.1 !important; }
+      #chart-container { position:relative !important; }
+      #ch-hud-tools { position:absolute; top:8px; left:12px; z-index:45; display:flex; align-items:center; gap:5px; background:rgba(15,23,42,0.82); backdrop-filter:blur(6px); border:1px solid rgba(56,189,248,0.35); border-radius:6px; padding:4px 7px; box-shadow:0 4px 14px rgba(0,0,0,0.45); }
+      #ch-hud-tools select, #ch-hud-tools button { height:25px !important; padding:2px 7px !important; font-size:11.5px !important; border-radius:4px !important; }
+      #ch-hud-wave-times { position:absolute; bottom:26px; right:54px; z-index:40; display:flex; align-items:center; gap:12px; background:rgba(15,23,42,0.78); border:1px solid rgba(148,163,184,0.25); border-radius:4px; padding:2px 8px; font-size:11px; color:#CBD5E1; pointer-events:none; }
+      .ch-pop-wrap { position:relative; display:inline-flex; align-items:center; }
+      .ch-pop-panel { display:none; position:absolute; top:calc(100% + 5px); right:0; min-width:245px; background:#0F172A; border:1px solid #38BDF8; border-radius:8px; padding:10px; z-index:9999; box-shadow:0 10px 28px rgba(0,0,0,0.65); flex-direction:column; gap:8px; font-size:12px; color:#E2E8F0; }
+      .ch-pop-panel.open { display:flex; }
+      .ch-pop-sec-title { font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:#38BDF8; font-weight:700; border-bottom:1px solid rgba(56,189,248,0.2); padding-bottom:3px; }
+      .ch-pop-row { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+      .ch-pop-row select, .ch-pop-row button { width:100%; }
+      #chAboutModalOverlay { display:none; position:fixed; inset:0; background:rgba(2,6,23,0.78); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; }
+      #chAboutModalBox { background:#0F172A; border:1px solid #38BDF8; border-radius:10px; max-width:480px; width:92%; padding:20px 22px; color:#E2E8F0; box-shadow:0 20px 50px rgba(0,0,0,0.75); font-size:13px; line-height:1.55; }
+    `;
+    document.head.appendChild(st);
+  }
+  function applyInstitutionalRefactor(){
+    const topbar = document.querySelector(".topbar");
+    const chartBox = document.getElementById("chart-container");
+    if(!topbar || !chartBox || topbar.dataset.chInstApplied === "1") return;
+    topbar.dataset.chInstApplied = "1";
+
+    const lblRadar = document.getElementById("lblAutoDernier");
+    const chkRadar = document.getElementById("chkAutoDernier");
+    if(lblRadar && chkRadar){
+      lblRadar.innerHTML = "";
+      lblRadar.appendChild(chkRadar);
+      lblRadar.appendChild(document.createTextNode(" Radar"));
+      lblRadar.title = "Radar Dernière Opération (Tous titres)";
+    }
+
+    const btnReplay = document.getElementById("btnSimulerLive");
+    const btnToute = document.getElementById("btnTouteSeance");
+    if(btnReplay && btnToute && !document.getElementById("selActionSeance")){
+      const selSeance = document.createElement("select");
+      selSeance.id = "selActionSeance";
+      selSeance.style.cssText = "border-color:#FFD700; color:#FFD700; font-weight:600;";
+      selSeance.innerHTML = '<option value="TOUTE">📊 Toute la séance</option><option value="REPLAY">🎬 Replay Séance</option>';
+      btnReplay.insertAdjacentElement("beforebegin", selSeance);
+      btnReplay.style.display = "none";
+      btnToute.style.display = "none";
+      selSeance.onchange = () => { if(selSeance.value === "REPLAY") btnReplay.click(); else btnToute.click(); };
+      setInterval(() => {
+        const show = (btnReplay.style.display !== "none" || btnToute.style.display !== "none" || document.getElementById("selHorizon")?.value !== "MULTI");
+        selSeance.style.display = show ? "inline-block" : "none";
+      }, 600);
+    }
+
+    const selCam = document.getElementById("selPosCamembert");
+    let lastVisibleCamPos = (selCam && selCam.value !== "MASQUE") ? selCam.value : "AUTO";
+    if(selCam && !document.getElementById("lblChkCamembert")){
+      const lblCam = document.createElement("label");
+      lblCam.id = "lblChkCamembert";
+      lblCam.style.cssText = "display:inline-flex; align-items:center; gap:5px; background:#1C1C1C; border:1px solid #444; padding:3px 8px; border-radius:3px; font-size:11.5px; color:#E2E8F0; cursor:pointer; height:26px; box-sizing:border-box;";
+      const chkCam = document.createElement("input");
+      chkCam.type = "checkbox";
+      chkCam.id = "chkCamembertVisible";
+      chkCam.checked = (selCam.value !== "MASQUE");
+      chkCam.style.cssText = "accent-color:#10B981; cursor:pointer;";
+      lblCam.appendChild(chkCam);
+      lblCam.appendChild(document.createTextNode(" Camembert"));
+      selCam.insertAdjacentElement("beforebegin", lblCam);
+      chkCam.onchange = () => {
+        if(chkCam.checked) selCam.value = lastVisibleCamPos || "AUTO";
+        else { if(selCam.value !== "MASQUE") lastVisibleCamPos = selCam.value; selCam.value = "MASQUE"; }
+        selCam.dispatchEvent(new Event("change"));
+      };
+      selCam.addEventListener("change", () => {
+        if(selCam.value !== "MASQUE"){ lastVisibleCamPos = selCam.value; chkCam.checked = true; }
+        else chkCam.checked = false;
+      });
+    }
+    const selSrcLive = document.getElementById("selSourceLive");
+    const btnPauseLive = document.getElementById("btnPauseLive");
+    const btnTheme = document.getElementById("btnToggleTheme");
+    const allTopBtns = Array.from(document.querySelectorAll("button"));
+    const btnIndic = allTopBtns.find(b => /indicateurs/i.test(b.textContent || ""));
+    const btnAnalyses = document.getElementById("chMyPresetsBtn") || allTopBtns.find(b => /mes analyses/i.test(b.textContent || ""));
+    const btnAideOld = allTopBtns.find(b => /aide\s*&\s*lexique/i.test(b.textContent || ""));
+    const lblEtiq = Array.from(document.querySelectorAll("label")).find(l => /étiquettes|etiquettes/i.test(l.textContent || ""));
+
+    const autresWrap = document.createElement("div");
+    autresWrap.className = "ch-pop-wrap";
+    const btnAutres = document.createElement("button");
+    btnAutres.type = "button"; btnAutres.id = "btnAutresMenu"; btnAutres.className = "btn-action";
+    btnAutres.style.cssText = "border-color:#38BDF8; color:#38BDF8; font-weight:600;";
+    btnAutres.textContent = "⚙ Autres ▾";
+
+    const panelAutres = document.createElement("div");
+    panelAutres.className = "ch-pop-panel";
+    panelAutres.innerHTML = '<div class="ch-pop-sec-title">Flux & Temps Réel</div>';
+    const rowFlux = document.createElement("div"); rowFlux.className = "ch-pop-row";
+    if(selSrcLive){ selSrcLive.style.display = "inline-block"; rowFlux.appendChild(selSrcLive); }
+    if(btnPauseLive){ btnPauseLive.style.display = "inline-block"; btnPauseLive.style.width = "auto"; rowFlux.appendChild(btnPauseLive); }
+    panelAutres.appendChild(rowFlux);
+
+    if(selCam){
+      const tCam = document.createElement("div"); tCam.className = "ch-pop-sec-title"; tCam.textContent = "Position & Mode Camembert";
+      panelAutres.appendChild(tCam);
+      const rCam = document.createElement("div"); rCam.className = "ch-pop-row";
+      selCam.style.display = "inline-block"; rCam.appendChild(selCam);
+      panelAutres.appendChild(rCam);
+    }
+
+    const tAff = document.createElement("div"); tAff.className = "ch-pop-sec-title"; tAff.textContent = "Affichage & Thème";
+    panelAutres.appendChild(tAff);
+    const rAff = document.createElement("div"); rAff.className = "ch-pop-row";
+    if(btnTheme) rAff.appendChild(btnTheme);
+    if(lblEtiq) rAff.appendChild(lblEtiq);
+    panelAutres.appendChild(rAff);
+    autresWrap.appendChild(btnAutres); autresWrap.appendChild(panelAutres);
+
+    const helpWrap = document.createElement("div");
+    helpWrap.className = "ch-pop-wrap";
+    const btnHelpQ = document.createElement("button");
+    btnHelpQ.type = "button"; btnHelpQ.className = "btn-action";
+    btnHelpQ.style.cssText = "border-color:#A855F7; color:#E9D5FF; font-weight:800; min-width:28px; justify-content:center;";
+    btnHelpQ.textContent = "?";
+    const panelHelp = document.createElement("div");
+    panelHelp.className = "ch-pop-panel"; panelHelp.style.minWidth = "195px";
+    panelHelp.innerHTML = '<div class="ch-pop-sec-title">Documentation & Station</div><button type="button" id="btnSubAideLexique" class="btn-action" style="text-align:left; border-color:#38BDF8; color:#38BDF8;">📖 Aide & Lexique HFT</button><button type="button" id="btnSubAPropos" class="btn-action" style="text-align:left; border-color:#A855F7; color:#E9D5FF;">ℹ️ À propos</button>';
+    helpWrap.appendChild(btnHelpQ); helpWrap.appendChild(panelHelp);
+
+    if(!document.getElementById("chAboutModalOverlay")){
+      const ov = document.createElement("div"); ov.id = "chAboutModalOverlay";
+      ov.innerHTML = '<div id="chAboutModalBox"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><strong style="font-size:15px; color:#38BDF8;">📊 CH-WAVECANDLE HFT — À PROPOS</strong><button type="button" id="btnCloseAboutModal" class="btn-action" style="border-color:#EF4444; color:#FCA5A5;">✕</button></div><p style="margin:0 0 10px 0;"><b>Station quantitative d\'analyse microstructurelle & flux temps réel (BVMT).</b><br/>Conçue pour la lecture des vagues polygonales tick-by-tick, la détection des blocs institutionnels, le profil d\'agressivité Acheteurs/Vendeurs et les chandeliers 3D multi-séances.</p><div style="background:rgba(30,41,59,0.8); border:1px solid rgba(56,189,248,0.25); border-radius:6px; padding:10px; font-size:12px;"><div><b>Méthodologie :</b> Méthode Chemsi Hafedh</div><div><b>Architecture :</b> Moteur SBE Direct Live & Interface Découplée</div><div><b>Marché :</b> Bourse des Valeurs Mobilières de Tunis (BVMT)</div></div></div>';
+      document.body.appendChild(ov);
+      ov.onclick = (e) => { if(e.target === ov) ov.style.display = "none"; };
+      document.getElementById("btnCloseAboutModal").onclick = () => { ov.style.display = "none"; };
+    }
+    const refMode = document.getElementById("selModeRendu") || topbar.lastElementChild;
+    if(refMode){ refMode.insertAdjacentElement("afterend", helpWrap); refMode.insertAdjacentElement("afterend", autresWrap); }
+    else { topbar.appendChild(autresWrap); topbar.appendChild(helpWrap); }
+    if(btnAideOld) btnAideOld.style.display = "none";
+
+    btnAutres.onclick = (e) => { e.stopPropagation(); panelHelp.classList.remove("open"); panelAutres.classList.toggle("open"); };
+    btnHelpQ.onclick = (e) => { e.stopPropagation(); panelAutres.classList.remove("open"); panelHelp.classList.toggle("open"); };
+    panelAutres.onclick = (e) => e.stopPropagation();
+    panelHelp.onclick = (e) => e.stopPropagation();
+    document.addEventListener("click", () => { panelAutres.classList.remove("open"); panelHelp.classList.remove("open"); });
+
+    document.getElementById("btnSubAideLexique").onclick = () => { panelHelp.classList.remove("open"); if(btnAideOld) btnAideOld.click(); };
+    document.getElementById("btnSubAPropos").onclick = () => { panelHelp.classList.remove("open"); document.getElementById("chAboutModalOverlay").style.display = "flex"; };
+
+    const hudTools = document.createElement("div"); hudTools.id = "ch-hud-tools";
+    const selDessin = document.getElementById("selOutilDessin");
+    const btnUndo = document.getElementById("btnUndoDessin");
+    const btnClear = document.getElementById("btnClearDessin");
+    if(selDessin) hudTools.appendChild(selDessin);
+    if(btnUndo) hudTools.appendChild(btnUndo);
+    if(btnClear) hudTools.appendChild(btnClear);
+    if(btnIndic){ btnIndic.style.marginLeft = "2px"; hudTools.appendChild(btnIndic); }
+    if(btnAnalyses){ btnAnalyses.style.marginLeft = "2px"; hudTools.appendChild(btnAnalyses); }
+    chartBox.appendChild(hudTools);
+
+    const boxDeb = document.getElementById("boxLblDeb");
+    const boxFin = document.getElementById("boxLblFin");
+    if(boxDeb || boxFin){
+      const hudWaveTimes = document.createElement("div"); hudWaveTimes.id = "ch-hud-wave-times";
+      if(boxDeb) hudWaveTimes.appendChild(boxDeb);
+      if(boxFin) hudWaveTimes.appendChild(boxFin);
+      chartBox.appendChild(hudWaveTimes);
+    }
+
+    setTimeout(() => { if(typeof chart !== "undefined" && chart && typeof chart.resize === "function") try { chart.resize(); } catch(e){} }, 120);
+  }
+
+  window.addEventListener("load", () => { setTimeout(applyInstitutionalRefactor, 250); setTimeout(applyInstitutionalRefactor, 900); });
+})();
+</script>
 </body>
 </html>
