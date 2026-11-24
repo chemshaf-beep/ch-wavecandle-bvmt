@@ -7,23 +7,38 @@
   const isExternalHost = !window.location.hostname.endsWith(".hf.space") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
   if(!isExternalHost) return;
 
+  function rewriteBackendUrl(url){
+    if(typeof url !== "string") return url;
+    if(/^\/?(bvmt_|api\/|gradio_api\/|call\/|run\/|file=)/.test(url)){
+      return HF_BACKEND + (url.startsWith("/") ? url : ("/" + url));
+    }
+    return url;
+  }
+
   const origFetch = window.fetch.bind(window);
   window.fetch = function(input, init){
     try {
       let url = typeof input === "string" ? input : (input && input.url ? input.url : "");
-      const isRelBackend = /^\/?(bvmt_|api\/|gradio_api\/|call\/|run\/)/.test(url);
-      if(isRelBackend){
-        const cleanPath = url.startsWith("/") ? url : ("/" + url);
-        const fullUrl = HF_BACKEND + cleanPath;
-        const nextInit = Object.assign({}, init || {}, { credentials: "include" });
+      const fullUrl = rewriteBackendUrl(url);
+      if(fullUrl !== url){
+        const nextInit = Object.assign({}, init || {}, { mode: "cors", credentials: "omit" });
         if(typeof input === "string") return origFetch(fullUrl, nextInit);
         return origFetch(new Request(fullUrl, input), nextInit);
       }
     } catch(e){}
     return origFetch(input, init);
   };
+
+  if(typeof window.EventSource === "function"){
+    const OrigES = window.EventSource;
+    window.EventSource = function(url, conf){
+      return new OrigES(rewriteBackendUrl(url), conf);
+    };
+    window.EventSource.prototype = OrigES.prototype;
+  }
 })();
 </script>
+
 
 <script id="ch-anti-crash-live">
 (function(){
