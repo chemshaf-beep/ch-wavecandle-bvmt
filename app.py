@@ -1,3 +1,5 @@
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 _PURGED_TEMP_LOGS = set()
 import shutil
 import tempfile
@@ -3181,4 +3183,4 @@ with gr.Blocks(title="CH-WaveCandle HFT") as demo:
 if __name__ == "__main__":
     threading.Thread(target=lancer_collecteur_bvmt, daemon=True).start()
     threading.Thread(target=boucle_synchro_github, daemon=True).start()
-    demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", "7860")), ssr_mode=False)
+    demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", "7860")), ssr_mode=False, app_kwargs={"middleware": [Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])]})
