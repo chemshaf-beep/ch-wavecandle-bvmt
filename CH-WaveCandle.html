@@ -2748,10 +2748,10 @@ async function rafraichirFluxLive(forcer = false) {
         if (dL.audit && window.__logDiag && !window.__auditLogged) { window.__auditLogged = true; window.__logDiag('AUDIT_CSV', 'Auto-réparation au démarrage : ' + dL.audit); }
         if (dL.err && window.__logDiag && window.__lastSrvErr !== dL.err) { window.__lastSrvErr = dL.err; window.__logDiag('SRV_ERR', dL.err); }
         for (const it of (dL.live || [])) {
-          yield { kind: 'file', name: it.Name, getFile: async () => ({ name: it.Name, size: it.Length, lastModified: it.Mtime, text: async () => (await fetch('/files/Cache_Live/' + encodeURIComponent(it.Name) + '?t=' + Date.now())).text() }) };
+          yield { kind: 'file', name: it.Name, getFile: async () => ({ name: it.Name, size: it.Length, lastModified: it.Mtime, text: async () => (await fetch('/bvmt_api/files/bourse_historique_reel/' + encodeURIComponent(String(it.Name).replace(/^temp_/, '')) + '?t=' + Date.now())).text() }) };
         }
       },
-      getFileHandle: async (nom) => ({ getFile: async () => ({ name: nom, text: async () => (await fetch('/files/Cache_Live/' + encodeURIComponent(nom) + '?t=' + Date.now())).text() }) })
+      getFileHandle: async (nom) => ({ getFile: async () => ({ name: nom, text: async () => (await fetch('/bvmt_api/files/bourse_historique_reel/' + encodeURIComponent(String(nom).replace(/^temp_/, '')) + '?t=' + Date.now())).text() }) })
     };
   }
   if (!dirHandleLive && !timerSimulLive) { const st = document.getElementById('statusText'); if (st) { st.style.color = '#00E5FF'; st.innerText = 'MODE LIVE : Cliquez sur [Dossier Live] pour lire votre flux temps réel ou choisissez une date puis cliquez sur [Replay Séance].'; } return; }
@@ -2764,10 +2764,10 @@ async function rafraichirFluxLive(forcer = false) {
         if (dL.audit && window.__logDiag && !window.__auditLogged) { window.__auditLogged = true; window.__logDiag('AUDIT_CSV', 'Auto-réparation au démarrage : ' + dL.audit); }
         if (dL.err && window.__logDiag && window.__lastSrvErr !== dL.err) { window.__lastSrvErr = dL.err; window.__logDiag('SRV_ERR', dL.err); }
         for (const it of (dL.live || [])) {
-          yield { kind: 'file', name: it.Name, getFile: async () => ({ name: it.Name, size: it.Length, lastModified: it.Mtime, text: async () => (await fetch('/files/Cache_Live/' + encodeURIComponent(it.Name) + '?t=' + Date.now())).text() }) };
+          yield { kind: 'file', name: it.Name, getFile: async () => ({ name: it.Name, size: it.Length, lastModified: it.Mtime, text: async () => (await fetch('/bvmt_api/files/bourse_historique_reel/' + encodeURIComponent(String(it.Name).replace(/^temp_/, '')) + '?t=' + Date.now())).text() }) };
         }
       },
-      getFileHandle: async (nom) => ({ getFile: async () => ({ name: nom, text: async () => (await fetch('/files/Cache_Live/' + encodeURIComponent(nom) + '?t=' + Date.now())).text() }) })
+      getFileHandle: async (nom) => ({ getFile: async () => ({ name: nom, text: async () => (await fetch('/bvmt_api/files/bourse_historique_reel/' + encodeURIComponent(String(nom).replace(/^temp_/, '')) + '?t=' + Date.now())).text() }) })
     };
   }
   if (!dirHandleLive && !timerSimulLive) { const st = document.getElementById('statusText'); if (st) { st.style.color = '#00E5FF'; st.innerText = 'MODE LIVE : Cliquez sur [Dossier Live] pour lire votre flux temps réel ou choisissez une date puis cliquez sur [Replay Séance].'; } return; }
