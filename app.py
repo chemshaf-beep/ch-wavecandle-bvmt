@@ -1717,7 +1717,7 @@ _LAST_GH_SYNC = 0.0
 
 def _sync_vers_repo_bvmt_principal(tk, headers, rel, b64):
     repo_bvmt = "chemshaf-beep/ch-wavecandle-bvmt"
-    api_bvmt = f"https://github.com{repo_bvmt}/contents/{rel}"
+    api_bvmt = f"https://api.github.com/repos/{repo_bvmt}/contents/{rel}"
     try:
         sha_b = None
         try:
@@ -3190,7 +3190,7 @@ def _rpc_data(payload_json: str):
             clean_p = rel_path.lstrip("/")
             if not clean_p.startswith("Historique/"):
                 clean_p = "Historique/" + clean_p
-            api_gh = f"https://github.com{repo_gh}/contents/{clean_p}"
+            api_gh = f"https://api.github.com/repos/{repo_gh}/contents/{clean_p}"
             hdrs_gh = {"User-Agent": "CH-WaveCandle", "Accept": "application/vnd.github.raw+json"}
             if tk_gh:
                 hdrs_gh["Authorization"] = f"Bearer {tk_gh}"
