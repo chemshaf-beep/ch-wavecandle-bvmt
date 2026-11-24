@@ -1198,7 +1198,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
   async function appelerGradioApi(apiName, payloadObj) {
     const r1 = await origFetch((window.location.hostname.endsWith('.hf.space') ? '' : 'https://hf.space') + '/gradio_api/call/' + apiName, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify({ data: [JSON.stringify(payloadObj)] })
     });
     if (!r1.ok) {
