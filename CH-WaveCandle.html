@@ -7968,5 +7968,289 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   window.addEventListener("load", () => { setTimeout(applyInstitutionalRefactor, 250); setTimeout(applyInstitutionalRefactor, 900); });
 })();
 </script>
+<script id="ch-hud-drag-and-clean-footer">
+(function(){
+  if(!document.getElementById("ch-hud-drag-css")){
+    const st = document.createElement("style");
+    st.id = "ch-hud-drag-css";
+    st.textContent = `
+      /* 1. Barre d'etat du bas ultra-propre sur 1 seule ligne */
+      .statusbar {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        height: 26px !important;
+        min-height: 26px !important;
+        max-height: 26px !important;
+        padding: 0 10px !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        font-size: 11px !important;
+      }
+      .statusbar > * {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+      #statusText {
+        flex-shrink: 1 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 34vw !important;
+      }
+      #ch-statusbar-telemetry {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        background: #0F172A !important;
+        border: 1px solid #334155 !important;
+        border-radius: 4px !important;
+        padding: 1px 9px !important;
+        height: 20px !important;
+        line-height: 18px !important;
+        color: #E2E8F0 !important;
+        font-size: 11px !important;
+      }
+      #ch-statusbar-telemetry .yellow {
+        color: #FACC15 !important;
+        font-weight: 700 !important;
+      }
+      #ch-statusbar-telemetry .green {
+        color: #4ADE80 !important;
+        font-weight: 700 !important;
+      }
+
+      /* 2. Palette flottante Main libre / Indicateurs / Mes Analyses deplacable + Horizontal/Vertical */
+      #ch-hud-tools {
+        cursor: default !important;
+        user-select: none !important;
+        transition: box-shadow 0.15s ease;
+      }
+      #ch-hud-tools.vertical {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 4px !important;
+        padding: 5px 6px !important;
+      }
+      #ch-hud-tools.vertical select,
+      #ch-hud-tools.vertical button:not(#chHudDragHandle):not(#chHudOrientBtn) {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        margin-left: 0 !important;
+      }
+      .ch-hud-ctrl-bar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+      }
+      #chHudDragHandle {
+        cursor: grab !important;
+        color: #94A3B8 !important;
+        font-weight: 800 !important;
+        padding: 0 4px !important;
+        font-size: 13px !important;
+        line-height: 1 !important;
+        display: inline-flex;
+        align-items: center;
+      }
+      #chHudDragHandle:active { cursor: grabbing !important; color: #38BDF8 !important; }
+      #chHudOrientBtn {
+        background: rgba(30, 41, 59, 0.9) !important;
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.45) !important;
+        border-radius: 4px !important;
+        padding: 1px 5px !important;
+        height: 22px !important;
+        font-size: 11px !important;
+        cursor: pointer !important;
+      }
+
+      /* 3. Titre de la valeur selectionnee en haut du graphique (sans toucher a l'axe) */
+      #chChartTickerBanner {
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 30;
+        pointer-events: none;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: rgba(148, 163, 184, 0.85);
+        background: rgba(15, 23, 42, 0.45);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 6px;
+        padding: 2px 14px;
+        white-space: nowrap;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function enhanceHudAndFooter(){
+    const chartBox = document.getElementById("chart-container");
+    const hudTools = document.getElementById("ch-hud-tools");
+    const lblTicker = document.getElementById("lblTicker");
+    const selTicker = document.getElementById("selTicker");
+
+    // A. Rendre la palette HUD deplacable + choix Horizontal / Vertical
+    if(chartBox && hudTools && !hudTools.dataset.dragReady){
+      hudTools.dataset.dragReady = "1";
+
+      const ctrlBar = document.createElement("div");
+      ctrlBar.className = "ch-hud-ctrl-bar";
+
+      const handle = document.createElement("span");
+      handle.id = "chHudDragHandle";
+      handle.title = "Glisser pour déplacer la barre d'outils sur le graphique";
+      handle.textContent = "⠿";
+
+      const btnOrient = document.createElement("button");
+      btnOrient.id = "chHudOrientBtn";
+      btnOrient.type = "button";
+      btnOrient.title = "Basculer l'affichage : côte à côte (horizontal) ou empilé (vertical)";
+
+      const savedOrient = localStorage.getItem("ch_hud_orient") || "H";
+      if(savedOrient === "V") hudTools.classList.add("vertical");
+      btnOrient.textContent = hudTools.classList.contains("vertical") ? "⬌" : "⬍";
+
+      btnOrient.onclick = (e) => {
+        e.stopPropagation();
+        const isV = hudTools.classList.toggle("vertical");
+        btnOrient.textContent = isV ? "⬌" : "⬍";
+        localStorage.setItem("ch_hud_orient", isV ? "V" : "H");
+      };
+
+      ctrlBar.appendChild(handle);
+      ctrlBar.appendChild(btnOrient);
+      hudTools.insertBefore(ctrlBar, hudTools.firstChild);
+
+      // Restaurer position enregistree
+      try {
+        const pos = JSON.parse(localStorage.getItem("ch_hud_pos") || "null");
+        if(pos && typeof pos.x === "number" && typeof pos.y === "number"){
+          hudTools.style.left = Math.max(4, pos.x) + "px";
+          hudTools.style.top = Math.max(4, pos.y) + "px";
+        }
+      } catch(e){}
+
+      // Glisser-deposer fluide
+      let dragging = false, startX = 0, startY = 0, origL = 0, origT = 0;
+      handle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        origL = hudTools.offsetLeft;
+        origT = hudTools.offsetTop;
+      });
+      window.addEventListener("mousemove", (e) => {
+        if(!dragging) return;
+        const maxL = Math.max(4, chartBox.clientWidth - hudTools.offsetWidth - 4);
+        const maxT = Math.max(4, chartBox.clientHeight - hudTools.offsetHeight - 4);
+        const nl = Math.min(maxL, Math.max(4, origL + (e.clientX - startX)));
+        const nt = Math.min(maxT, Math.max(4, origT + (e.clientY - startY)));
+        hudTools.style.left = nl + "px";
+        hudTools.style.top = nt + "px";
+      });
+      window.addEventListener("mouseup", () => {
+        if(!dragging) return;
+        dragging = false;
+        try {
+          localStorage.setItem("ch_hud_pos", JSON.stringify({ x: hudTools.offsetLeft, y: hudTools.offsetTop }));
+        } catch(e){}
+      });
+    }
+
+    // B. Afficher le nom de la valeur en haut du graphique sans toucher a l'axe
+    if(chartBox && !document.getElementById("chChartTickerBanner")){
+      const banner = document.createElement("div");
+      banner.id = "chChartTickerBanner";
+      chartBox.appendChild(banner);
+      if(lblTicker) lblTicker.style.display = "none";
+
+      const syncBannerText = () => {
+        const txt = (selTicker && selTicker.value) ? selTicker.value : ((lblTicker && lblTicker.textContent) || "");
+        banner.textContent = txt;
+      };
+      syncBannerText();
+      if(selTicker) selTicker.addEventListener("change", syncBannerText);
+      if(lblTicker) new MutationObserver(syncBannerText).observe(lblTicker, { childList: true, characterData: true, subtree: true });
+      setInterval(syncBannerText, 800);
+    }
+
+    // C. Rendre les libelles de la barre d'etat du bas compacts sur 1 ligne
+    const bH = document.getElementById("boxHorlogeMarche");
+    const bD = document.getElementById("boxLblDeb");
+    const bF = document.getElementById("boxLblFin");
+    if(bH && bH.firstChild && bH.firstChild.nodeType === 3) bH.firstChild.textContent = "🕒 ";
+    if(bD && bD.firstChild && bD.firstChild.nodeType === 3) bD.firstChild.textContent = "Début : ";
+    if(bF && bF.firstChild && bF.firstChild.nodeType === 3) bF.firstChild.textContent = "Fin : ";
+  }
+
+  window.addEventListener("load", () => {
+    setTimeout(enhanceHudAndFooter, 400);
+    setTimeout(enhanceHudAndFooter, 1100);
+  });
+})();
+</script>
+<script id="ch-title-and-donneessource-clock">
+(function(){
+  if(!document.getElementById("ch-final-touch-css")){
+    const st = document.createElement("style");
+    st.id = "ch-final-touch-css";
+    st.textContent = `
+      #chChartTickerBanner { background:transparent!important; border:none!important; box-shadow:none!important; color:#000000!important; font-weight:900!important; font-size:16px!important; letter-spacing:0.05em!important; top:6px!important; }
+      #boxHorlogeMarche { display:inline-flex!important; align-items:center!important; gap:4px!important; background:#0F172A!important; color:#E2E8F0!important; padding:0 6px!important; border-radius:3px!important; font-weight:700!important; }
+      #lblHorlogeMarche { color:#4ADE80!important; font-weight:800!important; }
+      #btnSimulerLive, #btnTouteSeance { display:none!important; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  async function lireHeureConfigSystem(){
+    const lh = document.getElementById("lblHorlogeMarche");
+    if(!lh) return;
+    try {
+      const r = await fetch("/bvmt_api/DonneesSource.txt?t=" + Date.now());
+      if(!r.ok) return;
+      const raw = await r.text();
+      const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if(lines.length < 2) return;
+      const sep = lines.includes(";") ? ";" : "\t";
+      const hdr = lines.split(sep).map(c => c.trim().toLowerCase());
+      const idxH = hdr.findIndex(c => c === "heure");
+      const cfgLine = lines.slice().reverse().find(l => l.toUpperCase().startsWith("CONFIG_SYSTEM")) || lines[lines.length - 1];
+      const cols = cfgLine.split(sep);
+      if(idxH >= 0 && cols[idxH] && cols[idxH].trim()){
+        lh.textContent = cols[idxH].trim();
+        return;
+      }
+      const m = cfgLine.match(/\b(\d|2[0-3]):[0-5]\d:[0-5]\d\b/);
+      if(m) lh.textContent = m;
+    } catch(e){}
+  }
+
+  function syncAll(){
+    const b = document.getElementById("chChartTickerBanner");
+    if(b){
+      const bg = getComputedStyle(document.body).backgroundColor || "";
+      const m = bg.match(/\d+/g);
+      const lum = (m && m.length >= 3) ? (parseInt(m,10)*299 + parseInt(m,10)*587 + parseInt(m,10)*114)/1000 : 255;
+      b.style.setProperty("color", lum < 128 ? "#FFFFFF" : "#000000", "important");
+    }
+    const bh = document.getElementById("boxHorlogeMarche");
+    if(bh) bh.style.setProperty("display", "inline-flex", "important");
+    lireHeureConfigSystem();
+  }
+
+  window.addEventListener("load", function(){
+    syncAll();
+    setInterval(syncAll, 2000);
+  });
+})();
+</script>
 </body>
 </html>
