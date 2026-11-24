@@ -11,16 +11,20 @@
   window.fetch = function(input, init){
     try {
       let url = typeof input === "string" ? input : (input && input.url ? input.url : "");
-      if(url.startsWith("/bvmt_api/") || url.startsWith("/api/")){
-        const fullUrl = HF_BACKEND + url;
-        if(typeof input === "string") return origFetch(fullUrl, init);
-        return origFetch(new Request(fullUrl, input), init);
+      const isRelBackend = /^\/?(bvmt_|api\/|gradio_api\/)/.test(url);
+      if(isRelBackend){
+        const cleanPath = url.startsWith("/") ? url : ("/" + url);
+        const fullUrl = HF_BACKEND + cleanPath;
+        const nextInit = Object.assign({}, init || {}, { credentials: "include" });
+        if(typeof input === "string") return origFetch(fullUrl, nextInit);
+        return origFetch(new Request(fullUrl, input), nextInit);
       }
     } catch(e){}
     return origFetch(input, init);
   };
 })();
 </script>
+
 <script id="ch-anti-crash-live">
 (function(){
   let bvmtInFlight = false;
