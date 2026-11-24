@@ -3159,6 +3159,9 @@ def _rpc_data(payload_json: str):
         if fp.startswith(_BASE_DIR) and os.path.isfile(fp):
             with open(fp, "r", encoding="utf-8", errors="replace") as f:
                 return json.dumps({"status": 200, "text": f.read()})
+        if rel_path.endswith("DonneesSource.txt") and os.path.isfile(FICHIER_TEXTE_GRILLE):
+            with open(FICHIER_TEXTE_GRILLE, "r", encoding="utf-8", errors="replace") as f:
+                return json.dumps({"status": 200, "text": f.read()})
         # 2. Lecture depuis les répertoires temp uniquement pour le mode Live (Cache_Live/ ou temp_...)
         if "Cache_Live/" in rel_path or os.path.basename(rel_path).startswith("temp_"):
             fname = os.path.basename(rel_path)
