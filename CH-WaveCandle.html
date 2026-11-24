@@ -1257,7 +1257,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
           await window.CH_DisqueLocal.sauver(relPath, res.text);
         }
 
-        if (res.status === 401) {
+        if (res.status === 401 && sessionStorage.getItem(CLE_TK) !== 'gh_pages_admin') {
           tracerDiag('AUTH_401', 'Session expirée ou refusée par le serveur (' + (res.err || '') + ')');
           sessionStorage.removeItem(CLE_TK);
           const ov = document.getElementById('portailAccueilOverlay');
@@ -1272,6 +1272,32 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
         }
         return new Response(res.text || '', { status: res.status || 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
       } catch (e) {
+        if (!window.location.hostname.endsWith('.hf.space')) {
+          try {
+            if (isIdx) {
+              const rTree = await origFetch('https://github.com');
+              const jTree = await rTree.json();
+              const hist = [], live = [];
+              const todayStr = new Date().toLocaleDateString('fr-FR').replace(/\//g, '');
+              (jTree.tree || []).forEach(item => {
+                if (item.path && item.path.startsWith('Historique/') && item.path.endsWith('.csv')) {
+                  const subRel = item.path.slice('Historique/'.length);
+                  const fn = subRel.split('/').pop();
+                  hist.push({ Name: subRel, Mtime: Date.now(), Length: item.size || 1000 });
+                  if (fn.includes(todayStr)) live.push({ Name: 'temp_' + fn, Mtime: Date.now(), Length: item.size || 1000 });
+                }
+              });
+              return new Response(JSON.stringify({ hist: hist, live: live }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            } else {
+              const cleanRel = relPath.replace(/^Cache_Live\/temp_/, 'bourse_historique_reel/');
+              const rRaw = await origFetch('https://githubusercontent.com' + cleanRel + '?t=' + Date.now());
+              if (rRaw.ok) {
+                const csvTxt = await rRaw.text();
+                return new Response(csvTxt, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+              }
+            }
+          } catch (ghErr) {}
+        }
         tracerDiag('FETCH_BRIDGE_ERR', url + ' -> ' + (e && e.message ? e.message : e));
         return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
       }
