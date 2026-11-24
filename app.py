@@ -2000,7 +2000,7 @@ def lancer_collecteur_bvmt():
         _rp_boot = _rp_boot.replace("https://github.com", "").replace("http://github.com", "").strip("/")
         if _tk_boot and _rp_boot:
             _rel_boot = f"Historique/bourse_historique_reel/{PREFIXE_LOG}{DATE_JOUR_STR}.csv"
-            _u_boot = f"https://github.com{_rp_boot}/contents/{_rel_boot}"
+            _u_boot = f"https://api.github.com/repos/{_rp_boot}/contents/{_rel_boot}"
             _h_boot = {"Authorization": f"Bearer {_tk_boot}", "Accept": "application/vnd.github.raw+json", "User-Agent": "CH-WaveCandle-HFT"}
             with urllib.request.urlopen(urllib.request.Request(_u_boot, headers=_h_boot), timeout=12) as _rb:
                 _raw_csv = _rb.read()
