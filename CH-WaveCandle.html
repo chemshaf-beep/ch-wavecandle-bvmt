@@ -7816,8 +7816,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       selSeance.style.cssText = "border-color:#FFD700; color:#FFD700; font-weight:600;";
       selSeance.innerHTML = '<option value="TOUTE">📊 Toute la séance</option><option value="REPLAY">🎬 Replay Séance</option>';
       btnReplay.insertAdjacentElement("beforebegin", selSeance);
-      btnReplay.style.display = "none";
-      btnToute.style.display = "none";
+      btnReplay.style.setProperty("display", "none", "important");
+      btnToute.style.setProperty("display", "none", "important");
       selSeance.onchange = () => { if(selSeance.value === "REPLAY") btnReplay.click(); else btnToute.click(); };
       setInterval(() => {
         const show = (btnReplay.style.display !== "none" || btnToute.style.display !== "none" || document.getElementById("selHorizon")?.value !== "MULTI");
@@ -7932,13 +7932,34 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     if(btnAnalyses){ btnAnalyses.style.marginLeft = "2px"; hudTools.appendChild(btnAnalyses); }
     chartBox.appendChild(hudTools);
 
+    // Masquer definitivement les anciens boutons Replay/Toute la seance (remplaces par selActionSeance)
+    if(btnReplay) btnReplay.style.setProperty("display", "none", "important");
+    if(btnToute) btnToute.style.setProperty("display", "none", "important");
+
+    // Integrer H. DEBUT VAGUE, H. FIN / CONT. et HORLOGE MARCHE proprement dans la barre d'etat du bas (.statusbar)
+    const statusbar = document.querySelector(".statusbar");
     const boxDeb = document.getElementById("boxLblDeb");
     const boxFin = document.getElementById("boxLblFin");
-    if(boxDeb || boxFin){
-      const hudWaveTimes = document.createElement("div"); hudWaveTimes.id = "ch-hud-wave-times";
-      if(boxDeb) hudWaveTimes.appendChild(boxDeb);
-      if(boxFin) hudWaveTimes.appendChild(boxFin);
-      chartBox.appendChild(hudWaveTimes);
+    const boxHorloge = document.getElementById("boxHorlogeMarche");
+    if(statusbar){
+      const telGroup = document.createElement("div");
+      telGroup.id = "ch-statusbar-telemetry";
+      telGroup.style.cssText = "display:inline-flex; align-items:center; gap:10px; font-size:11.5px; color:#E2E8F0; background:rgba(30,41,59,0.85); border:1px solid #334155; border-radius:4px; padding:1px 8px; margin:0 6px;";
+      if(boxHorloge){
+        boxHorloge.style.cssText = "display:inline-flex; align-items:center; gap:4px; color:#94A3B8; font-weight:600; background:transparent; border:none; padding:0;";
+        telGroup.appendChild(boxHorloge);
+      }
+      if(boxDeb){
+        boxDeb.style.cssText = "display:inline-flex; align-items:center; gap:4px; color:#E2E8F0; font-weight:600;";
+        telGroup.appendChild(boxDeb);
+      }
+      if(boxFin){
+        boxFin.style.cssText = "display:inline-flex; align-items:center; gap:4px; color:#E2E8F0; font-weight:600;";
+        telGroup.appendChild(boxFin);
+      }
+      const diagBadge = document.getElementById("diagBadge") || statusbar.children[1];
+      if(diagBadge) statusbar.insertBefore(telGroup, diagBadge);
+      else statusbar.appendChild(telGroup);
     }
 
     setTimeout(() => { if(typeof chart !== "undefined" && chart && typeof chart.resize === "function") try { chart.resize(); } catch(e){} }, 120);
