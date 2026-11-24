@@ -2926,7 +2926,7 @@ def _rpc_data(payload_json: str):
                 if os.path.isfile(fp_ds):
                     with open(fp_ds, "r", encoding="utf-8", errors="replace") as f:
                         return json.dumps({"status": 200, "text": f.read()})
-            h_fallback = "15:00:00" if EST_ARCHIVE_FINALE_ENGAGEE else datetime.now(ZoneInfo("Africa/Tunis")).strftime("%H:%M:%S")
+            h_fallback = str(globals().get("HEURE_CENTRALE_BVMT") or ("15:00:00" if EST_ARCHIVE_FINALE_ENGAGEE else "15:00:00"))
             return json.dumps({"status": 200, "text": "SbeMarket SheetValeur;Heure\nCONFIG_SYSTEM;" + h_fallback})
         if cmd in ("save_user_preset", "list_user_presets", "delete_user_preset"):
             u_info = _TOKENS_ACTIFS.get(tk)
@@ -3170,6 +3170,12 @@ def _rpc_data(payload_json: str):
         if rel_path.endswith("DonneesSource.txt") and os.path.isfile(FICHIER_TEXTE_GRILLE):
             with open(FICHIER_TEXTE_GRILLE, "r", encoding="utf-8", errors="replace") as f:
                 return json.dumps({"status": 200, "text": f.read()})
+        for d_hist in [globals().get("REPERTOIRE_HISTO_REEL"), globals().get("REPERTOIRE_SYNTHESE"), globals().get("REPERTOIRE_HISTO")]:
+            if d_hist:
+                cand_h = os.path.join(d_hist, os.path.basename(rel_path))
+                if os.path.isfile(cand_h):
+                    with open(cand_h, "r", encoding="utf-8", errors="replace") as f:
+                        return json.dumps({"status": 200, "text": f.read()})
         # 2. Lecture depuis les répertoires temp uniquement pour le mode Live (Cache_Live/ ou temp_...)
         if "Cache_Live/" in rel_path or os.path.basename(rel_path).startswith("temp_"):
             fname = os.path.basename(rel_path)
@@ -3178,6 +3184,22 @@ def _rpc_data(payload_json: str):
                 if os.path.isfile(cand):
                     with open(cand, "r", encoding="utf-8", errors="replace") as f:
                         return json.dumps({"status": 200, "text": f.read()})
+        try:
+            import urllib.request
+            tk_gh, repo_gh = _gh_sync_cfg() if "_gh_sync_cfg" in globals() else ((os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN") or "").strip(), os.getenv("GH_DATA_REPO", "chemshaf-beep/ch-wavecandle-data").strip())
+            clean_p = rel_path.lstrip("/")
+            if not clean_p.startswith("Historique/"):
+                clean_p = "Historique/" + clean_p
+            api_gh = f"https://github.com{repo_gh}/contents/{clean_p}"
+            hdrs_gh = {"User-Agent": "CH-WaveCandle", "Accept": "application/vnd.github.raw+json"}
+            if tk_gh:
+                hdrs_gh["Authorization"] = f"Bearer {tk_gh}"
+            req_gh = urllib.request.Request(api_gh, headers=hdrs_gh)
+            with urllib.request.urlopen(req_gh, timeout=8) as resp_gh:
+                if resp_gh.status == 200:
+                    return json.dumps({"status": 200, "text": resp_gh.read().decode("utf-8", errors="replace")})
+        except Exception:
+            pass
         return json.dumps({"status": 404, "text": ""})
     except Exception as ex:
         return json.dumps({"status": 500, "err": str(ex)})
