@@ -9,7 +9,7 @@
 
   function rewriteBackendUrl(url){
     if(typeof url !== "string") return url;
-    if(/^\/?(bvmt_|api\/|gradio_api\/|call\/|run\/|file=)/.test(url)){
+    if(url.startsWith(window.location.origin)) url = url.slice(window.location.origin.length); if(/^\/?(bvmt_|api\/|gradio_api\/|call\/|run\/|file=)/.test(url)){
       return HF_BACKEND + (url.startsWith("/") ? url : ("/" + url));
     }
     return url;
