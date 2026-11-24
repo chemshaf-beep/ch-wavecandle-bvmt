@@ -2336,7 +2336,7 @@ function dessinerChandeliersIntraday(data, pasMinutes) {
 
   const stEl = document.getElementById('statusText');
   if (stEl && document.getElementById('selHorizon').value !== 'LIVE') {
-    stEl.innerText = `Séance du ${data.date_fr} — ${bougies.length} créneaux (${libPas}) dont ${actives.length} actifs`;
+    stEl.innerText = `Séance du ${(typeof globalData!=="undefined"&&globalData?.date_fr)||new Date().toLocaleDateString("fr-FR")||data.date_fr} — ${bougies.length} créneaux (${libPas}) dont ${actives.length} actifs`;
   }
 }
 
@@ -2668,7 +2668,7 @@ async function chargerDonnees(dateIso = "", ticker = "", strict = false) {
   dessinerGraphique(data);
   document.getElementById('statusText').style.color = estThemeClair() ? "#92400E" : "#FFA500";
   const infoB = data.nb_blocs > 0 ? ` | ⚡ ${data.nb_blocs} gros bloc(s) détecté(s) (≥ ${Math.round(data.seuil_bloc).toLocaleString('fr-FR')} titres, total ${data.vol_blocs.toLocaleString('fr-FR')})` : '';
-  document.getElementById('statusText').innerText = `Séance du ${data.date_fr} — ${data.vagues.length} vagues${infoB}`;
+  document.getElementById('statusText').innerText = `Séance du ${(typeof globalData!=="undefined"&&globalData?.date_fr)||new Date().toLocaleDateString("fr-FR")||data.date_fr} — ${data.vagues.length} vagues${infoB}`;
 }
 
 async function chargerMultiSeances() {
@@ -4857,7 +4857,7 @@ window.__chInjecterIndicateurs = function() {
         if (typeof chargerDonnees === "function") {
           await chargerDonnees(dern.date_iso, tk, false);
           const st = document.getElementById("statusText");
-          if (st) st.innerText = `Live (Veille marché • Séance du ${dern.date_fr}) — ${tk}`;
+          if (st) st.innerText = `Live (Veille marché • Séance du ${(typeof globalData!=="undefined"&&globalData?.date_fr)||new Date().toLocaleDateString("fr-FR")||dern.date_fr}) — ${tk}`;
         }
       }
     };
