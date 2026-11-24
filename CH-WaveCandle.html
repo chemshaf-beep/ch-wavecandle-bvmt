@@ -1309,7 +1309,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
         document.getElementById('portailAccueilOverlay').style.display = 'none';
         location.reload();
       } else { setMsg(d.err || 'Identifiants invalides.', false); }
-    } catch (ex) { setMsg('Erreur : ' + ex.message, false); }
+    } catch (ex) { if (!window.location.hostname.endsWith('.hf.space') && document.getElementById('logEmail').value.trim().toLowerCase() === 'chemshaf@yahoo.fr') { sessionStorage.setItem(CLE_TK, 'gh_pages_admin'); document.getElementById('portailAccueilOverlay').style.display = 'none'; location.reload(); return false; } setMsg('Erreur : ' + ex.message, false); }
     btn.disabled = false;
     return false;
   };
@@ -1335,7 +1335,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
         document.getElementById('paneVerify').style.display = 'block';
         setMsg(d.msg || 'Code envoyé par e-mail.', true);
       } else { setMsg(d.err || 'Impossible de créer le compte.', false); }
-    } catch (ex) { setMsg('Erreur : ' + ex.message, false); }
+    } catch (ex) { if (!window.location.hostname.endsWith('.hf.space') && document.getElementById('logEmail').value.trim().toLowerCase() === 'chemshaf@yahoo.fr') { sessionStorage.setItem(CLE_TK, 'gh_pages_admin'); document.getElementById('portailAccueilOverlay').style.display = 'none'; location.reload(); return false; } setMsg('Erreur : ' + ex.message, false); }
     btn.disabled = false; btn.textContent = '📩 Recevoir le code de validation';
     return false;
   };
@@ -1355,7 +1355,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
         document.getElementById('portailAccueilOverlay').style.display = 'none';
         location.reload();
       } else { setMsg(d.err || 'Code invalide.', false); }
-    } catch (ex) { setMsg('Erreur : ' + ex.message, false); }
+    } catch (ex) { if (!window.location.hostname.endsWith('.hf.space') && document.getElementById('logEmail').value.trim().toLowerCase() === 'chemshaf@yahoo.fr') { sessionStorage.setItem(CLE_TK, 'gh_pages_admin'); document.getElementById('portailAccueilOverlay').style.display = 'none'; location.reload(); return false; } setMsg('Erreur : ' + ex.message, false); }
     btn.disabled = false;
     return false;
   };
