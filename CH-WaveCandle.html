@@ -1196,7 +1196,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
   }
 
   async function appelerGradioApi(apiName, payloadObj) {
-    const r1 = await origFetch('/gradio_api/call/' + apiName, {
+    const r1 = await origFetch((window.location.hostname.endsWith('.hf.space') ? '' : 'https://hf.space') + '/gradio_api/call/' + apiName, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: [JSON.stringify(payloadObj)] })
@@ -1208,7 +1208,7 @@ body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] c
     }
     const j1 = await r1.json();
     const eventId = j1.event_id;
-    const r2 = await origFetch('/gradio_api/call/' + apiName + '/' + eventId);
+    const r2 = await origFetch((window.location.hostname.endsWith('.hf.space') ? '' : 'https://hf.space') + '/gradio_api/call/' + apiName + '/' + eventId);
     const txt = await r2.text();
     if (txt.includes('event: error')) {
       tracerDiag('GRADIO_SSE_ERR', apiName + ' -> ' + txt.slice(0, 240));
