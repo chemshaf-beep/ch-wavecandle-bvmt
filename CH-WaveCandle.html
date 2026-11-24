@@ -7638,5 +7638,71 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   });
 })();
 </script>
+<script id="ch-live-first-tick-fix">
+(function(){
+  // 1. Vider immediatement l'ancien graphique des qu'on change de valeur ou de mode Live pour ne jamais laisser la veille affichee
+  function clearStaleChartOnSwitch(){
+    if(typeof chart === "undefined" || !chart || typeof chart.setOption !== "function") return;
+    const tk = document.getElementById("selTicker")?.value || "";
+    const hz = document.getElementById("selHorizon")?.value || "";
+    const st = document.getElementById("statusText");
+    if(st && (st.innerText || "").includes("Initialisation")){
+      st.innerText = "LIVE (" + tk + ") — En attente / synchronisation des transactions du jour...";
+    }
+  }
+
+  // 2. Si une vague unique n'a qu'un seul tick (heure_deb === heure_fin), lui donner une largeur minimale de 60s pour qu'ECharts la dessine des la 1ere transaction
+  function hookSingleTickWaveRender(){
+    if(typeof window.dessinerGraphique === "function" && !window.dessinerGraphique.__chSingleTickWrapped){
+      const origDraw = window.dessinerGraphique;
+      const wrapped = function(data){
+        try {
+          if(data && Array.isArray(data.vagues)){
+            data.vagues.forEach(v => {
+              if(v && v.heure_deb && v.heure_fin && v.heure_deb === v.heure_fin){
+                const parts = String(v.heure_deb).split(":").map(Number);
+                if(parts.length >= 2 && !isNaN(parts.at(0)) && !isNaN(parts.at(1))){
+                  const totalSec = parts.at(0) * 3600 + parts.at(1) * 60 + (parts.at(2) || 0) + 60;
+                  const hh = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+                  const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+                  const ss = String(totalSec % 60).padStart(2, "0");
+                  v.heure_fin = hh + ":" + mm + ":" + ss;
+                }
+              }
+            });
+          }
+        } catch(e){}
+        const res = origDraw.apply(this, arguments);
+        const st = document.getElementById("statusText");
+        if(st && data && data.date_fr){
+          const nbV = Array.isArray(data.vagues) ? data.vagues.length : 0;
+          st.innerText = "Séance " + data.date_fr + " (" + (data.ticker || "") + ") — " + nbV + " vague(s) affichée(s)";
+        }
+        return res;
+      };
+      wrapped.__chSingleTickWrapped = true;
+      window.dessinerGraphique = wrapped;
+    }
+  }
+
+  window.addEventListener("load", () => {
+    hookSingleTickWaveRender();
+    clearStaleChartOnSwitch();
+    const selTk = document.getElementById("selTicker");
+    if(selTk){
+      selTk.addEventListener("change", () => {
+        if(typeof chart !== "undefined" && chart){
+          try { chart.setOption({ series: [] }, { notMerge: false }); } catch(e){}
+        }
+        clearStaleChartOnSwitch();
+      });
+    }
+    setInterval(() => {
+      hookSingleTickWaveRender();
+      clearStaleChartOnSwitch();
+    }, 500);
+  });
+})();
+</script>
 </body>
 </html>

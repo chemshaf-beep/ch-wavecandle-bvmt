@@ -1,3 +1,4 @@
+_PURGED_TEMP_LOGS = set()
 import shutil
 import tempfile
 import os, time
@@ -170,7 +171,7 @@ def verifier_et_nettoyer_fichiers_veille(date_jour_actuelle):
 
                 try:
                     os.remove(chemin_complet)
-                    print(f"[NETTOYAGE TEMPORAIRE] Fichier de la veille supprimé : {nom_f}")
+                    if fn not in _PURGED_TEMP_LOGS: _PURGED_TEMP_LOGS.add(fn); print(f"[NETTOYAGE TEMPORAIRE] Fichier de la veille supprimé : {nom_f}")
                 except Exception as e_del:
                     print(f"Impossible de supprimer {nom_f} : {e_del}")
     except Exception as e_net:
