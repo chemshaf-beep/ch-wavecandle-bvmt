@@ -2920,9 +2920,14 @@ def _rpc_data(payload_json: str):
         if tk not in _TOKENS_ACTIFS:
             return json.dumps({"status": 401, "err": "Authentification requise"})
         cmd = str(b.get("cmd", ""))
-        if str(b.get("path", "")).endswith("DonneesSource.txt") and os.path.isfile(FICHIER_TEXTE_GRILLE):
-            with open(FICHIER_TEXTE_GRILLE, "r", encoding="utf-8", errors="replace") as f:
-                return json.dumps({"status": 200, "text": f.read()})
+        if str(b.get("path", "")).endswith("DonneesSource.txt"):
+            for d_ds in _get_live_dirs():
+                fp_ds = os.path.join(d_ds, "DonneesSource.txt")
+                if os.path.isfile(fp_ds):
+                    with open(fp_ds, "r", encoding="utf-8", errors="replace") as f:
+                        return json.dumps({"status": 200, "text": f.read()})
+            h_fallback = "15:00:00" if EST_ARCHIVE_FINALE_ENGAGEE else datetime.now(ZoneInfo("Africa/Tunis")).strftime("%H:%M:%S")
+            return json.dumps({"status": 200, "text": "SbeMarket SheetValeur;Heure\nCONFIG_SYSTEM;" + h_fallback})
         if cmd in ("save_user_preset", "list_user_presets", "delete_user_preset"):
             u_info = _TOKENS_ACTIFS.get(tk)
             u_login = str((u_info.get("login") or u_info.get("user") or u_info.get("username") or tk[:12]) if isinstance(u_info, dict) else str(u_info or tk[:12])).strip()
