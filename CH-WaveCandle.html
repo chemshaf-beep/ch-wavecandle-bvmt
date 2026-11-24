@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<script id="ch-decoupled-backend-bridge">
+(function(){
+  const HF_BACKEND = "https://hf.space";
+  const isExternalHost = !window.location.hostname.endsWith(".hf.space") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+  if(!isExternalHost) return;
+
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    try {
+      let url = typeof input === "string" ? input : (input && input.url ? input.url : "");
+      if(url.startsWith("/bvmt_api/") || url.startsWith("/api/")){
+        const fullUrl = HF_BACKEND + url;
+        if(typeof input === "string") return origFetch(fullUrl, init);
+        return origFetch(new Request(fullUrl, input), init);
+      }
+    } catch(e){}
+    return origFetch(input, init);
+  };
+})();
+</script>
 <script id="ch-anti-crash-live">
 (function(){
   let bvmtInFlight = false;
