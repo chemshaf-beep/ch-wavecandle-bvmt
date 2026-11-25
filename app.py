@@ -1871,7 +1871,8 @@ def sync_github_cloud():
         if "Backup" in root: continue
         for fn in files:
             # Synchroniser uniquement le fichier de la séance du jour (évite de repousser les 38 archives)
-            if not fn.endswith(".csv") or date_jour not in fn:
+            date_hier = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1))) - datetime.timedelta(days=1)).strftime("%d%m%Y")
+            if not fn.endswith(".csv") or (date_jour not in fn and date_hier not in fn):
                 continue
             fp = os.path.join(root, fn)
             rel = "Historique/" + os.path.relpath(fp, _HIST_DIR).replace("\\", "/")
@@ -2181,6 +2182,60 @@ def log_diag_py(tag, msg):
     if len(_DIAG_PY) > 50:
         _DIAG_PY.pop(0)
 
+_LAST_PULL_DATE_TN = ""
+
+def _pull_historique_github_complet(force=False):
+    global _LAST_PULL_DATE_TN
+    _now_tn = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
+    today_key = _now_tn.strftime("%Y-%m-%d")
+    if not force and _LAST_PULL_DATE_TN == today_key:
+        return 0
+    tk = globals().get("GH_TOKEN", "").strip()
+    repos = []
+    for r_cand in ["chemshaf-beep/ch-wavecandle-bvmt", globals().get("GH_REPO", "").strip()]:
+        if r_cand and r_cand not in repos:
+            repos.append(r_cand)
+    if not tk or not repos:
+        return 0
+    headers = {
+        "Authorization": f"Bearer {tk}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "CH-WaveCandle-HFT"
+    }
+    nb_dl = 0
+    for repo in repos:
+        for sub in ["bourse_historique_reel", "Synthese_cloture"]:
+            api_url = f"https://github.com{repo}/contents/Historique/{sub}"
+            try:
+                req = urllib.request.Request(api_url, headers=headers)
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    items = json.loads(resp.read().decode("utf-8"))
+                if not isinstance(items, list):
+                    continue
+                dest_dir = os.path.join(_HIST_DIR, sub)
+                os.makedirs(dest_dir, exist_ok=True)
+                for it in items:
+                    fn = it.get("name", "")
+                    dl_url = it.get("download_url", "")
+                    gh_size = int(it.get("size", 0) or 0)
+                    if not fn.endswith(".csv") or not dl_url:
+                        continue
+                    fp = os.path.join(dest_dir, fn)
+                    if os.path.exists(fp) and os.path.getsize(fp) == gh_size and gh_size > 0:
+                        continue
+                    with urllib.request.urlopen(urllib.request.Request(dl_url, headers=headers), timeout=20) as r_dl:
+                        raw_bytes = r_dl.read()
+                    if raw_bytes:
+                        with open(fp, "wb") as f_out:
+                            f_out.write(raw_bytes)
+                        nb_dl += 1
+            except Exception as ex_pull:
+                log_diag_py("GH_HIST_PULL_ERR", f"{sub}: {ex_pull}")
+    _LAST_PULL_DATE_TN = today_key
+    if nb_dl > 0:
+        print(f"[☁️ GITHUB-PULL] {nb_dl} fichier(s) historique(s) synchronisé(s) vers Hugging Face ({today_key}).", flush=True)
+    return nb_dl
+
 def _generer_index_et_whitelist():
     hf = []
     fichiers_autorises = [os.path.join(_BASE_DIR, "CH-WaveCandle.html"), _INDEX_FILE]
@@ -2212,13 +2267,17 @@ def _generer_index_et_whitelist():
         f.write(json.dumps(payload))
     gr.set_static_paths(paths=fichiers_autorises)
 
-# Exécuter avant le lancement pour que index.json et tous les CSV soient whitelistes dans Gradio
+# Rapatrier l'historique GitHub au demarrage puis generer index.json
+_pull_historique_github_complet(force=True)
 _generer_index_et_whitelist()
 
 def _boucle_index_cloud():
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
+        if _pull_historique_github_complet(force=False) > 0:
+            try: _generer_index_et_whitelist()
+            except Exception: pass
         if not _est_fenetre_active_bvmt():
             time.sleep(_secondes_sommeil_hors_seance())
             continue
