@@ -2229,6 +2229,12 @@ def _pull_historique_github_complet(force=False):
                         with open(fp, "wb") as f_out:
                             f_out.write(raw_bytes)
                         nb_dl += 1
+                        try:
+                            _d_recent = [(_now_tn - datetime.timedelta(days=k)).strftime("%d%m%Y") for k in range(0, 4)]
+                            if any(dt_r in fn for dt_r in _d_recent):
+                                _sync_vers_hf_space(f"Historique/{sub}/{fn}", fp)
+                        except Exception:
+                            pass
             except Exception as ex_pull:
                 log_diag_py("GH_HIST_PULL_ERR", f"{sub}: {ex_pull}")
     _LAST_PULL_DATE_TN = today_key
