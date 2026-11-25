@@ -1107,7 +1107,7 @@ body.theme-clair #ch-hud-tools .ch-hud-ctrl-bar {
 body.theme-clair #ch-hud-tools .ch-hud-title-lbl {
   color: #0F172A !important;
 }
-#ch-hud-tools:not(.vertical) > select, #ch-hud-tools:not(.vertical) > button { width: auto !important; white-space: nowrap !important; } #ch-hud-tools > select,
+#ch-hud-tools:not(.vertical) > select, #ch-hud-tools:not(.vertical) > button { width: auto !important; min-width: max-content !important; white-space: nowrap !important; } #ch-hud-tools > select,
 #ch-hud-tools > button,
 #ch-hud-tools > .ch-hud-item {
   height: 30px !important;
@@ -2280,7 +2280,7 @@ function restaurerStatsGlobales() {
   appliquerStatsBandeau(calculerStatsPlage(secMin, secMax));
 }
 
-function dessinerChandeliersMulti(data) {
+function dessinerChandeliersMulti(data) { if (document.getElementById('selHorizon')?.value !== 'MULTI') return;
   const bougies = data.bougies;
   if (!bougies || !bougies.length) { chart.clear(); return; }
   const maxVolBougie = Math.max(...bougies.map(b => b.vol_tot), 1);
@@ -3194,7 +3194,7 @@ document.getElementById('selHorizon').onchange = e => {
   document.getElementById('btnChargerDate').style.display = (m === 'MULTI' || m === 'LIVE') ? 'none' : 'inline-block';
   if (m === 'MULTI') chargerMultiSeances();
   else if (m === 'LIVE') demarrerModeLive();
-  else chargerDonnees("", document.getElementById('selTicker').value, false);
+  else { const dTxt = document.getElementById('txtDateSeance')?.value || ''; const isoD = (typeof validerEtConvertirDateFr === 'function' && dTxt) ? (validerEtConvertirDateFr(dTxt) || '') : ''; chargerDonnees(isoD, document.getElementById('selTicker').value, false); }
 };
 
 document.getElementById('selCadenceLive').onchange = () => { if (document.getElementById('selHorizon').value === 'LIVE') demarrerModeLive(); };
@@ -5295,7 +5295,7 @@ document.addEventListener("change", (e) => {
         if (typeof chargerDonnees === "function") {
           await chargerDonnees(dern.date_iso, tk, false);
           const st = document.getElementById("statusText");
-          if (st) st.innerText = `Live (Veille marché • Séance du ${(typeof globalData!=="undefined"&&globalData?.date_fr)||new Date().toLocaleDateString("fr-FR")||dern.date_fr}) — ${tk}`;
+          const dtReelle = (typeof globalData!=="undefined"&&globalData?.date_fr)||dern.date_fr; if (st) st.innerText = `Live (Veille marché • Séance du ${dtReelle}) — ${tk}`; const lblLiveBadge = document.getElementById("txtBadgeLive"); if (lblLiveBadge && dtReelle) lblLiveBadge.textContent = "LIVE \u2022 " + dtReelle; if (typeof restaurerStatsGlobales === "function") restaurerStatsGlobales();
         }
       }
     };
