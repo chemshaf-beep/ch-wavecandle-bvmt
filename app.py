@@ -145,6 +145,25 @@ historique_dernier_cours, historique_phase_precedente = {}, {}
 # ==============================================================================
 # PARTIE 4 / 20 : NETTOYAGE DES FICHIERS DE LA VEILLE ET RE-INITIALISATION
 # ==============================================================================
+def _secondes_sommeil_hors_seance():
+    _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+    _n = datetime.datetime.now(_tz_tn)
+    if _n.weekday() >= 5:
+        return 1800
+    _sec_jour = _n.hour * 3600 + _n.minute * 60 + _n.second
+    _cible_08h = 8 * 3600 - 2
+    if _sec_jour < _cible_08h:
+        return max(1, min(900, _cible_08h - _sec_jour))
+    return 900
+
+def _est_fenetre_active_bvmt():
+    _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
+    _n = datetime.datetime.now(_tz_tn)
+    if _n.weekday() >= 5:
+        return False
+    _mins = _n.hour * 60 + _n.minute
+    return 480 <= _mins <= 901
+
 def verifier_et_nettoyer_fichiers_veille(date_jour_actuelle):
     global REPERTOIRE_JSON, PREFIXE_LOG, REPERTOIRE_HISTO_REEL, FICHIER_TEXTE_GRILLE
     try:
@@ -1276,7 +1295,7 @@ def finaliser_matrice_et_propulser(**kwargs):
 def compiler_et_sauvegarder_fichiers(df_final_cote, df_final_ordonne, liste_phases, listes_microstructure, l_qte_a, l_vol_a, l_qte_v, l_vol_v, l_qte_i, l_vol_i, l_spread_p, l_imbalance_c, a_trouve_un_trade, heure_ticker_brut, heure_ticker_pc, courbe_txt, id_phase_calculee, heure_cible_phase, action_affichage_secours, str_radar_alerte, ORDRE_COLONNES_VERROUILLES, debut_calcul):
     global registre_transactions_RAM, FICHIER_HISTO_SEANCE, FICHIER_HISTO_RAMDISK, FICHIER_TEXTE_GRILLE, FICHIER_SYNTHESE_CLOTURE, FICHIER_ETAT_RAM, EST_ARCHIVE_FINALE_ENGAGEE, MODE_PRODUCTION
     try:
-        maintenant_obj = datetime.datetime.now()
+        maintenant_obj = _now_tn
         est_un_jour_ouvrable = maintenant_obj.weekday() < 5
         autoriser_ecriture_histo = est_un_jour_ouvrable or (not MODE_PRODUCTION)
 
@@ -1430,8 +1449,8 @@ def boucle_background_aspiration_falcon():
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
-        if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
-            time.sleep(2.0)
+        if not _est_fenetre_active_bvmt():
+            time.sleep(_secondes_sommeil_hors_seance())
             continue
         try:
             if MODE_SIMULATION_ACTIF:
@@ -1574,7 +1593,7 @@ def recuperer_et_analyser():
     debut_calcul = time.perf_counter_ns()
     global registre_RAM_t_moins_1, MODE_PRODUCTION, HEURE_CENTRALE_BVMT, LISTE_ENTETES_OFFICIELS, df_master_ram_cote, MODE_SIMULATION_ACTIF, LISTE_VALEURS_UNIFIEES, historique_dernier_cours
     
-    maintenant_obj = datetime.datetime.now()
+    maintenant_obj = _now_tn
     regime_actif = detecter_regime_horaire(maintenant_obj.date())
     text_brut_source = executer_requete_sbe_marche_live()
     
@@ -1715,6 +1734,28 @@ GH_TOKEN = os.environ.get("GH_TOKEN", "").strip()
 GH_REPO = (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip()
 _LAST_GH_SYNC = 0.0
 
+def _sync_vers_hf_space(rel, fp):
+    try:
+        hf_tk = (os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or "").strip()
+        if not hf_tk or not os.path.isfile(fp) or os.path.getsize(fp) <= 100:
+            return
+        from huggingface_hub import HfApi
+        api_hf = HfApi(token=hf_tk)
+        repo_hf = os.getenv("SPACE_ID", "hafdev/ch-wavecandle").strip()
+        clean_rel = rel.lstrip("/")
+        if not clean_rel.startswith("Historique/"):
+            clean_rel = "Historique/" + clean_rel
+        api_hf.upload_file(
+            path_or_fileobj=fp,
+            path_in_repo=clean_rel,
+            repo_id=repo_hf,
+            repo_type="space",
+            commit_message=f"Auto-archive BVMT cloture {os.path.basename(fp)}"
+        )
+        print(f"[🤗 HF-SYNC] {clean_rel} sauvegarde sur Hugging Face ({os.path.getsize(fp)} octets).", flush=True)
+    except Exception as ex_hf:
+        print(f"[⚠️ HF-SYNC-ERR] ({rel}) : {ex_hf}", flush=True)
+
 def _sync_vers_repo_bvmt_principal(tk, headers, rel, b64):
     repo_bvmt = "chemshaf-beep/ch-wavecandle-bvmt"
     api_bvmt = f"https://api.github.com/repos/{repo_bvmt}/contents/{rel}"
@@ -1793,6 +1834,7 @@ def _purger_anciens_fichiers_github(tk, repo, headers, max_jours_garder=5):
     except Exception:
         pass
 def sync_github_cloud():
+    if not _est_fenetre_active_bvmt(): return
     global _LAST_GH_SYNC
     tk = os.environ.get("GH_TOKEN", "").strip() or globals().get("GH_TOKEN", "").strip()
     repo = (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip() or globals().get("GH_REPO", "").strip()
@@ -1843,11 +1885,14 @@ def sync_github_cloud():
                     if he.code != 404: raise
                 with open(fp, "rb") as f:
                     b64 = base64.b64encode(f.read()).decode("ascii")
+                if not hasattr(sync_github_cloud, "_cache_b64"): sync_github_cloud._cache_b64 = {}
+                if sync_github_cloud._cache_b64.get((repo, rel)) == b64: continue
+                
                 if repo != "chemshaf-beep/ch-wavecandle-bvmt": _sync_vers_repo_bvmt_principal(tk, headers, rel, b64)
                 payload = {"message": f"Auto-save BVMT {rel}", "content": b64}
                 if sha: payload["sha"] = sha
                 urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
-                print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
+                sync_github_cloud._cache_sig[(repo, rel)] = sig_fp; sync_github_cloud._cache_b64[(repo, rel)] = b64; print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
             except Exception as ex_gh:
                 print(f"[⚠️ GITHUB-SYNC-ERR] ({api_url}) : {ex_gh}", flush=True)
 
@@ -1856,11 +1901,11 @@ def boucle_synchro_github():
     try: sync_github_cloud()
     except Exception: pass
     while True:
-        time.sleep(60)
+        time.sleep(60 if _est_fenetre_active_bvmt() else _secondes_sommeil_hors_seance())
         try: sync_github_cloud()
         except Exception: pass
     while True:
-        time.sleep(60)
+        time.sleep(60 if _est_fenetre_active_bvmt() else _secondes_sommeil_hors_seance())
         try: sync_github_cloud()
         except Exception: pass
 
@@ -2027,17 +2072,18 @@ def lancer_collecteur_bvmt():
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
-        if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
-            time.sleep(2.0)
+        if not _est_fenetre_active_bvmt():
+            time.sleep(_secondes_sommeil_hors_seance())
             continue
         try: 
-            maintenant_obj = datetime.datetime.now()
+            maintenant_obj = _now_tn
             heure_courante_pc = maintenant_obj.strftime("%H:%M:%S")
             date_instant_pc = maintenant_obj.strftime("%d%m%Y")
             est_jour_ouvre_courant = maintenant_obj.weekday() < 5
             
-            # Surveillance continue après 08:01:00 pour purger tout fichier de la veille résiduel
-            if heure_courante_pc > "08:01:00":
+            # Surveillance une seule fois par jour apres 08:01:00 pour purger les fichiers de la veille
+            if heure_courante_pc > "08:01:00" and getattr(boucle_horloge_quartz, "_last_purge_date", "") != date_instant_pc:
+                boucle_horloge_quartz._last_purge_date = date_instant_pc
                 verifier_et_nettoyer_fichiers_veille(date_instant_pc)
             
             # Détection de bascule de séance (changement de jour après 08:00:00)
@@ -2170,8 +2216,8 @@ def _boucle_index_cloud():
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
-        if _now_tn.weekday() >= 5 or (_now_tn.hour * 60 + _now_tn.minute) < 510:
-            time.sleep(2.0)
+        if not _est_fenetre_active_bvmt():
+            time.sleep(_secondes_sommeil_hors_seance())
             continue
         try:
             _generer_index_et_whitelist()
