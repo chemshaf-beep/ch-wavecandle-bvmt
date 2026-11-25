@@ -2019,8 +2019,8 @@ function construireElementsDessin() {
     } else {
       const estMesure = (d.type === 'MESURE' || d.type === 'MESURE_TEMPS');
       const estMesureTemps = (d.type === 'MESURE_TEMPS');
-      if (estMesureTemps) { d.y2 = d.y1; y2 = y1; }
-      const dx = x2 - x1, dy = y2 - y1;
+      const y2Plot = estMesureTemps ? y1 : y2; if (estMesureTemps) { d.y2 = d.y1; }
+      const dx = x2 - x1, dy = y2Plot - y1;
       const dist = Math.hypot(dx, dy);
       const angle = Math.atan2(dy, dx);
       const ux = Math.cos(angle), uy = Math.sin(angle);
@@ -2032,34 +2032,34 @@ function construireElementsDessin() {
       let nx = Math.sin(angle), ny = -Math.cos(angle);
       if (ny > 0) { nx = -nx; ny = -ny; }
       const midX = (x1 + x2) / 2 + nx * 12;
-      const midY = (y1 + y2) / 2 + ny * 12;
+      const midY = (y1 + y2Plot) / 2 + ny * 12;
 
       const children = [
-        { type: 'line', shape: { x1, y1, x2, y2 }, style: { stroke: colLigne, lineWidth: estSelectionne ? 3.2 : 2.2, lineDash: estMesure ? Array.of(4, 3) : Array.of() } }
+        { type: 'line', shape: { x1, y1, x2, y2: y2Plot }, style: { stroke: colLigne, lineWidth: estSelectionne ? 3.2 : 2.2, lineDash: estMesure ? Array.of(4, 3) : Array.of() } }
       ];
       if (!estMesure && d.demiDroite && dist >= 4) {
         const gRect = chart.getModel().getComponent('grid', 0).coordinateSystem.getRect();
         const maxProj = Math.max(gRect.width, gRect.height) * 2;
         children.push({
           type: 'line',
-          shape: { x1: x2, y1: y2, x2: x2 + ux * maxProj, y2: y2 + uy * maxProj },
+          shape: { x1: x2, y1: y2Plot, x2: x2 + ux * maxProj, y2: y2Plot + uy * maxProj },
           style: { stroke: colLigne, lineWidth: estSelectionne ? 2.4 : 1.8, lineDash: Array.of(6, 4), opacity: 0.85 }
         });
       }
       if (estMesureTemps) {
         children.push({ type: 'line', shape: { x1: x1, y1: y1 - 8, x2: x1, y2: y1 + 8 }, style: { stroke: colLigne, lineWidth: 2 } });
-        children.push({ type: 'line', shape: { x1: x2, y1: y2 - 8, x2: x2, y2: y2 + 8 }, style: { stroke: colLigne, lineWidth: 2 } });
+        children.push({ type: 'line', shape: { x1: x2, y1: y2Plot - 8, x2: x2, y2: y2Plot + 8 }, style: { stroke: colLigne, lineWidth: 2 } });
       }
       if (estSelectionne) {
         children.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
-        children.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
+        children.push({ type: 'circle', shape: { cx: x2, cy: y2Plot, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
       } else {
         children.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 3.5 }, style: { fill: colLigne } });
       }
       if (!estMesure && dist >= 8) {
         children.push({
           type: 'polygon',
-          shape: { points: [[x2, y2], [x2 - ux * aLen + px * aW, y2 - uy * aLen + py * aW], [x2 - ux * aLen - px * aW, y2 - uy * aLen - py * aW]] },
+          shape: { points: [[x2, y2Plot], [x2 - ux * aLen + px * aW, y2Plot - uy * aLen + py * aW], [x2 - ux * aLen - px * aW, y2Plot - uy * aLen - py * aW]] },
           style: { fill: colLigne }
         });
       }
