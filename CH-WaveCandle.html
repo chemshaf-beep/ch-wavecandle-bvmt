@@ -1076,6 +1076,95 @@ body.theme-clair .statusbar {
 <style id="ch-hand-cursor-css">
 body.ch-mode-hand [_echarts_instance_], body.ch-mode-hand [_echarts_instance_] canvas { cursor: grab !important; } body.ch-mode-hand [_echarts_instance_]:active, body.ch-mode-hand [_echarts_instance_] canvas:active { cursor: grabbing !important; } html body.ch-mode-draw [_echarts_instance_], html body.ch-mode-draw [_echarts_instance_] * { cursor: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3czLm9yZyIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiNGQkJGMjQiIHN0cm9rZT0iIzBGMTcyQSIgc3Ryb2tlLXdpZHRoPSIxLjYiIGQ9Ik0zIDE3LjI1VjIxaDMuNzVMMTcuODEgOS45NGwtMy43NS0zLjc1TDMgMTcuMjV6TTIwLjcxIDcuMDRhMSAxIDAgMCAwIDAtMS40MmwtMi4zNC0yLjM0YTEgMSAwIDAgMC0xLjQyIDBsLTEuODMgMS44MyAzLjc1IDMuNzUgMS44NC0xLjgyeiIvPjwvc3ZnPg==') 2 22, auto !important; }
 </style>
+<style id="ch-hud-pro-ui">
+#ch-hud-tools {
+  background: rgba(15, 23, 42, 0.86) !important;
+  backdrop-filter: blur(14px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  padding: 8px !important;
+  gap: 6px !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+body.theme-clair #ch-hud-tools {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border: 1px solid rgba(15, 23, 42, 0.14) !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+#ch-hud-tools .ch-hud-ctrl-bar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 2px 6px 2px !important;
+  margin-bottom: 2px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+}
+body.theme-clair #ch-hud-tools .ch-hud-ctrl-bar {
+  border-bottom-color: rgba(15, 23, 42, 0.10) !important;
+}
+body.theme-clair #ch-hud-tools .ch-hud-title-lbl {
+  color: #0F172A !important;
+}
+#ch-hud-tools:not(.vertical) > select, #ch-hud-tools:not(.vertical) > button { width: auto !important; white-space: nowrap !important; } #ch-hud-tools > select,
+#ch-hud-tools > button,
+#ch-hud-tools > .ch-hud-item {
+  height: 30px !important;
+  min-height: 30px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease !important;
+}
+#ch-hud-tools > select:hover,
+#ch-hud-tools > button:hover,
+#ch-hud-tools .ch-hud-pair-row > button:hover {
+  border-color: #38BDF8 !important;
+  transform: translateY(-1px);
+}
+#ch-hud-tools .ch-hud-pair-row > button {
+  height: 28px !important;
+  min-height: 28px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.12s ease, border-color 0.15s ease !important;
+}
+#chHudMinBtn {
+  background: rgba(148, 163, 184, 0.25) !important;
+  color: #F8FAFC !important;
+  border: 1px solid rgba(148, 163, 184, 0.55) !important;
+}
+body.theme-clair #chHudMinBtn, html.theme-clair #chHudMinBtn {
+  background: #CBD5E1 !important;
+  color: #0F172A !important;
+  border: 1px solid #64748B !important;
+  font-weight: 900 !important;
+}
+#chHudOrientBtn {
+  background: #0F172A !important;
+  color: #38BDF8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.55) !important;
+}
+body.theme-clair #chHudOrientBtn {
+  background: #0F172A !important;
+  color: #7DD3FC !important;
+  border: 1px solid #0284C7 !important;
+}
+#ch-hud-tools.ch-collapsed .ch-hud-ctrl-bar {
+  border-bottom: none !important;
+  padding-bottom: 2px !important;
+  margin-bottom: 0 !important;
+}
+</style>
 </head>
 <body>
 <style>
@@ -2409,7 +2498,7 @@ function dessinerChandeliersIntraday(data, pasMinutes) {
   }
 }
 
-function dessinerGraphique(data) {
+function dessinerGraphique(data) { if (document.getElementById("selHorizon")?.value === "MULTI" && !window.__chForceSingleDraw) return;
   const vagues = data.vagues;
   if (!vagues || !vagues.length) { chart.clear(); return; }
   const modeActuel = document.getElementById('selModeRendu') ? document.getElementById('selModeRendu').value : 'VAGUES';
@@ -2638,7 +2727,7 @@ function _parserLignesCsvImpl(texte) {
     if (c.length < 6) continue;
     const tk = c.at(0).trim().replace(/"/g, '').toUpperCase();
     if (!tk || tk === 'TICKER' || tk.length > 26 || /^[0-9A-F]{16,}$/.test(tk) || tk.includes('{') || tk.includes(':')) continue;
-    const heure = c[2].trim().replace(/"/g, ''), sens = c[3].trim().replace(/"/g, '').toUpperCase();
+    const heure = (c[1] || c[2]).trim().replace(/"/g, ''), sens = c[3].trim().replace(/"/g, '').toUpperCase();
     const qte = parseInt(c[4].trim().replace(/"/g, '').replace(/\s/g, ''), 10);
     const prix = parseFloat(c[5].trim().replace(/"/g, '').replace(',', '.'));
     if (prix > 0 && qte > 0) { tks.add(tk); ops.push({ ticker: tk, heure, sens, qte, prix }); }
@@ -2876,7 +2965,7 @@ async function rafraichirFluxLive(forcer = false) {
     const sig = `${dernierFichier.name}_${dernierFichier.lastModified}_${dernierFichier.size}`;
     if (!forcer && sig === dernierTailleLive) {
       const opAct = globalData ? globalData.derniere_op_globale : null;
-      if(document.getElementById('lblHorlogeMarche')) document.getElementById('lblHorlogeMarche').innerText = heureMarcheDs || (opAct ? opAct.heure : "--:--:--");
+      if(document.getElementById('lblHorlogeMarche')) document.getElementById('lblHorlogeMarche').innerText = (typeof heureMarcheVerrouillee !== 'undefined' && heureMarcheVerrouillee) ? heureMarcheVerrouillee : (heureMarcheDs || (opAct ? opAct.heure : '--:--:--'));
       const txtOp = opAct ? ` | Dernière op. : ${opAct.ticker} (${opAct.sens} ${opAct.qte.toLocaleString('fr-FR')} @ ${opAct.prix.toFixed(2)} à ${opAct.heure})` : "";
       document.getElementById('statusText').style.color = "#00E5FF";
       document.getElementById('statusText').innerText = `LIVE [${new Date().toTimeString().slice(0,8)}] — ${dernierFichier.name}${txtOp}`;
@@ -2884,7 +2973,7 @@ async function rafraichirFluxLive(forcer = false) {
     }
     dernierTailleLive = sig;
 
-    const parsed = parserLignesCsv(await dernierFichier.text());
+    const rawLiveCsv = await dernierFichier.text(); if (document.getElementById("selHorizon")?.value !== "LIVE") return; const parsed = parserLignesCsv(rawLiveCsv);
     let ticker = document.getElementById('selTicker').value || "";
     if (document.getElementById('chkAutoDernier').checked && parsed.ops.length > 0) {
       const opRec = trouverDerniereOpChrono(parsed.ops);
@@ -2904,7 +2993,7 @@ async function rafraichirFluxLive(forcer = false) {
     dessinerGraphique(data);
 
     const op = data.derniere_op_globale;
-    if(document.getElementById('lblHorlogeMarche')) document.getElementById('lblHorlogeMarche').innerText = heureMarcheDs || (op ? op.heure : "--:--:--");
+    if(document.getElementById('lblHorlogeMarche')) document.getElementById('lblHorlogeMarche').innerText = (typeof heureMarcheVerrouillee !== 'undefined' && heureMarcheVerrouillee) ? heureMarcheVerrouillee : (heureMarcheDs || (op ? op.heure : '--:--:--'));
     const infoOp = op ? ` | Dernière op. : ${op.ticker} (${op.sens} ${op.qte.toLocaleString('fr-FR')} @ ${op.prix.toFixed(2)} à ${op.heure})` : "";
     document.getElementById('statusText').style.color = "#00FF66";
     document.getElementById('statusText').innerText = `LIVE [${new Date().toTimeString().slice(0,8)}] [${dernierFichier.name} | ${parsed.ops.length} ops] — ${data.ticker}${infoOp}`;
@@ -4932,21 +5021,21 @@ window.__chInjecterIndicateurs = function() {
         xAxis: new Array({ ...xBase, gridIndex: 0 }),
         yAxis: baseYAxes,
         dataZoom: (Array.isArray(opt.dataZoom) && opt.dataZoom.length > 0) ? opt.dataZoom.map(dz => (dz && dz.yAxisIndex !== undefined && dz.xAxisIndex === undefined) ? dz : { ...dz, xAxisIndex: new Array(0) }) : new Array({ type: "inside", xAxisIndex: new Array(0) }),
-        series: baseSeries.concat(extra)
-      }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
+        series: extra
+      });
     } else {
       chart.setOption({
         grid: new Array({ left: 45, right: 92, top: 32, bottom: 22 }),
-        series: baseSeries.concat(extra)
-      }, { replaceMerge: new Array("series") });
+        series: extra
+      });
     }
     return;
   }
 
   const nOsc = cfg.oscs.length;
-  const mainH = nOsc === 1 ? 64 : (nOsc === 2 ? 50 : (nOsc === 3 ? 41 : 34));
-  const gapPct = 2.2;
-  const availH = 92 - mainH - (nOsc * gapPct);
+  const mainH = nOsc === 1 ? 67 : (nOsc === 2 ? 53 : (nOsc === 3 ? 44 : 37));
+  const gapPct = 2.0;
+  const availH = 93.5 - mainH - (nOsc * gapPct);
   const subH = +(availH / nOsc).toFixed(1);
 
   const grids = new Array({ left: 45, right: 92, top: 32, height: mainH + "%" });
@@ -4956,11 +5045,11 @@ window.__chInjecterIndicateurs = function() {
   const trArr = closes.map((c, i) => c === null ? 0 : Math.max((highs.at(i) - lows.at(i)), i > 0 && closes.at(i-1) !== null ? Math.abs(highs.at(i) - closes.at(i-1)) : 0, i > 0 && closes.at(i-1) !== null ? Math.abs(lows.at(i) - closes.at(i-1)) : 0));
   cfg.oscs.forEach((oscName, idx) => {
     const gIdx = idx + 1; const yIdx = yOscOffset + idx;
-    const topPct = +(mainH + 4.5 + idx * (subH + gapPct)).toFixed(1);
+    const topPct = +(mainH + 4.2 + idx * (subH + gapPct)).toFixed(1);
     allXIdx.push(gIdx);
     grids.push({ left: 45, right: 92, top: topPct + "%", height: subH + "%" });
     const isLastSub = (idx === nOsc - 1); xAxes.push({ ...xBase, gridIndex: gIdx, axisLabel: isLastSub ? (xBase.axisLabel || { show: true }) : { show: false } });
-    let yOsc = { gridIndex: gIdx, position: "right", name: oscName, nameLocation: "end", nameGap: 2, nameTextStyle: { color: axisCol, fontSize: 9, fontWeight: "bold" }, axisLabel: { color: axisCol, fontSize: 9.5 }, splitLine: { lineStyle: { color: splitCol } } };
+    let yOsc = { gridIndex: gIdx, position: "right", name: oscName, nameLocation: "end", nameGap: 2, nameTextStyle: { color: axisCol, fontSize: 9, fontWeight: "bold" }, axisLabel: { color: axisCol, fontSize: 9, hideOverlap: true, showMinLabel: false }, splitLine: { lineStyle: { color: splitCol } } };
 
     if (oscName === "DELTA") {
       extra.push({ id: "ind_osc_delta", name: "Delta Net", type: "bar", barMaxWidth: 14, xAxisIndex: gIdx, yAxisIndex: yIdx, itemStyle: { color: (p) => ((Array.isArray(p.value) ? p.value.at(1) : p.value) >= 0) ? "#10B981" : "#EF4444" }, data: pair(deltaArr) });
@@ -5038,9 +5127,9 @@ window.__chInjecterIndicateurs = function() {
     grid: grids,
     xAxis: xAxes,
     yAxis: yAxes,
-    dataZoom: (Array.isArray(opt.dataZoom) && opt.dataZoom.length > 0) ? opt.dataZoom.map(dz => (dz && dz.yAxisIndex !== undefined && dz.xAxisIndex === undefined) ? dz : { ...dz, xAxisIndex: allXIdx }) : new Array({ type: "inside", xAxisIndex: allXIdx }),
-    series: baseSeries.concat(extra)
-  }, { replaceMerge: new Array("series", "xAxis", "yAxis", "grid") });
+    dataZoom: new Array({ id: "zoomX_inside", type: "inside", xAxisIndex: allXIdx, filterMode: "none", zoomOnMouseWheel: true, moveOnMouseMove: false }, { id: "zoomX_slider", type: "slider", xAxisIndex: allXIdx, filterMode: "none", bottom: 22, height: 12, showDetail: false }),
+    series: extra
+  });
 };
 
 document.addEventListener("click", (e) => {
@@ -7395,9 +7484,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const futLabels = generateFutureCategoryLabels(lastLbl, extra, granVal);
         const extData = x0.data.concat(futLabels);
 
-        const dzPatch = Array.isArray(opt.dataZoom)
-          ? opt.dataZoom.map(() => ({ start: 0, end: 100, startValue: null, endValue: null }))
-          : undefined;
+        const hasUserZoom = Array.isArray(opt.dataZoom) && opt.dataZoom.some(d => d && ((typeof d.start === "number" && d.start > 0.5) || (typeof d.end === "number" && d.end < 99.5))); const dzPatch = (!hasUserZoom && Array.isArray(opt.dataZoom)) ? opt.dataZoom.map(() => ({ start: 0, end: 100, startValue: null, endValue: null })) : undefined;
 
         chart.setOption({
           xAxis: [{ data: extData, max: extData.length - 1 }],
@@ -7408,7 +7495,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         chart.setOption({ yAxis: yPatch });
       }
 
-      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
     } catch(e){} finally {
       setTimeout(() => { applyingAxis = false; }, 80);
     }
@@ -7565,7 +7652,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       selOutil.addEventListener("change", () => {
         if(selOutil.value !== "AUCUN"){
           selectedDrawIdx = -1;
-          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
         }
       });
     }
@@ -7579,7 +7666,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       if(!hit){
         if(selectedDrawIdx !== -1){
           selectedDrawIdx = -1;
-          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
         }
         return;
       }
@@ -7594,7 +7681,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         if(hit.pointKey === "ctrl1" || hit.pointKey === "ctrl2") d.ctrlEdited = true;
         dragTarget = { idx: hit.idx, pointKey: hit.pointKey };
       }
-      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
     });
 
     zr.on("mousemove", (params) => {
@@ -7632,13 +7719,13 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const dy = pt.at(1) - dragTarget.startDataY;
         d.points = dragTarget.origPoints.map(op => [op.at(0) + dx, op.at(1) + dy]);
       }
-      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
     });
 
     zr.on("mouseup", () => {
       if(dragTarget){
         dragTarget = null;
-        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
       }
     });
   }
@@ -7796,149 +7883,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   });
 })();
 </script>
-<script id="ch-drawings-time-anchor">
-(function(){
-  function parseCandleEpochSec(b){
-    if(!b) return NaN;
-    if(typeof b.ts === "number" && b.ts > 1e8) return b.ts;
-    if(typeof b.timestamp === "number" && b.timestamp > 1e8) return b.timestamp > 1e11 ? Math.floor(b.timestamp / 1000) : b.timestamp;
-    const raw = String(b.date_iso || b.date || b.label || b.heure || "").trim();
-    // Format YYYY-MM-DD HH:MM ou DD/MM/YYYY HH:MM ou DD/MM HH:MM
-    const mIso = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
-    if(mIso){
-      return Math.floor(Date.UTC(Number(mIso.at(1)), Number(mIso.at(2)) - 1, Number(mIso.at(3)), Number(mIso.at(4) || 12), Number(mIso.at(5) || 0)) / 1000);
-    }
-    const mFr = raw.match(/^(\d{2})\/(\d{2})(?:\/(\d{2,4}))?(?:\s+(\d{2}):(\d{2}))?/);
-    if(mFr){
-      const yRaw = mFr.at(3);
-      const yr = yRaw ? (yRaw.length === 2 ? 2000 + Number(yRaw) : Number(yRaw)) : new Date().getFullYear();
-      return Math.floor(Date.UTC(yr, Number(mFr.at(2)) - 1, Number(mFr.at(1)), Number(mFr.at(4) || 12), Number(mFr.at(5) || 0)) / 1000);
-    }
-    return NaN;
-  }
 
-  function xToEpoch(xVal){
-    const hVal = document.getElementById("selHorizon")?.value || "";
-    if(hVal !== "MULTI" || typeof globalData === "undefined" || !globalData || !Array.isArray(globalData.bougies) || globalData.bougies.length === 0){
-      return NaN;
-    }
-    const bougies = globalData.bougies;
-    const n = bougies.length;
-    const idx = Number(xVal);
-    if(isNaN(idx)) return NaN;
-
-    if(idx >= 0 && idx < n){
-      return parseCandleEpochSec(bougies.at(Math.round(idx)));
-    }
-    // Si le point est dans la zone future projetee (idx >= n)
-    const lastTs = parseCandleEpochSec(bougies.at(n - 1));
-    const prevTs = n > 1 ? parseCandleEpochSec(bougies.at(n - 2)) : (lastTs - 86400);
-    const step = (!isNaN(lastTs) && !isNaN(prevTs) && lastTs > prevTs) ? (lastTs - prevTs) : 86400;
-    return !isNaN(lastTs) ? Math.round(lastTs + (idx - (n - 1)) * step) : NaN;
-  }
-
-  function epochToX(targetTs, fallbackX){
-    const hVal = document.getElementById("selHorizon")?.value || "";
-    if(hVal !== "MULTI" || isNaN(targetTs) || typeof globalData === "undefined" || !globalData || !Array.isArray(globalData.bougies) || globalData.bougies.length === 0){
-      return fallbackX;
-    }
-    const bougies = globalData.bougies;
-    const n = bougies.length;
-    let bestIdx = 0;
-    let bestDiff = Infinity;
-    for(let i = 0; i < n; i++){
-      const ts = parseCandleEpochSec(bougies.at(i));
-      if(!isNaN(ts)){
-        const diff = Math.abs(ts - targetTs);
-        if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
-      }
-    }
-    const lastTs = parseCandleEpochSec(bougies.at(n - 1));
-    if(!isNaN(lastTs) && targetTs > lastTs){
-      const prevTs = n > 1 ? parseCandleEpochSec(bougies.at(n - 2)) : (lastTs - 86400);
-      const step = (!isNaN(prevTs) && lastTs > prevTs) ? (lastTs - prevTs) : 86400;
-      return Math.round((n - 1) + (targetTs - lastTs) / step);
-    }
-    return bestIdx;
-  }
-
-  function stampDrawingsTime(){
-    if(typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
-    const hVal = document.getElementById("selHorizon")?.value || "";
-    if(hVal !== "MULTI") return;
-    const curGran = document.getElementById("selGranularite")?.value || "JOUR";
-
-    dessinsUtilisateur.forEach(d => {
-      if(!d) return;
-      // Si la granularite n'a pas change depuis la derniere empreinte, mettre a jour les timestamps depuis les x actuels
-      if(!d.__gran || d.__gran === curGran){
-        d.__gran = curGran;
-        if(d.x1 !== undefined){ const t = xToEpoch(d.x1); if(!isNaN(t)) d.t1 = t; }
-        if(d.x2 !== undefined){ const t = xToEpoch(d.x2); if(!isNaN(t)) d.t2 = t; }
-        if(d.cx !== undefined){ const t = xToEpoch(d.cx); if(!isNaN(t)) d.tc1 = t; }
-        if(d.cx2 !== undefined){ const t = xToEpoch(d.cx2); if(!isNaN(t)) d.tc2 = t; }
-        if(Array.isArray(d.points)){
-          d.tPoints = d.points.map(pt => [xToEpoch(pt.at(0)), pt.at(1)]);
-        }
-      }
-    });
-  }
-
-  function reprojectDrawingsToCurrentGranularity(){
-    if(typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
-    const hVal = document.getElementById("selHorizon")?.value || "";
-    if(hVal !== "MULTI") return;
-    const curGran = document.getElementById("selGranularite")?.value || "JOUR";
-
-    dessinsUtilisateur.forEach(d => {
-      if(!d) return;
-      if(d.__gran && d.__gran !== curGran){
-        if(typeof d.t1 === "number") d.x1 = epochToX(d.t1, d.x1);
-        if(typeof d.t2 === "number") d.x2 = epochToX(d.t2, d.x2);
-        if(typeof d.tc1 === "number") d.cx = epochToX(d.tc1, d.cx);
-        if(typeof d.tc2 === "number") d.cx2 = epochToX(d.tc2, d.cx2);
-        if(Array.isArray(d.tPoints)){
-          d.points = d.tPoints.map((tp, k) => {
-            const origPt = Array.isArray(d.points) ? d.points.at(k) : null;
-            const fbX = origPt ? origPt.at(0) : 0;
-            return [typeof tp.at(0) === "number" && !isNaN(tp.at(0)) ? epochToX(tp.at(0), fbX) : fbX, tp.at(1)];
-          });
-        }
-        d.__gran = curGran;
-      }
-    });
-  }
-
-  function hookTimeAnchor(){
-    if(typeof window.rafraichirDessinsGraphique === "function" && !window.rafraichirDessinsGraphique.__chTimeAnchorWrapped){
-      const origRef = window.rafraichirDessinsGraphique;
-      const wrapped = function(){
-        reprojectDrawingsToCurrentGranularity();
-        stampDrawingsTime();
-        return origRef.apply(this, arguments);
-      };
-      wrapped.__chTimeAnchorWrapped = true;
-      window.rafraichirDessinsGraphique = wrapped;
-    }
-    const selGran = document.getElementById("selGranularite");
-    if(selGran && !selGran.__chTimeGranBound){
-      selGran.__chTimeGranBound = true;
-      selGran.addEventListener("change", () => {
-        setTimeout(() => {
-          reprojectDrawingsToCurrentGranularity();
-          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique();
-        }, 80);
-      });
-    }
-  }
-
-  window.addEventListener("load", () => {
-    hookTimeAnchor();
-    setTimeout(hookTimeAnchor, 400);
-    window.addEventListener("pointerup", () => setTimeout(stampDrawingsTime, 30));
-  });
-})();
-</script>
 <script id="ch-live-first-tick-fix">
 (function(){
   // 1. Vider immediatement l'ancien graphique des qu'on change de valeur ou de mode Live pour ne jamais laisser la veille affichee
@@ -8118,7 +8063,27 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     panelAutres.appendChild(tAff);
     const rAff = document.createElement("div"); rAff.className = "ch-pop-row";
     if(btnTheme) rAff.appendChild(btnTheme);
-    if(lblEtiq) rAff.appendChild(lblEtiq);
+    if(lblEtiq){ rAff.appendChild(lblEtiq); const cbE = lblEtiq.querySelector("input[type='checkbox']"); if(cbE){ cbE.checked = true; window.__CH_HIDE_CANDLE_LABELS = false; window.__CH_SHOW_CANDLE_LABELS = true; } }
+    const lblBoiteOutils = document.createElement("label");
+    lblBoiteOutils.style.cssText = "display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:#E2E8F0;font-size:12px;font-weight:600;padding:4px 8px;border:1px solid #334155;border-radius:6px;background:#0F172A;";
+    const chkBoiteOutils = document.createElement("input");
+    chkBoiteOutils.type = "checkbox";
+    chkBoiteOutils.id = "chkBoiteOutils";
+    chkBoiteOutils.checked = localStorage.getItem("ch_hud_visible") !== "0";
+    chkBoiteOutils.onchange = () => {
+      const hud = document.getElementById("ch-hud-tools");
+      if (hud) {
+        hud.style.display = chkBoiteOutils.checked ? "flex" : "none";
+        if (chkBoiteOutils.checked && (!hud.style.left || hud.style.left === "auto")) {
+          hud.style.left = "52px";
+          hud.style.top = "38px";
+        }
+      }
+      localStorage.setItem("ch_hud_visible", chkBoiteOutils.checked ? "1" : "0");
+    };
+    lblBoiteOutils.appendChild(chkBoiteOutils);
+    lblBoiteOutils.appendChild(document.createTextNode("\uD83E\uDDF0 Bo\u00EEte Outils"));
+    rAff.appendChild(lblBoiteOutils);
     panelAutres.appendChild(rAff);
     autresWrap.appendChild(btnAutres); autresWrap.appendChild(panelAutres);
 
@@ -8338,7 +8303,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const handle = document.createElement("span");
       handle.id = "chHudDragHandle";
       handle.title = "Glisser pour déplacer la barre d'outils sur le graphique";
-      handle.textContent = "⠿";
+      handle.textContent = "\u283F";
 
       const btnOrient = document.createElement("button");
       btnOrient.id = "chHudOrientBtn";
@@ -8347,25 +8312,82 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
       const savedOrient = localStorage.getItem("ch_hud_orient") || "H";
       if(savedOrient === "V") hudTools.classList.add("vertical");
-      btnOrient.textContent = hudTools.classList.contains("vertical") ? "⬌" : "⬍";
+      btnOrient.textContent = hudTools.classList.contains("vertical") ? "\u2194" : "\u2195";
 
       btnOrient.onclick = (e) => {
         e.stopPropagation();
         const isV = hudTools.classList.toggle("vertical");
-        btnOrient.textContent = isV ? "⬌" : "⬍";
+        btnOrient.textContent = isV ? "\u2194" : "\u2195";
         localStorage.setItem("ch_hud_orient", isV ? "V" : "H");
       };
 
-      ctrlBar.appendChild(handle);
-      ctrlBar.appendChild(btnOrient);
-      hudTools.insertBefore(ctrlBar, hudTools.firstChild);
+      const lblTitleHud = document.createElement("span");
+      lblTitleHud.textContent = "\uD83E\uDDF0 Outils";
+      lblTitleHud.className = "ch-hud-title-lbl"; lblTitleHud.style.cssText = "color:#F1F5F9;font-weight:700;font-size:12px;letter-spacing:0.2px;margin-right:auto;padding:0 6px 0 4px;user-select:none;white-space:nowrap;";
 
-      // Restaurer position enregistree
+      const btnCloseHud = document.createElement("button");
+      btnCloseHud.type = "button";
+      btnCloseHud.title = "Fermer la boîte Outils (rouvrir via Autres → Boîte Outils)";
+      btnCloseHud.textContent = "\u2715";
+      btnCloseHud.style.cssText = "background:rgba(239,68,68,0.16);color:#FCA5A5;border:1px solid rgba(239,68,68,0.45);border-radius:6px;width:24px;min-width:24px;max-width:24px;height:24px;flex:0 0 24px;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;";
+      btnCloseHud.onclick = (e) => {
+        e.stopPropagation();
+        hudTools.style.display = "none";
+        localStorage.setItem("ch_hud_visible", "0");
+        const chk = document.getElementById("chkBoiteOutils");
+        if (chk) chk.checked = false;
+      };
+
+      ctrlBar.style.display = "flex";
+      ctrlBar.style.alignItems = "center";
+      ctrlBar.style.width = "100%";
+      const btnMinHud = document.createElement("button");
+      btnMinHud.id = "chHudMinBtn";
+      btnMinHud.type = "button";
+      btnMinHud.title = "Masquer / Réduire la boîte Outils";
+      btnMinHud.textContent = "\u2014";
+      btnMinHud.style.cssText = "background:#CBD5E1;color:#0F172A;border:1px solid rgba(148,163,184,0.45);border-radius:6px;width:24px;min-width:24px;max-width:24px;height:24px;flex:0 0 24px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;";
+
+      const hideRecadrerBtn = () => { const pairRow = document.createElement("div"); pairRow.className = "ch-hud-pair-row"; pairRow.style.cssText = "display:flex;gap:6px;width:100%;"; Array.from(hudTools.querySelectorAll("button")).forEach(b => { if (b.closest(".ch-hud-ctrl-bar")) return; const t = (b.title || "") + " " + (b.id || "") + " " + (b.textContent || ""); if (/recadr|zoom\s*auto|réinitialiser\s*le\s*zoom/i.test(t) && !/analyse/i.test(t)) { b.style.display = "none"; } else if (/annul|undo|effac|vider|corbeille|supprim/i.test(t) && !/analyse/i.test(t)) { b.style.flex = "1"; pairRow.appendChild(b); } }); if (pairRow.children.length > 0 && !hudTools.querySelector(".ch-hud-pair-row")) { const selTool = hudTools.querySelector("select"); if (selTool) selTool.insertAdjacentElement("afterend", pairRow); } };
+      hideRecadrerBtn();
+      const setHudCollapsed = (collapsed) => {
+        Array.from(hudTools.children).forEach(chEl => {
+          if (chEl !== ctrlBar) chEl.style.display = collapsed ? "none" : "";
+        });
+        if (!collapsed) hideRecadrerBtn();
+        btnMinHud.textContent = collapsed ? "\u25A1" : "\u2014";
+        btnMinHud.title = collapsed ? "Démasquer la boîte Outils" : "Masquer / Réduire la boîte Outils";
+        hudTools.classList.toggle("ch-collapsed", collapsed); hudTools.style.padding = collapsed ? "5px 9px" : "";
+        localStorage.setItem("ch_hud_collapsed", collapsed ? "1" : "0");
+      };
+
+      btnMinHud.onclick = (e) => {
+        e.stopPropagation();
+        const isCol = localStorage.getItem("ch_hud_collapsed") === "1";
+        setHudCollapsed(!isCol);
+      };
+
+      ctrlBar.appendChild(handle);
+      ctrlBar.appendChild(lblTitleHud);
+      ctrlBar.appendChild(btnOrient);
+      ctrlBar.appendChild(btnMinHud);
+      ctrlBar.appendChild(btnCloseHud);
+      hudTools.insertBefore(ctrlBar, hudTools.firstChild);
+      if (localStorage.getItem("ch_hud_collapsed") === "1") setHudCollapsed(true);
+
+      // Position de depart en haut a gauche du graphique (52px, 38px) ou position sauvegardee
+      hudTools.style.left = "52px";
+      hudTools.style.top = "38px";
+      hudTools.style.right = "auto";
+      hudTools.style.bottom = "auto";
       try {
         const pos = JSON.parse(localStorage.getItem("ch_hud_pos") || "null");
         if(pos && typeof pos.x === "number" && typeof pos.y === "number"){
           hudTools.style.left = Math.max(4, pos.x) + "px";
           hudTools.style.top = Math.max(4, pos.y) + "px";
+        }
+        if(localStorage.getItem("ch_hud_visible") === "0"){
+          hudTools.style.display = "none";
         }
       } catch(e){}
 
@@ -8395,6 +8417,9 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           localStorage.setItem("ch_hud_pos", JSON.stringify({ x: hudTools.offsetLeft, y: hudTools.offsetTop }));
         } catch(e){}
       });
+      handle.addEventListener("touchstart", (e) => { if(e.touches.length !== 1) return; e.preventDefault(); dragging = true; startX = e.touches.item(0).clientX; startY = e.touches.item(0).clientY; origL = hudTools.offsetLeft; origT = hudTools.offsetTop; }, { passive: false });
+      window.addEventListener("touchmove", (e) => { if(!dragging || e.touches.length !== 1) return; const t0 = e.touches.item(0); const maxL = Math.max(4, chartBox.clientWidth - hudTools.offsetWidth - 4); const maxT = Math.max(4, chartBox.clientHeight - hudTools.offsetHeight - 4); hudTools.style.left = Math.min(maxL, Math.max(4, origL + (t0.clientX - startX))) + "px"; hudTools.style.top = Math.min(maxT, Math.max(4, origT + (t0.clientY - startY))) + "px"; }, { passive: true });
+      window.addEventListener("touchend", () => { if(!dragging) return; dragging = false; try { localStorage.setItem("ch_hud_pos", JSON.stringify({ x: hudTools.offsetLeft, y: hudTools.offsetTop })); } catch(e){} });
     }
 
     // B. Afficher le nom de la valeur en haut du graphique sans toucher a l'axe
@@ -8757,12 +8782,19 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     const lh = document.getElementById("lblHorlogeMarche");
     if(!lh) return;
     const tunisNow = getDateEtHeureTunis();
-    if(tunisNow.heureStr >= "15:00:00"){
-      const dInp = (document.getElementById("selDateReplay")?.value || document.getElementById("txtDateSeance")?.value || "").trim();
-      const mIso = dInp.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      const mFr = dInp.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-      const dActive = mIso ? (mIso.at(3) + mIso.at(2) + mIso.at(1)) : (mFr ? (mFr.at(1) + mFr.at(2) + mFr.at(3)) : tunisNow.dateStr);
-      const datesEssai = dActive === tunisNow.dateStr ? [tunisNow.dateStr] : [dActive, tunisNow.dateStr];
+    const dowTunis = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" })).getDay();
+    const isWeekend = (dowTunis === 0 || dowTunis === 6);
+    const isAfterClose = (tunisNow.heureStr >= "15:01:00");
+    const isBeforeOpen = (tunisNow.heureStr < "08:30:00");
+    if(isAfterClose || isBeforeOpen || isWeekend){
+      const datesEssai = [];
+      const baseDt = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+      const startOffset = isAfterClose && !isWeekend ? 0 : 1;
+      for(let off = startOffset; off <= 5; off++){
+        const dTmp = new Date(baseDt.getTime() - off * 86400000);
+        const ds = String(dTmp.getDate()).padStart(2, "0") + String(dTmp.getMonth() + 1).padStart(2, "0") + String(dTmp.getFullYear());
+        if(!datesEssai.includes(ds)) datesEssai.push(ds);
+      }
       for(const dt of datesEssai){
         try {
           const resSyn = await lireFichierViaGradio("Synthese_cloture/synthese_cloture_reel_" + dt + ".csv");
@@ -9177,6 +9209,319 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
     syncLiveSticker();
     setInterval(syncLiveSticker, 1500);
     document.getElementById("selHorizon")?.addEventListener("change", syncLiveSticker);
+  });
+})();
+</script>
+<script id="ch-exact-xaxis0-zoom">
+(function() {
+  function showZPill(txt, err) {
+    let d = document.getElementById("chZoomDiagPill");
+    if (!d) {
+      const bar = document.getElementById("statusText")?.parentElement;
+      if (bar) {
+        d = document.createElement("span");
+        d.id = "chZoomDiagPill";
+        d.style.cssText = "padding:2px 8px;border-radius:4px;font-size:10.5px;font-weight:700;margin-left:8px;white-space:nowrap;";
+        bar.insertBefore(d, bar.lastElementChild);
+      }
+    }
+    if (d) {
+      d.style.background = err ? "#450A0A" : "#0C4A6E";
+      d.style.color = err ? "#FCA5A5" : "#7DD3FC";
+      d.style.border = err ? "1px solid #EF4444" : "1px solid #0284C7";
+      d.textContent = txt;
+    }
+  }
+
+  function initExactZoom() {
+    const dom = document.querySelector("[_echarts_instance_]");
+    const ch = dom && window.echarts && window.echarts.getInstanceByDom(dom);
+    if (!ch || ch.__chExactX0Zoom) return;
+    ch.__chExactX0Zoom = true;
+
+    dom.addEventListener("wheel", function(e) {
+      try {
+        const opt = ch.getOption();
+        if (!opt || !Array.isArray(opt.grid) || opt.grid.length <= 1 || !Array.isArray(opt.dataZoom) || !opt.dataZoom.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const dz0 = opt.dataZoom.at(0) || {};
+        const curS = typeof dz0.start === "number" ? dz0.start : 0;
+        const curE = typeof dz0.end === "number" ? dz0.end : 100;
+        const span = Math.max(1, curE - curS);
+        const rect = dom.getBoundingClientRect();
+        const relX = Math.max(0, Math.min(1, (e.clientX - rect.left - 45) / Math.max(1, rect.width - 137)));
+        const anchor = curS + relX * span;
+        const factor = e.deltaY < 0 ? 0.80 : 1.25;
+        const newSpan = Math.max(2, Math.min(100, span * factor));
+        let nextS = anchor - relX * newSpan;
+        let nextE = nextS + newSpan;
+        if (nextS < 0) { nextE = Math.min(100, nextE - nextS); nextS = 0; }
+        if (nextE > 100) { nextS = Math.max(0, nextS - (nextE - 100)); nextE = 100; }
+
+        const batch = [];
+        opt.dataZoom.forEach((dz, idx) => {
+          if (dz && dz.yAxisIndex !== undefined && dz.xAxisIndex === undefined) return;
+          batch.push({ dataZoomIndex: idx, start: nextS, end: nextE });
+        });
+        if (batch.length) ch.dispatchAction({ type: "dataZoom", batch: batch });
+      } catch (err) {
+        showZPill("⚠️ WHEEL ERR: " + err.message, true);
+      }
+    }, { passive: false, capture: true });
+
+    let panDragging = false, panStartX = 0, panStartS = 0, panStartE = 100, panRaf = 0, panLastX = 0;
+    const isMainHandActive = () => {
+      if (typeof outilDessinActif !== "undefined" && outilDessinActif && outilDessinActif !== "NONE" && outilDessinActif !== "MAIN") return false;
+      if (typeof modeDessinActif !== "undefined" && modeDessinActif) return false;
+      const btnMain = Array.from(document.querySelectorAll("button,div,span")).find(el => el.children.length === 0 && (el.textContent || "").trim() === "Main libre");
+      if (btnMain && btnMain.parentElement && btnMain.parentElement.style.background && btnMain.parentElement.style.background.includes("255")) return true;
+      return true;
+    };
+
+    document.addEventListener("mousedown", function(e) {
+      if (e.button !== 0 || !isMainHandActive()) return;
+      if (e.target && e.target.closest && (e.target.closest("#chHudTools") || e.target.closest("#chIndPanel") || e.target.closest("button,select,input"))) return;
+      const opt = ch.getOption();
+      if (!opt || !Array.isArray(opt.grid) || opt.grid.length <= 1 || !Array.isArray(opt.dataZoom) || !opt.dataZoom.length) return;
+      const rect = dom.getBoundingClientRect();
+      if (e.clientX < rect.left + 40 || e.clientX > rect.right - 85 || e.clientY < rect.top + 24 || e.clientY > rect.bottom - 28) return;
+      const dz0 = opt.dataZoom.at(0) || {};
+      panStartS = typeof dz0.start === "number" ? dz0.start : 0;
+      panStartE = typeof dz0.end === "number" ? dz0.end : 100;
+      if (panStartE - panStartS >= 99.5) return;
+      panDragging = true;
+      panStartX = e.clientX;
+      panLastX = e.clientX;
+      e.preventDefault();
+      e.stopPropagation();
+      dom.style.cursor = "grabbing";
+    }, true);
+
+    window.addEventListener("mousemove", function(e) {
+      if (!panDragging) return;
+      e.preventDefault();
+      e.stopPropagation();
+      panLastX = e.clientX;
+      if (panRaf) return;
+      panRaf = requestAnimationFrame(() => {
+        panRaf = 0;
+        if (!panDragging) return;
+        const opt = ch.getOption();
+        if (!opt || !Array.isArray(opt.dataZoom)) return;
+        const rect = dom.getBoundingClientRect();
+        const plotW = Math.max(100, rect.width - 137);
+        const span = panStartE - panStartS;
+        const deltaPct = -((panLastX - panStartX) / plotW) * span;
+        let nextS = panStartS + deltaPct;
+        let nextE = panStartE + deltaPct;
+        if (nextS < 0) { nextE -= nextS; nextS = 0; }
+        if (nextE > 100) { nextS -= (nextE - 100); nextE = 100; }
+        const batch = [];
+        opt.dataZoom.forEach((dz, idx) => {
+          if (dz && dz.yAxisIndex !== undefined && dz.xAxisIndex === undefined) return;
+          batch.push({ dataZoomIndex: idx, start: nextS, end: nextE });
+        });
+        if (batch.length) ch.dispatchAction({ type: "dataZoom", batch: batch });
+      });
+    }, true);
+
+    window.addEventListener("mouseup", function(e) {
+      if (!panDragging) return;
+      panDragging = false;
+      if (panRaf) { cancelAnimationFrame(panRaf); panRaf = 0; }
+      e.stopPropagation();
+      dom.style.cursor = "";
+    }, true);
+
+    ch.on("datazoom", function() {
+      try {
+        const opt = ch.getOption();
+        if (!opt || !Array.isArray(opt.grid) || opt.grid.length <= 1) return;
+        const dz0 = (opt.dataZoom && opt.dataZoom.at(0)) || {};
+        const s = typeof dz0.start === "number" ? dz0.start : 0;
+        const e = typeof dz0.end === "number" ? dz0.end : 100;
+        const x0 = Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : opt.xAxis;
+        if (x0) {
+          let xMin = null, xMax = null;
+          if (x0.type === "category" && Array.isArray(x0.data) && x0.data.length > 1) {
+            const lastI = x0.data.length - 1;
+            xMin = +((s / 100) * lastI).toFixed(3);
+            xMax = +((e / 100) * lastI).toFixed(3);
+          } else if (typeof x0.min === "number" && typeof x0.max === "number") {
+            const fullSpan = 54000 - 32400;
+            xMin = Math.round(32400 + (s / 100) * fullSpan);
+            xMax = Math.round(32400 + (e / 100) * fullSpan);
+          }
+          if (xMin !== null && xMax !== null && xMax > xMin) {
+            ch.setOption({ xAxis: [{ min: xMin, max: xMax }] });
+          }
+          /* Zoom OK */
+        }
+      } catch (err) {
+        showZPill("⚠️ SYNC X0 ERR: " + err.message, true);
+      }
+    });
+  }
+
+  window.addEventListener("load", initExactZoom);
+  setInterval(initExactZoom, 1500);
+})();
+</script>
+<script id="ch-drawings-time-anchor">
+(function(){
+  const MOIS_MAP = { jan:1, fev:2, fév:2, mar:3, avr:4, mai:5, jun:6, jui:6, jul:7, aou:8, aoû:8, sep:9, oct:10, nov:11, dec:12, déc:12 };
+
+  function parseBougieMs(b){
+    if(!b) return NaN;
+    if(typeof b.ts === "number" && b.ts > 1e11) return b.ts;
+    if(typeof b.ts === "number" && b.ts > 1e8) return b.ts * 1000;
+    const src = String(b.date_full || "") + " " + String(b.label || "");
+    const mFull = src.match(/(\d{2})\/(\d{2})\/(\d{4})(?:[^\d]+(\d{1,2})(?::(\d{2})|h(\d{2})?)?)?/);
+    if(mFull){
+      const dd = parseInt(mFull.at(1), 10), mm = parseInt(mFull.at(2), 10), yy = parseInt(mFull.at(3), 10);
+      const hh = parseInt(mFull.at(4) || "12", 10), mi = parseInt(mFull.at(5) || mFull.at(6) || "0", 10);
+      return Date.UTC(yy, mm - 1, dd, hh, mi, 0);
+    }
+    const mShort = String(b.label || "").match(/(\d{2})\/(\d{2})(?:[^\d]+(\d{1,2})(?::(\d{2})|h(\d{2})?)?)?/);
+    const mYr = String(b.mois_annee || "").match(/([a-zA-Zéûdéc]+)\/(\d{2,4})/);
+    if(mShort){
+      const dd = parseInt(mShort.at(1), 10), mm = parseInt(mShort.at(2), 10);
+      let yy = 2026;
+      if(mYr){
+        const rawY = parseInt(mYr.at(2), 10);
+        yy = rawY < 100 ? 2000 + rawY : rawY;
+      }
+      const hh = parseInt(mShort.at(3) || "12", 10), mi = parseInt(mShort.at(4) || mShort.at(5) || "0", 10);
+      return Date.UTC(yy, mm - 1, dd, hh, mi, 0);
+    }
+    return NaN;
+  }
+
+  function getTimelineBougies(){
+    if(typeof globalData === "undefined" || !globalData || !Array.isArray(globalData.bougies) || globalData.bougies.length === 0) return null;
+    const hVal = document.getElementById("selHorizon")?.value || "";
+    const mVal = document.getElementById("selModeRendu")?.value || "";
+    const isCat = (hVal === "MULTI") || (mVal === "CHANDELIERS") || (mVal === "JAPON");
+    if(!isCat) return null;
+    const arr = globalData.bougies.map(b => parseBougieMs(b));
+    if(arr.filter(x => !isNaN(x)).length < 2) return null;
+    for(let i = 1; i < arr.length; i++){
+      if(isNaN(arr.at(i)) && !isNaN(arr.at(i - 1))) arr[i] = arr.at(i - 1) + 60000;
+    }
+    for(let i = arr.length - 2; i >= 0; i--){
+      if(isNaN(arr.at(i)) && !isNaN(arr.at(i + 1))) arr[i] = arr.at(i + 1) - 60000;
+    }
+    return arr;
+  }
+
+  window.chIndexToTimestamp = function(xVal){
+    const tl = getTimelineBougies();
+    if(!tl || typeof xVal !== "number" || isNaN(xVal)) return null;
+    const n = tl.length;
+    if(xVal <= 0) return tl.at(0) + xVal * (n > 1 ? (tl.at(1) - tl.at(0)) : 86400000);
+    if(xVal >= n - 1) return tl.at(n - 1) + (xVal - (n - 1)) * (n > 1 ? (tl.at(n - 1) - tl.at(n - 2)) : 86400000);
+    const i0 = Math.floor(xVal), i1 = Math.min(n - 1, i0 + 1), frac = xVal - i0;
+    return tl.at(i0) + frac * (tl.at(i1) - tl.at(i0));
+  };
+
+  window.chTimestampToIndex = function(ts, fallbackIdx){
+    const tl = getTimelineBougies();
+    if(!tl || typeof ts !== "number" || isNaN(ts)) return fallbackIdx;
+    const n = tl.length;
+    if(ts <= tl.at(0)){
+      const step = n > 1 ? Math.max(1, tl.at(1) - tl.at(0)) : 86400000;
+      return (ts - tl.at(0)) / step;
+    }
+    if(ts >= tl.at(n - 1)){
+      const step = n > 1 ? Math.max(1, tl.at(n - 1) - tl.at(n - 2)) : 86400000;
+      return (n - 1) + (ts - tl.at(n - 1)) / step;
+    }
+    let lo = 0, hi = n - 1;
+    while(hi - lo > 1){
+      const mid = (lo + hi) >> 1;
+      if(tl.at(mid) <= ts) lo = mid; else hi = mid;
+    }
+    const span = Math.max(1, tl.at(hi) - tl.at(lo));
+    return lo + (ts - tl.at(lo)) / span;
+  };
+
+  function syncDessinsTimestamps(forceFromTs){
+    if(typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return;
+    const tl = getTimelineBougies();
+    if(!tl) return;
+    dessinsUtilisateur.forEach(d => {
+      if(!d) return;
+      if(forceFromTs){
+        if(typeof d.ts1 === "number") d.x1 = window.chTimestampToIndex(d.ts1, d.x1);
+        if(typeof d.ts2 === "number") d.x2 = window.chTimestampToIndex(d.ts2, d.x2);
+        if(typeof d.tsc1 === "number") d.cx = window.chTimestampToIndex(d.tsc1, d.cx);
+        if(typeof d.tsc2 === "number") d.cx2 = window.chTimestampToIndex(d.tsc2, d.cx2);
+        if(Array.isArray(d.tsPoints) && Array.isArray(d.points)){
+          for(let k = 0; k < Math.min(d.tsPoints.length, d.points.length); k++){
+            if(typeof d.tsPoints.at(k) === "number") d.points[k][0] = window.chTimestampToIndex(d.tsPoints.at(k), d.points.at(k).at(0));
+          }
+        }
+      } else {
+        if(typeof d.x1 === "number") d.ts1 = window.chIndexToTimestamp(d.x1);
+        if(typeof d.x2 === "number") d.ts2 = window.chIndexToTimestamp(d.x2);
+        if(typeof d.cx === "number") d.tsc1 = window.chIndexToTimestamp(d.cx);
+        if(typeof d.cx2 === "number") d.tsc2 = window.chIndexToTimestamp(d.cx2);
+        if(Array.isArray(d.points)){
+          d.tsPoints = d.points.map(pt => window.chIndexToTimestamp(pt.at(0)));
+        }
+      }
+    });
+  }
+
+  function installDrawingAnchorHooks(){
+    if(typeof chart === "undefined" || !chart || chart.__chTimeAnchorHooked) return;
+    chart.__chTimeAnchorHooked = true;
+
+    const zr = chart.getZr && chart.getZr();
+    if(zr){
+      zr.on("mouseup", () => { syncDessinsTimestamps(false); });
+      zr.on("touchend", () => { syncDessinsTimestamps(false); });
+    }
+
+    if(typeof window.dessinerChandeliersMulti === "function" && !window.dessinerChandeliersMulti.__chTimeAnchored){
+      const origMulti = window.dessinerChandeliersMulti;
+      window.dessinerChandeliersMulti = function(){
+        const res = origMulti.apply(this, arguments);
+        syncDessinsTimestamps(true);
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+        return res;
+      };
+      window.dessinerChandeliersMulti.__chTimeAnchored = true;
+    }
+
+    if(typeof window.dessinerGraphique === "function" && !window.dessinerGraphique.__chTimeAnchored){
+      const origSingle = window.dessinerGraphique;
+      window.dessinerGraphique = function(){
+        const res = origSingle.apply(this, arguments);
+        syncDessinsTimestamps(true);
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+        return res;
+      };
+      window.dessinerGraphique.__chTimeAnchored = true;
+    }
+
+    if(typeof window.rafraichirDessinsGraphique === "function" && !window.rafraichirDessinsGraphique.__chTimeAnchored){
+      const origRaf = window.rafraichirDessinsGraphique;
+      window.rafraichirDessinsGraphique = function(){
+        if(typeof dessinEnCours !== "undefined" && dessinEnCours){
+          syncDessinsTimestamps(false);
+        }
+        return origRaf.apply(this, arguments);
+      };
+      window.rafraichirDessinsGraphique.__chTimeAnchored = true;
+    }
+  }
+
+  window.addEventListener("load", () => {
+    installDrawingAnchorHooks();
+    setTimeout(installDrawingAnchorHooks, 600);
   });
 })();
 </script>
