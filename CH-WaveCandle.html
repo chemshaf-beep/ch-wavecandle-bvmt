@@ -2017,7 +2017,9 @@ function construireElementsDessin() {
       }
       elems.push({ id: 'usr_draw_' + idx, type: 'group', silent: true, z: 112, children: chB });
     } else {
-      const estMesure = (d.type === 'MESURE' || d.type === 'MESURE_TEMPS'); const estMesureTemps = (d.type === 'MESURE_TEMPS');
+      const estMesure = (d.type === 'MESURE' || d.type === 'MESURE_TEMPS');
+      const estMesureTemps = (d.type === 'MESURE_TEMPS');
+      if (estMesureTemps) { d.y2 = d.y1; y2 = y1; }
       const dx = x2 - x1, dy = y2 - y1;
       const dist = Math.hypot(dx, dy);
       const angle = Math.atan2(dy, dx);
@@ -2029,12 +2031,25 @@ function construireElementsDessin() {
       if (textAngle < -Math.PI / 2) textAngle += Math.PI;
       let nx = Math.sin(angle), ny = -Math.cos(angle);
       if (ny > 0) { nx = -nx; ny = -ny; }
-      const midX = (x1 + x2) / 2 + nx * 10;
-      const midY = (y1 + y2) / 2 + ny * 10;
+      const midX = (x1 + x2) / 2 + nx * 12;
+      const midY = (y1 + y2) / 2 + ny * 12;
 
       const children = [
         { type: 'line', shape: { x1, y1, x2, y2 }, style: { stroke: colLigne, lineWidth: estSelectionne ? 3.2 : 2.2, lineDash: estMesure ? Array.of(4, 3) : Array.of() } }
       ];
+      if (!estMesure && d.demiDroite && dist >= 4) {
+        const gRect = chart.getModel().getComponent('grid', 0).coordinateSystem.getRect();
+        const maxProj = Math.max(gRect.width, gRect.height) * 2;
+        children.push({
+          type: 'line',
+          shape: { x1: x2, y1: y2, x2: x2 + ux * maxProj, y2: y2 + uy * maxProj },
+          style: { stroke: colLigne, lineWidth: estSelectionne ? 2.4 : 1.8, lineDash: Array.of(6, 4), opacity: 0.85 }
+        });
+      }
+      if (estMesureTemps) {
+        children.push({ type: 'line', shape: { x1: x1, y1: y1 - 8, x2: x1, y2: y1 + 8 }, style: { stroke: colLigne, lineWidth: 2 } });
+        children.push({ type: 'line', shape: { x1: x2, y1: y2 - 8, x2: x2, y2: y2 + 8 }, style: { stroke: colLigne, lineWidth: 2 } });
+      }
       if (estSelectionne) {
         children.push({ type: 'circle', shape: { cx: x1, cy: y1, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
         children.push({ type: 'circle', shape: { cx: x2, cy: y2, r: 6 }, style: { fill: '#FFFFFF', stroke: colLigne, lineWidth: 2.2 } });
@@ -2048,13 +2063,16 @@ function construireElementsDessin() {
           style: { fill: colLigne }
         });
       }
+      const txtTemps = (typeof window.chFormatMesureTemps === "function") ? window.chFormatMesureTemps(d) : "";
+      const txtPrix = signe + diffPrix.toFixed(2) + " TND (" + signe + pctPrix.toFixed(2) + "%)";
+      const txtFinal = estMesureTemps ? txtTemps : (d.type === 'MESURE' ? txtPrix : (txtPrix + (txtTemps ? ("  |  " + txtTemps) : "")));
       children.push({
         type: 'text',
         x: midX,
         y: midY,
         rotation: textAngle,
         style: {
-          text: estMesureTemps ? (function(){ const hV = document.getElementById("selHorizon")?.value || ""; const mV = document.getElementById("selModeRendu")?.value || ""; const isCat = (hV === "MULTI") || (mV === "CHANDELIERS") || (mV === "JAPON"); if(!isCat){ const sec = Math.abs(Math.round((d.x2 || 0) - (d.x1 || 0))); const hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60), ss = sec % 60; return "\u23F1 " + (hh > 0 ? hh + "h " : "") + String(mm).padStart(2,"0") + "m " + String(ss).padStart(2,"0") + "s"; } const bars = Math.abs(Math.round((d.x2 || 0) - (d.x1 || 0))); const t1 = (typeof d.ts1 === "number") ? d.ts1 : (typeof window.chIndexToTimestamp === "function" ? window.chIndexToTimestamp(d.x1) : null); const t2 = (typeof d.ts2 === "number") ? d.ts2 : (typeof window.chIndexToTimestamp === "function" ? window.chIndexToTimestamp(d.x2) : null); if(typeof t1 === "number" && typeof t2 === "number"){ const mins = Math.round(Math.abs(t2 - t1) / 60000); const j = Math.floor(mins / 1440), hh = Math.floor((mins % 1440) / 60), mm = mins % 60; const dur = j > 0 ? (j + "j " + (hh > 0 ? hh + "h" : "")) : ((hh > 0 ? hh + "h " : "") + mm + "m"); return "\u23F1 " + bars + " bougie" + (bars > 1 ? "s" : "") + " (" + dur.trim() + ")"; } return "\u23F1 " + bars + " bougie" + (bars > 1 ? "s" : ""); })() : (signe + diffPrix.toFixed(2) + " TND (" + signe + pctPrix.toFixed(2) + "%)"),
+          text: txtFinal,
           fill: colLigne,
           font: 'bold 11px Consolas',
           textAlign: 'center',
@@ -2067,6 +2085,36 @@ function construireElementsDessin() {
   return elems;
 }
 
+window.chFormatMesureTemps = function(d){
+  const hV = document.getElementById("selHorizon")?.value || "";
+  const mV = document.getElementById("selModeRendu")?.value || "";
+  const isBougieOuChandelier = (hV === "MULTI") || (mV === "CHANDELIERS") || (mV === "JAPON");
+  if(!isBougieOuChandelier){
+    const s1 = Math.round(d.x1 || 0), s2 = Math.round(d.x2 || 0);
+    const sec = Math.abs(s2 - s1);
+    const hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60), ss = sec % 60;
+    const fmtH = (s) => (typeof heureDepuisSec === "function") ? heureDepuisSec(Math.max(0, s)) : "";
+    const hDeb = fmtH(s1), hFin = fmtH(s2);
+    const dur = (hh > 0 ? hh + "h " : "") + String(mm).padStart(2,"0") + "m " + String(ss).padStart(2,"0") + "s";
+    return "\u23F1 " + (hDeb && hFin ? (hDeb + " \u2192 " + hFin + " (") : "") + dur + (hDeb && hFin ? ")" : "");
+  }
+  const bars = Math.abs(Math.round((d.x2 || 0) - (d.x1 || 0)));
+  const bArr = (typeof globalData !== "undefined" && globalData && Array.isArray(globalData.bougies)) ? globalData.bougies : [];
+  const i1 = Math.max(0, Math.min(bArr.length - 1, Math.round(d.x1 || 0)));
+  const i2 = Math.max(0, Math.min(bArr.length - 1, Math.round(d.x2 || 0)));
+  const lbl1 = bArr[i1] ? (bArr[i1].date_full || bArr[i1].label || "") : "";
+  const lbl2 = bArr[i2] ? (bArr[i2].date_full || bArr[i2].label || "") : "";
+  const t1 = (typeof d.ts1 === "number") ? d.ts1 : (typeof window.chIndexToTimestamp === "function" ? window.chIndexToTimestamp(d.x1) : null);
+  const t2 = (typeof d.ts2 === "number") ? d.ts2 : (typeof window.chIndexToTimestamp === "function" ? window.chIndexToTimestamp(d.x2) : null);
+  let dur = "";
+  if(typeof t1 === "number" && typeof t2 === "number"){
+    const mins = Math.round(Math.abs(t2 - t1) / 60000);
+    const j = Math.floor(mins / 1440), hh = Math.floor((mins % 1440) / 60), mm = mins % 60;
+    dur = j > 0 ? (j + "j" + (hh > 0 ? " " + hh + "h" : "")) : ((hh > 0 ? hh + "h " : "") + mm + "m");
+  }
+  const rangeTxt = (lbl1 && lbl2) ? (lbl1 + " \u2192 " + lbl2 + " | ") : "";
+  return "\u23F1 " + rangeTxt + bars + " bougie" + (bars > 1 ? "s" : "") + (dur ? (" (" + dur.trim() + ")") : "");
+};
 window.rafraichirDessinsGraphique = rafraichirDessinsGraphique;
 function rafraichirDessinsGraphique() {
   if (!chart) return;
@@ -6957,7 +7005,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const nom = d.type === "RESISTANCE" ? ("Résistance : " + Number(d.y1).toFixed(2) + " TND")
                   : d.type === "SUPPORT" ? ("Support : " + Number(d.y1).toFixed(2) + " TND")
                   : "Trait de tendance";
-        document.getElementById("chEditTraceLbl").textContent = nom;
+        document.getElementById("chEditTraceLbl").textContent = nom; let btnRay = document.getElementById("chBtnDemiDroite"); if(!btnRay){ btnRay = document.createElement("button"); btnRay.id = "chBtnDemiDroite"; btnRay.type = "button"; btnRay.style.cssText = "background:#0F172A;color:#38BDF8;border:1px solid #38BDF8;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;margin-left:6px;"; bar.insertBefore(btnRay, document.getElementById("chEditTraceLbl").nextSibling); } const estTend = (d.type !== "RESISTANCE" && d.type !== "SUPPORT" && d.type !== "MESURE" && d.type !== "MESURE_TEMPS" && d.type !== "RECTANGLE" && d.type !== "CRAYON_LIBRE" && d.type !== "COURBE_LIBRE"); btnRay.style.display = estTend ? "inline-flex" : "none"; btnRay.textContent = d.demiDroite ? "\u2713 Demi-droite (ON)" : "\u2197 Demi-droite"; btnRay.onclick = (ev) => { ev.stopPropagation(); d.demiDroite = !d.demiDroite; btnRay.textContent = d.demiDroite ? "\u2713 Demi-droite (ON)" : "\u2197 Demi-droite"; redrawNative(); };
         bar.style.display = "flex";
       } else {
         // Clic en dehors de tout trace -> deselectionner et fermer la barre
