@@ -1554,7 +1554,7 @@ body.theme-clair #chHudOrientBtn {
     <option value="5">Période : 05 min</option>
     <option value="10">Période : 10 min</option>
     <option value="15" selected>Période : 15 min</option>
-    <option value="30">Période : 30 min</option>
+    <option value="30">Période : 30 min</option><option value="60">Période : 1 h</option>
     <option value="60">Période : 1 heure</option>
   </select>
   <div style="margin-left:auto; display:flex; gap:16px; font-size:12px; align-items:center;">
@@ -9570,6 +9570,163 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   window.addEventListener("load", () => {
     installDrawingAnchorHooks();
     setTimeout(installDrawingAnchorHooks, 600);
+  });
+})();
+</script>
+<style id="ch-period-bar-style">
+#selGranularite, #selGranulariteIntra {
+  display: none !important;
+}
+#ch-period-bar {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 44;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 5px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.84);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 6px 20px rgba(2, 6, 23, 0.32);
+  max-width: calc(100% - 140px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#ch-period-bar::-webkit-scrollbar { display: none; }
+body.theme-clair #ch-period-bar {
+  background: rgba(255, 255, 255, 0.90);
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+}
+.ch-per-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #CBD5E1;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  height: auto !important;
+  min-height: 22px !important;
+  transition: all 0.14s ease;
+}
+body.theme-clair .ch-per-btn { color: #334155; }
+.ch-per-btn:hover {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38BDF8;
+}
+body.theme-clair .ch-per-btn:hover {
+  background: rgba(2, 132, 199, 0.10);
+  color: #0284C7;
+}
+.ch-per-btn.active {
+  background: #0284C7;
+  color: #FFFFFF !important;
+  border-color: #38BDF8;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+</style>
+<script id="ch-period-bar-script">
+(function(){
+  const PERIODES = [
+    { key: "5M", intra: "5", label: "05 min" },
+    { key: "10M", intra: "10", label: "10 min" },
+    { key: "30M", intra: "30", label: "30 min" },
+    { key: "HEURE", intra: "60", label: "1 h" },
+    { key: "JOUR", intra: null, label: "1 jour" },
+    { key: "SEMAINE", intra: null, label: "1 semaine" },
+    { key: "MOIS", intra: null, label: "1 mois" },
+    { key: "TRIMESTRE", intra: null, label: "1 trimestre" },
+    { key: "SEMESTRE", intra: null, label: "1 semestre" },
+    { key: "AN", intra: null, label: "1 an" }
+  ];
+
+  function syncPeriodBarUI(){
+    const bar = document.getElementById("ch-period-bar");
+    if(!bar) return;
+    const hVal = document.getElementById("selHorizon")?.value || "";
+    const mVal = document.getElementById("selModeRendu")?.value || "";
+    const isCandle = (hVal === "MULTI") || (mVal === "CHANDELIERS") || (mVal === "JAPON");
+    bar.style.display = isCandle ? "inline-flex" : "none";
+    if(!isCandle) return;
+
+    const activeKey = (hVal === "MULTI")
+      ? (document.getElementById("selGranularite")?.value || "JOUR")
+      : (function(){
+          const iv = document.getElementById("selGranulariteIntra")?.value || "15";
+          if(iv === "5") return "5M";
+          if(iv === "10") return "10M";
+          if(iv === "30") return "30M";
+          if(iv === "60") return "HEURE";
+          return "15M";
+        })();
+
+    bar.querySelectorAll(".ch-per-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.key === activeKey);
+    });
+  }
+
+  function applyPeriodSelection(item){
+    const selH = document.getElementById("selHorizon");
+    const selG = document.getElementById("selGranularite");
+    const selGI = document.getElementById("selGranulariteIntra");
+    const hVal = selH ? selH.value : "UNIQUE";
+
+    if(hVal === "MULTI" || !item.intra){
+      if(selG) selG.value = item.key;
+      if(selH && selH.value !== "MULTI"){
+        selH.value = "MULTI";
+        selH.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if(typeof window.chargerMultiSeances === "function"){
+        window.chargerMultiSeances();
+      }
+    } else {
+      if(selGI) selGI.value = item.intra;
+      if(typeof globalData !== "undefined" && globalData && typeof dessinerGraphique === "function"){
+        dessinerGraphique(globalData);
+      }
+    }
+    syncPeriodBarUI();
+  }
+
+  function initPeriodBar(){
+    const chartBox = document.getElementById("chart-container");
+    if(!chartBox || document.getElementById("ch-period-bar")) return;
+    if(getComputedStyle(chartBox).position === "static") chartBox.style.position = "relative";
+
+    const bar = document.createElement("div");
+    bar.id = "ch-period-bar";
+    bar.title = "Période des bougies / chandeliers";
+    PERIODES.forEach(item => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ch-per-btn";
+      btn.dataset.key = item.key;
+      btn.textContent = item.label;
+      btn.onclick = (e) => { e.stopPropagation(); applyPeriodSelection(item); };
+      bar.appendChild(btn);
+    });
+    chartBox.appendChild(bar);
+
+    ["selHorizon", "selModeRendu", "selGranularite", "selGranulariteIntra"].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener("change", () => setTimeout(syncPeriodBarUI, 20));
+    });
+    syncPeriodBarUI();
+    setInterval(syncPeriodBarUI, 800);
+  }
+
+  window.addEventListener("load", () => {
+    initPeriodBar();
+    setTimeout(initPeriodBar, 500);
   });
 })();
 </script>
