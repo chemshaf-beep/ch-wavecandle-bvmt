@@ -1295,7 +1295,7 @@ def finaliser_matrice_et_propulser(**kwargs):
 def compiler_et_sauvegarder_fichiers(df_final_cote, df_final_ordonne, liste_phases, listes_microstructure, l_qte_a, l_vol_a, l_qte_v, l_vol_v, l_qte_i, l_vol_i, l_spread_p, l_imbalance_c, a_trouve_un_trade, heure_ticker_brut, heure_ticker_pc, courbe_txt, id_phase_calculee, heure_cible_phase, action_affichage_secours, str_radar_alerte, ORDRE_COLONNES_VERROUILLES, debut_calcul):
     global registre_transactions_RAM, FICHIER_HISTO_SEANCE, FICHIER_HISTO_RAMDISK, FICHIER_TEXTE_GRILLE, FICHIER_SYNTHESE_CLOTURE, FICHIER_ETAT_RAM, EST_ARCHIVE_FINALE_ENGAGEE, MODE_PRODUCTION
     try:
-        maintenant_obj = _now_tn
+        maintenant_obj = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
         est_un_jour_ouvrable = maintenant_obj.weekday() < 5
         autoriser_ecriture_histo = est_un_jour_ouvrable or (not MODE_PRODUCTION)
 
@@ -1593,7 +1593,7 @@ def recuperer_et_analyser():
     debut_calcul = time.perf_counter_ns()
     global registre_RAM_t_moins_1, MODE_PRODUCTION, HEURE_CENTRALE_BVMT, LISTE_ENTETES_OFFICIELS, df_master_ram_cote, MODE_SIMULATION_ACTIF, LISTE_VALEURS_UNIFIEES, historique_dernier_cours
     
-    maintenant_obj = _now_tn
+    maintenant_obj = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
     regime_actif = detecter_regime_horaire(maintenant_obj.date())
     text_brut_source = executer_requete_sbe_marche_live()
     
@@ -1883,6 +1883,7 @@ def sync_github_cloud():
                         sha = json.loads(r.read().decode("utf-8")).get("sha")
                 except urllib.error.HTTPError as he:
                     if he.code != 404: raise
+                st_fp = os.stat(fp); sig_fp = (st_fp.st_size, int(st_fp.st_mtime));
                 with open(fp, "rb") as f:
                     b64 = base64.b64encode(f.read()).decode("ascii")
                 if not hasattr(sync_github_cloud, "_cache_b64"): sync_github_cloud._cache_b64 = {}
@@ -1892,7 +1893,7 @@ def sync_github_cloud():
                 payload = {"message": f"Auto-save BVMT {rel}", "content": b64}
                 if sha: payload["sha"] = sha
                 urllib.request.urlopen(urllib.request.Request(api_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT"), timeout=15).read()
-                sync_github_cloud._cache_sig[(repo, rel)] = sig_fp; sync_github_cloud._cache_b64[(repo, rel)] = b64; print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
+                if not hasattr(sync_github_cloud, "_cache_sig"): sync_github_cloud._cache_sig = {}; sync_github_cloud._cache_sig[(repo, rel)] = sig_fp; sync_github_cloud._cache_b64[(repo, rel)] = b64; print(f"[☁️ GITHUB-SYNC] {rel} sauvegardé sur GitHub ({os.path.getsize(fp)} octets).", flush=True)
             except Exception as ex_gh:
                 print(f"[⚠️ GITHUB-SYNC-ERR] ({api_url}) : {ex_gh}", flush=True)
 
@@ -1936,6 +1937,7 @@ class HandlerStationCloud(BaseHTTPRequestHandler):
             rel = unquote(p[7:]).replace("/", os.sep)
             fp = os.path.abspath(os.path.join(base, rel))
             if fp.startswith(base) and os.path.isfile(fp):
+                st_fp = os.stat(fp); sig_fp = (st_fp.st_size, int(st_fp.st_mtime));
                 with open(fp, "rb") as f: data = f.read()
                 self.send_response(200); self.send_header("Content-Type", "text/plain; charset=utf-8"); self.end_headers(); self.wfile.write(data)
             else:
@@ -2076,14 +2078,14 @@ def lancer_collecteur_bvmt():
             time.sleep(_secondes_sommeil_hors_seance())
             continue
         try: 
-            maintenant_obj = _now_tn
+            maintenant_obj = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
             heure_courante_pc = maintenant_obj.strftime("%H:%M:%S")
             date_instant_pc = maintenant_obj.strftime("%d%m%Y")
             est_jour_ouvre_courant = maintenant_obj.weekday() < 5
             
             # Surveillance une seule fois par jour apres 08:01:00 pour purger les fichiers de la veille
-            if heure_courante_pc > "08:01:00" and getattr(boucle_horloge_quartz, "_last_purge_date", "") != date_instant_pc:
-                boucle_horloge_quartz._last_purge_date = date_instant_pc
+            if heure_courante_pc > "08:01:00" and getattr(lancer_collecteur_bvmt, "_last_purge_date", "") != date_instant_pc:
+                lancer_collecteur_bvmt._last_purge_date = date_instant_pc
                 verifier_et_nettoyer_fichiers_veille(date_instant_pc)
             
             # Détection de bascule de séance (changement de jour après 08:00:00)
@@ -2141,12 +2143,13 @@ def lancer_collecteur_bvmt():
             else:
                 str_label_mode = "PRODUCTION_REEL" if MODE_PRODUCTION else "SIMULATION_VIRTUELLE"
                 
-            trame_heartbeat = f"[*] [🦅 NOYAU MASTER] PC: {heure_courante_pc} | BVMT: {HEURE_CENTRALE_BVMT} | Mode: {str_label_mode} | Noyau RAM: OK"
-            sys.stdout.write(f"\r{trame_heartbeat.ljust(110)[:110]}\x1b[K")
-            sys.stdout.flush()
+            if time.time() - getattr(lancer_collecteur_bvmt, "_last_log_t", 0) >= 30.0:
+                lancer_collecteur_bvmt._last_log_t = time.time()
+                sz_h = os.path.getsize(FICHIER_HISTO_SEANCE) if os.path.exists(FICHIER_HISTO_SEANCE) else 0
+                print(f"[*] [NOYAU MASTER] PC: {heure_courante_pc} | BVMT: {HEURE_CENTRALE_BVMT} | Mode: {str_label_mode} | CSV: {sz_h} octets", flush=True)
             
         except Exception as e_boucle:
-            sys.stdout.write(f"\r⚠️ Alerte boucle souveraine : {e_boucle}")
+            print(f"[!] Alerte boucle souveraine : {e_boucle}", flush=True)
             sys.stdout.flush()
             
         # Temporisation de sûreté
