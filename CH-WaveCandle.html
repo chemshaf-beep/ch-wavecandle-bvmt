@@ -9795,7 +9795,7 @@ body.theme-clair .ch-per-btn:hover {
   min-width: 30px !important;
 }
 #ch-hud-tools:not(.vertical) { width: max-content !important; max-width: none !important; overflow: visible !important; } #ch-hud-tools:not(.vertical) .ch-hud-ctrl-bar { width: auto !important; flex: 0 0 auto !important; }</style>
-<script id="ch-hud-width-lock">(function(){ function fixHudBox(){ const h = document.getElementById("ch-hud-tools"); if(!h) return; if(!h.classList.contains("vertical")){ h.style.setProperty("width", "max-content", "important"); h.style.setProperty("min-width", "max-content", "important"); h.style.setProperty("max-width", "none", "important"); h.style.setProperty("display", "inline-flex", "important"); } } window.addEventListener("load", () => { fixHudBox(); setTimeout(fixHudBox, 500); setTimeout(fixHudBox, 1200); setInterval(fixHudBox, 1000); }); })();</script><script id="ch-closed-market-clock-sync">
+<script id="ch-hud-width-lock">(function(){ function fixHudBox(){ const h = document.getElementById("ch-hud-tools"); if(!h) return; if(!h.classList.contains("vertical")){ h.style.setProperty("width", "max-content", "important"); h.style.setProperty("min-width", "max-content", "important"); h.style.setProperty("max-width", "none", "important"); h.style.setProperty("display", "inline-flex", "important"); } } fixHudBox(); setTimeout(fixHudBox, 200); setTimeout(fixHudBox, 800); setInterval(fixHudBox, 500); })();</script><script id="ch-closed-market-clock-sync">
 (function(){
   function getTargetClosedDateCode(){
     const now = new Date();
@@ -9823,7 +9823,7 @@ body.theme-clair .ch-per-btn:hover {
     if(!code) return;
     const fn = "synthese_cloture_reel_" + code + ".csv";
     const urls = [
-      "/Historique/Synthese_cloture/" + fn,
+      [(typeof getHfBaseUrl === "function" ? getHfBaseUrl() : ("https:/" + "/hafdev-ch-wavecandle.hf.space")), "gradio_api/file=/app/Historique/Synthese_cloture/" + fn].join("/"),
       "https://huggingface.co" + fn
     ];
     for(const u of urls){
