@@ -9795,7 +9795,7 @@ body.theme-clair .ch-per-btn:hover {
   min-width: 30px !important;
 }
 #ch-hud-tools:not(.vertical) { width: max-content !important; max-width: none !important; overflow: visible !important; } #ch-hud-tools:not(.vertical) .ch-hud-ctrl-bar { width: auto !important; flex: 0 0 auto !important; }</style>
-<script id="ch-hud-width-lock">(function(){ function fixHudBox(){ const h = document.getElementById("ch-hud-tools"); if(!h) return; if(!h.classList.contains("vertical")){ h.style.setProperty("display", "inline-flex", "important"); h.style.setProperty("max-width", "none", "important"); const kids = Array.from(h.children).filter(el => el.offsetParent !== null); if(kids.length){ const rMax = Math.max(...kids.map(el => el.getBoundingClientRect().right)); const lBox = h.getBoundingClientRect().left; const wExact = Math.ceil(rMax - lBox + 10); if(wExact > 120) h.style.setProperty("width", wExact + "px", "important"); } } } fixHudBox(); setTimeout(fixHudBox, 200); setTimeout(fixHudBox, 800); setInterval(fixHudBox, 500); })();</script><script id="ch-closed-market-clock-sync">
+<script id="ch-hud-width-lock">(function(){ function fixHudBox(){ const h = document.getElementById("ch-hud-tools"); if(!h) return; if(!h.classList.contains("vertical")){ h.style.setProperty("display", "inline-flex", "important"); h.style.setProperty("max-width", "none", "important"); h.style.setProperty("width", "max-content", "important"); h.style.setProperty("min-width", "0", "important"); } } fixHudBox(); setTimeout(fixHudBox, 200); setTimeout(fixHudBox, 800);  })();</script><script id="ch-closed-market-clock-sync">
 (function(){
   function getTargetClosedDateCode(){
     const now = new Date();
