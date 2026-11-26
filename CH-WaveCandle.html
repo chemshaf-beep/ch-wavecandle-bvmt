@@ -9795,5 +9795,81 @@ body.theme-clair .ch-per-btn:hover {
   min-width: 30px !important;
 }
 #ch-hud-tools:not(.vertical) { width: max-content !important; max-width: none !important; overflow: visible !important; } #ch-hud-tools:not(.vertical) .ch-hud-ctrl-bar { width: auto !important; flex: 0 0 auto !important; }</style>
-<script id="ch-hud-width-lock">(function(){ function fixHudBox(){ const h = document.getElementById("ch-hud-tools"); if(!h) return; if(!h.classList.contains("vertical")){ h.style.setProperty("width", "max-content", "important"); h.style.setProperty("min-width", "max-content", "important"); h.style.setProperty("max-width", "none", "important"); h.style.setProperty("display", "inline-flex", "important"); } } window.addEventListener("load", () => { fixHudBox(); setTimeout(fixHudBox, 500); setTimeout(fixHudBox, 1200); setInterval(fixHudBox, 1000); }); })();</script></body>
+<script id="ch-hud-width-lock">(function(){ function fixHudBox(){ const h = document.getElementById("ch-hud-tools"); if(!h) return; if(!h.classList.contains("vertical")){ h.style.setProperty("width", "max-content", "important"); h.style.setProperty("min-width", "max-content", "important"); h.style.setProperty("max-width", "none", "important"); h.style.setProperty("display", "inline-flex", "important"); } } window.addEventListener("load", () => { fixHudBox(); setTimeout(fixHudBox, 500); setTimeout(fixHudBox, 1200); setInterval(fixHudBox, 1000); }); })();</script><script id="ch-closed-market-clock-sync">
+(function(){
+  function getTargetClosedDateCode(){
+    const now = new Date();
+    const tn = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+    const mins = tn.getHours() * 60 + tn.getMinutes();
+    const isWeekend = (tn.getDay() === 0 || tn.getDay() === 6);
+    const isBeforeOpen = mins < 510;
+    const isClosed = isWeekend || isBeforeOpen || mins >= 900;
+    if(!isClosed) return null;
+    const target = new Date(tn);
+    if(isBeforeOpen){
+      target.setDate(target.getDate() - 1);
+    }
+    while(target.getDay() === 0 || target.getDay() === 6){
+      target.setDate(target.getDate() - 1);
+    }
+    const dd = String(target.getDate()).padStart(2, "0");
+    const mm = String(target.getMonth() + 1).padStart(2, "0");
+    const yyyy = String(target.getFullYear());
+    return dd + mm + yyyy;
+  }
+
+  async function syncClosedMarketClockFromSynthese(){
+    const code = getTargetClosedDateCode();
+    if(!code) return;
+    const fn = "synthese_cloture_reel_" + code + ".csv";
+    const urls = [
+      "/Historique/Synthese_cloture/" + fn,
+      "https://huggingface.co" + fn
+    ];
+    for(const u of urls){
+      try {
+        const res = await fetch(u, { cache: "no-store" });
+        if(!res.ok) continue;
+        const txt = await res.text();
+        const lines = txt.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if(lines.length < 2) continue;
+        const headers = lines.at(0).split(";").map(h => h.trim().replace(/^"|"$/g, ""));
+        const idxH = headers.findIndex(h => /^heure(_marche|_python)?$/i.test(h));
+        let heureSyn = "";
+        for(let i = lines.length - 1; i >= 1; i--){
+          const cols = lines.at(i).split(";").map(c => c.trim().replace(/^"|"$/g, ""));
+          if(cols.at(0) === "CONFIG_SYSTEM" && idxH >= 0 && cols.at(idxH)){
+            heureSyn = cols.at(idxH);
+            break;
+          }
+          if(!heureSyn && idxH >= 0 && /^\d{2}:\d{2}(:\d{2})?$/.test(cols.at(idxH) || "")){
+            heureSyn = cols.at(idxH);
+          }
+        }
+        if(heureSyn){
+          const boxH = document.getElementById("boxHorlogeMarche");
+          if(boxH){
+            boxH.style.display = "inline-flex";
+            const txtNode = Array.from(boxH.childNodes).find(n => n.nodeType === 3 && /\d{2}:\d{2}/.test(n.textContent));
+            if(txtNode) txtNode.textContent = " " + heureSyn + " ";
+            else {
+              const sp = boxH.querySelector("span, b, strong") || boxH;
+              if(sp !== boxH) sp.textContent = heureSyn;
+              else boxH.textContent = "\uD83D\uDD52 " + heureSyn;
+            }
+          }
+          break;
+        }
+      } catch(e){}
+    }
+  }
+
+  window.addEventListener("load", () => {
+    syncClosedMarketClockFromSynthese();
+    setTimeout(syncClosedMarketClockFromSynthese, 1500);
+    setInterval(syncClosedMarketClockFromSynthese, 30000);
+  });
+})();
+</script>
+</body>
 </html>
