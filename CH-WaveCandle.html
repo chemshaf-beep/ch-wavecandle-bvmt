@@ -9797,26 +9797,43 @@ body.theme-clair .ch-per-btn:hover {
 #ch-hud-tools:not(.vertical) { width: max-content !important; max-width: none !important; overflow: visible !important; } #ch-hud-tools:not(.vertical) .ch-hud-ctrl-bar { width: auto !important; flex: 0 0 auto !important; }</style>
 <script id="ch-hud-width-lock">
 (function(){
+  let _syncing = false;
   function syncHudFrame(){
+    if(_syncing) return;
     const h = document.getElementById("ch-hud-tools");
     if(!h) return;
-    const isVert = h.classList.contains("vertical");
-    if(!isVert){
-      h.style.setProperty("display", "inline-flex", "important");
-      h.style.setProperty("flex-direction", "row", "important");
-      h.style.setProperty("flex-wrap", "nowrap", "important");
-      h.style.setProperty("align-items", "center", "important");
-      h.style.setProperty("width", "fit-content", "important");
-      h.style.setProperty("min-width", "0", "important");
-      h.style.setProperty("max-width", "none", "important");
-      h.style.setProperty("box-sizing", "border-box", "important");
-      h.querySelectorAll("select, button, div").forEach(el => {
-        if(el.closest(".ch-hud-ctrl-bar")) return;
-        el.style.setProperty("width", "auto", "important");
-        el.style.setProperty("min-width", "auto", "important");
-        el.style.setProperty("max-width", "none", "important");
-        el.style.setProperty("flex", "0 0 auto", "important");
-      });
+    _syncing = true;
+    try {
+      const isVert = h.classList.contains("vertical");
+      if(!isVert){
+        h.style.setProperty("display", "inline-flex", "important");
+        h.style.setProperty("flex-direction", "row", "important");
+        h.style.setProperty("flex-wrap", "nowrap", "important");
+        h.style.setProperty("align-items", "center", "important");
+        h.style.setProperty("width", "fit-content", "important");
+        h.style.setProperty("min-width", "0", "important");
+        h.style.setProperty("max-width", "none", "important");
+        h.style.setProperty("box-sizing", "border-box", "important");
+        h.querySelectorAll("select, button, div").forEach(el => {
+          if(el.closest(".ch-hud-ctrl-bar")) return;
+          el.style.setProperty("width", "auto", "important");
+          el.style.setProperty("min-width", "auto", "important");
+          el.style.setProperty("max-width", "none", "important");
+          el.style.setProperty("flex", "0 0 auto", "important");
+        });
+      } else {
+        ["flex-direction", "flex-wrap", "align-items", "width", "min-width", "max-width"].forEach(p => h.style.removeProperty(p));
+        h.style.setProperty("display", "flex", "important");
+        h.style.setProperty("flex-direction", "column", "important");
+        h.style.setProperty("align-items", "stretch", "important");
+        h.style.setProperty("width", "fit-content", "important");
+        h.querySelectorAll("select, button, div").forEach(el => {
+          if(el.closest(".ch-hud-ctrl-bar")) return;
+          ["width", "min-width", "max-width", "flex"].forEach(p => el.style.removeProperty(p));
+        });
+      }
+    } finally {
+      _syncing = false;
     }
   }
   function attachHudObserver(){
@@ -9825,7 +9842,7 @@ body.theme-clair .ch-per-btn:hover {
     syncHudFrame();
     if(!h.dataset.obsAttached){
       h.dataset.obsAttached = "1";
-      new MutationObserver(() => syncHudFrame()).observe(h, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "style"] });
+      new MutationObserver(() => syncHudFrame()).observe(h, { childList: true, attributes: true, attributeFilter: ["class"] });
     }
   }
   attachHudObserver();
