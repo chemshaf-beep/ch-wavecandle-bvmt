@@ -1769,7 +1769,13 @@ def _sync_lot_vers_hf_space(paires_rel_fp, msg="Auto-archive BVMT lot"):
             ops.append(CommitOperationAdd(path_in_repo=clean_rel, path_or_fileobj=fp))
         if not ops:
             return
+        if not hasattr(_sync_lot_vers_hf_space, "_sent_sigs"):
+            _sync_lot_vers_hf_space._sent_sigs = {}
+        sig_lot = tuple((op.path_in_repo, os.path.getsize(op.path_or_fileobj)) for op in ops)
+        if _sync_lot_vers_hf_space._sent_sigs.get(repo_hf) == sig_lot:
+            return
         api_hf.create_commit(repo_id=repo_hf, repo_type="space", operations=ops, commit_message=msg)
+        _sync_lot_vers_hf_space._sent_sigs[repo_hf] = sig_lot
         print(f"[🤗 HF-BATCH-SYNC] {len(ops)} fichier(s) archive(s) en 1 seul commit sur Hugging Face.", flush=True)
     except Exception as ex_hf:
         print(f"[⚠️ HF-BATCH-SYNC-ERR] : {ex_hf}", flush=True)
@@ -2330,6 +2336,20 @@ def _boucle_index_cloud():
     while True:
         _tz_tn = datetime.timezone(datetime.timedelta(hours=1))
         _now_tn = datetime.datetime.now(_tz_tn)
+        try:
+            _r_chk = detecter_regime_horaire(_now_tn.date()) if "detecter_regime_horaire" in globals() else "HIVER"
+            _s_chk = "1300" if _r_chk in ("ETE", "RAMADAN") else "1500"
+            if _now_tn.weekday() < 5 and _now_tn.strftime("%H%M") >= _s_chk and not globals().get("EST_ARCHIVE_FINALE_ENGAGEE", False):
+                if "FICHIER_SYNTHESE_CLOTURE" in globals() and "df_final_ordonne" in globals() and df_final_ordonne is not None and not df_final_ordonne.empty:
+                    os.makedirs(os.path.dirname(FICHIER_SYNTHESE_CLOTURE), exist_ok=True)
+                    cols_s = [c for c in ORDRE_COLONNES_VERROUILLES if c in df_final_ordonne.columns] if "ORDRE_COLONNES_VERROUILLES" in globals() else list(df_final_ordonne.columns)
+                    df_final_ordonne[cols_s].to_csv(FICHIER_SYNTHESE_CLOTURE, sep=";", index=False, encoding="utf-8", lineterminator="\n")
+                    globals()["EST_ARCHIVE_FINALE_ENGAGEE"] = True
+                    if "sync_github_cloud" in globals(): sync_github_cloud()
+                    if "_sync_lot_vers_hf_space" in globals():
+                        _sync_lot_vers_hf_space([("Historique/bourse_historique_reel/" + os.path.basename(FICHIER_HISTO_SEANCE), FICHIER_HISTO_SEANCE), ("Historique/Synthese_cloture/" + os.path.basename(FICHIER_SYNTHESE_CLOTURE), FICHIER_SYNTHESE_CLOTURE)], f"Auto-archive BVMT cloture {os.path.basename(FICHIER_SYNTHESE_CLOTURE)}")
+        except Exception:
+            pass
         if _pull_historique_github_complet(force=False) > 0:
             try: _generer_index_et_whitelist()
             except Exception: pass
