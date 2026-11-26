@@ -9733,15 +9733,15 @@ body.theme-clair .ch-per-btn:hover {
 </script>
 <style id="ch-hud-horizontal-polish-v2">
 #ch-hud-tools.horizontal,
-#ch-hud-tools:not(.vertical) {
+#ch-hud-tools:not(.vertical) { justify-content: flex-start !important; box-sizing: border-box !important;
   display: inline-flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
   gap: 5px !important;
   padding: 4px 8px !important;
-  width: auto !important;
-  max-width: calc(100vw - 24px) !important;
+  width: fit-content !important;
+  max-width: none !important;
 }
 #ch-hud-tools:not(.vertical) select,
 #ch-hud-tools:not(.vertical) button {
@@ -9762,7 +9762,7 @@ body.theme-clair .ch-per-btn:hover {
 }
 </style>
 <style id="ch-hud-horizontal-polish">
-#ch-hud-tools:not(.vertical) {
+#ch-hud-tools:not(.vertical) { justify-content: flex-start !important; box-sizing: border-box !important;
   gap: 5px !important;
   padding: 4px 8px !important;
   max-width: calc(100vw - 24px) !important;
