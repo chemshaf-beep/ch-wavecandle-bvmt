@@ -6915,7 +6915,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
   let dragLastData = null;
 
   function redrawNative(){
-    if(typeof chart === "undefined" || !chart) return;
+    if(typeof chart === "undefined" || !chart) return new Array(0, 100);
     if(typeof rafraichirDessinsGraphique === "function"){
       rafraichirDessinsGraphique();
     } else if(typeof construireElementsDessin === "function"){
@@ -9980,6 +9980,68 @@ body.theme-clair #chLogoPickerDrop { background: #FFFFFF; color: #0F172A; border
   function initVisualLogoDropdown(){ const sel = document.getElementById("selTicker"), topLogo = document.getElementById("chUnifiedTickerBtn") || document.getElementById("chTopTickerLogo"); if(!sel || !topLogo || document.getElementById("chLogoPickerDrop")) return; const drop = document.createElement("div"); drop.id = "chLogoPickerDrop"; drop.innerHTML = '<input id="chLogoPickerSearch" type="text" placeholder="Rechercher parmi les 77 valeurs BVMT..." /><div id="chLogoPickerList"></div>'; document.body.appendChild(drop); const inp = drop.querySelector("#chLogoPickerSearch"), listBox = drop.querySelector("#chLogoPickerList"); function renderItems(filter){ const q = (filter || "").trim().toUpperCase(), cur = (sel.value || "").trim().toUpperCase(); listBox.innerHTML = ""; Array.from(sel.options).forEach(opt => { const val = opt.value.trim().toUpperCase(); if(q && !val.includes(q)) return; const row = document.createElement("div"); row.className = "ch-lp-item" + (val === cur ? " active" : ""); const im = document.createElement("img"); im.className = "ch-tk-logo-img"; setImgWithFallback(im, val); const sp = document.createElement("span"); sp.textContent = opt.textContent || val; row.appendChild(im); row.appendChild(sp); row.onclick = () => { sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true })); drop.style.display = "none"; syncTickerLogos(); }; listBox.appendChild(row); }); } topLogo.onclick = (e) => { e.stopPropagation(); if(drop.style.display === "flex"){ drop.style.display = "none"; return; } const r = topLogo.getBoundingClientRect(); drop.style.left = Math.max(8, r.left) + "px"; drop.style.top = (r.bottom + 6) + "px"; drop.style.display = "flex"; inp.value = ""; renderItems(""); setTimeout(() => inp.focus(), 30); }; inp.oninput = () => renderItems(inp.value); drop.onclick = (e) => e.stopPropagation(); document.addEventListener("click", () => { drop.style.display = "none"; }); }
   function bootLogos(){ syncTickerLogos(); initVisualLogoDropdown(); const sel = document.getElementById("selTicker"); if(sel && !sel.dataset.logoHooked){ sel.dataset.logoHooked = "1"; sel.addEventListener("change", syncTickerLogos); } }
   bootLogos(); window.addEventListener("load", bootLogos); setInterval(bootLogos, 700);
+})();</script>
+<script id="ch-yaxis-hover-zoom">
+(function(){
+  function bindYAxisExclusiveZoom(){
+    const box = document.getElementById("chart-container");
+    if(!box || box.dataset.yHoverZoomBound === "1") return;
+    box.dataset.yHoverZoomBound = "1";
+    const Y_AXIS_ZONE_PX = 92;
+    let yDragActive = false, yDragStartY = 0, yDragStartRange = new Array(0, 100);
+    function isOverYAxis(clientX){ const r = box.getBoundingClientRect(); return clientX >= (r.right - Y_AXIS_ZONE_PX) && clientX <= r.right; }
+    function getYZoomRange(){
+      if(typeof chart === "undefined" || !chart) return new Array(0, 100);
+      const opt = chart.getOption(), dzList = (opt && opt.dataZoom) || [];
+      const dzY = dzList.find(d => d.id === "zoomY_inside" || d.id === "zoomY_slider" || (Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(0)) || d.yAxisIndex === 0);
+      if(!dzY) return new Array(0, 100);
+      return new Array(typeof dzY.start === "number" ? dzY.start : 0, typeof dzY.end === "number" ? dzY.end : 100);
+    }
+    function applyYZoom(newStart, newEnd){
+      if(typeof chart === "undefined" || !chart) return;
+      const s = Math.max(0, Math.min(98, newStart)), e = Math.min(100, Math.max(s + 2, newEnd));
+      const opt = chart.getOption(), dzList = (opt && opt.dataZoom) || [];
+      dzList.forEach(d => {
+        const isY = d.id === "zoomY_inside" || d.id === "zoomY_slider" || (Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(0)) || d.yAxisIndex === 0;
+        if(isY && d.id) chart.dispatchAction({ type: "dataZoom", dataZoomId: d.id, start: s, end: e });
+      });
+    }
+    box.addEventListener("mousemove", (e) => {
+      if(yDragActive){
+        const r = box.getBoundingClientRect(), dy = e.clientY - yDragStartY;
+        const deltaPct = (dy / Math.max(120, r.height)) * 80;
+        const center = (yDragStartRange.at(0) + yDragStartRange.at(1)) / 2;
+        const halfSpan = Math.max(2, Math.min(50, ((yDragStartRange.at(1) - yDragStartRange.at(0)) / 2) + deltaPct));
+        applyYZoom(center - halfSpan, center + halfSpan);
+        return;
+      }
+      if(isOverYAxis(e.clientX)) box.style.cursor = "ns-resize";
+      else if(box.style.cursor === "ns-resize") box.style.cursor = "";
+    }, true);
+    box.addEventListener("mousedown", (e) => {
+      if(e.button !== 0 || !isOverYAxis(e.clientX)) return;
+      yDragActive = true; yDragStartY = e.clientY; yDragStartRange = getYZoomRange();
+      e.stopPropagation(); e.preventDefault();
+    }, true);
+    window.addEventListener("mouseup", () => { if(yDragActive){ yDragActive = false; box.style.cursor = ""; } }, true);
+    box.addEventListener("wheel", (e) => {
+      if(!isOverYAxis(e.clientX)) return;
+      e.preventDefault(); e.stopPropagation();
+      const r = box.getBoundingClientRect();
+      const ratioFromBottom = 1 - Math.max(0, Math.min(1, (e.clientY - r.top) / Math.max(1, r.height)));
+      const cur = getYZoomRange(), curS = cur.at(0), curE = cur.at(1), span = curE - curS;
+      const factor = e.deltaY > 0 ? 1.15 : 0.87;
+      const newSpan = Math.max(2, Math.min(100, span * factor));
+      const anchor = curS + ratioFromBottom * span;
+      let newS = anchor - ratioFromBottom * newSpan, newE = newS + newSpan;
+      if(newS < 0){ newE = Math.min(100, newE - newS); newS = 0; }
+      if(newE > 100){ newS = Math.max(0, newS - (newE - 100)); newE = 100; }
+      applyYZoom(newS, newE);
+    }, { capture: true, passive: false });
+  }
+  bindYAxisExclusiveZoom();
+  window.addEventListener("DOMContentLoaded", bindYAxisExclusiveZoom);
+  window.addEventListener("load", bindYAxisExclusiveZoom);
 })();</script>
 </body>
 </html>
