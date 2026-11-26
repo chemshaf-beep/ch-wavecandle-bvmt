@@ -1362,22 +1362,35 @@ def compiler_et_sauvegarder_fichiers(df_final_cote, df_final_ordonne, liste_phas
                 except:
                     pass
 
-        # Gestion comptable du Closing de Place (15h00) — BLOQUÉE LE WEEK-END
+        # Gestion comptable du Closing de Place (13h00 Ete/Ramadan, 15h00 Hiver)
+        _now_tn_close = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
+        _h_sys_tn = _now_tn_close.strftime("%H%M")
+        _regime_close = detecter_regime_horaire(_now_tn_close.date()) if "detecter_regime_horaire" in globals() else "HIVER"
+        _seuil_close = "1300" if _regime_close in ("ETE", "RAMADAN") else "1500"
         h_clean_brut_test = str(heure_ticker_brut).replace(":", "").strip()[:4]
-        if est_un_jour_ouvrable and h_clean_brut_test >= "1500" and not EST_ARCHIVE_FINALE_ENGAGEE:
+        if est_un_jour_ouvrable and (h_clean_brut_test >= _seuil_close or _h_sys_tn >= _seuil_close) and not EST_ARCHIVE_FINALE_ENGAGEE:
             try:
-                if os.path.exists(FICHIER_HISTO_RAMDISK):
-                    if MODE_PRODUCTION:
-                        df_ramdisk = pd.read_csv(FICHIER_HISTO_RAMDISK, sep=";", low_memory=False)
-                        df_ramdisk = df_ramdisk.dropna(how='all')
-                        df_ramdisk.to_csv(FICHIER_HISTO_SEANCE, sep=';', index=False, encoding='utf-8', lineterminator="\n")
-                        print(f"\n[🏁] CLOSING MARCHÉ RÉEL : Données de session consolidées sur disque C:.")
-                    
-                if MODE_PRODUCTION:
-                    df_final_ordonne.to_csv(FICHIER_SYNTHESE_CLOTURE, sep=";", index=False, encoding="utf-8", lineterminator="\n")
+                os.makedirs(os.path.dirname(FICHIER_HISTO_SEANCE), exist_ok=True)
+                os.makedirs(os.path.dirname(FICHIER_SYNTHESE_CLOTURE), exist_ok=True)
+                if os.path.exists(FICHIER_HISTO_RAMDISK) and os.path.getsize(FICHIER_HISTO_RAMDISK) > 100:
+                    df_ramdisk = pd.read_csv(FICHIER_HISTO_RAMDISK, sep=";", low_memory=False).dropna(how="all")
+                    df_ramdisk.to_csv(FICHIER_HISTO_SEANCE, sep=";", index=False, encoding="utf-8", lineterminator="\n")
+                    print(f"\n[CLOSING] Journal consolide ({os.path.getsize(FICHIER_HISTO_SEANCE)} octets).", flush=True)
+                cols_syn = [c for c in ORDRE_COLONNES_VERROUILLES if c in df_final_ordonne.columns] if "ORDRE_COLONNES_VERROUILLES" in globals() else list(df_final_ordonne.columns)
+                df_final_ordonne[cols_syn].to_csv(FICHIER_SYNTHESE_CLOTURE, sep=";", index=False, encoding="utf-8", lineterminator="\n")
+                print(f"[CLOSING] Synthese cloture generee : {os.path.basename(FICHIER_SYNTHESE_CLOTURE)} ({os.path.getsize(FICHIER_SYNTHESE_CLOTURE)} octets).", flush=True)
                 EST_ARCHIVE_FINALE_ENGAGEE = True
+                def _push_cloture_immediate(p_histo, p_syn):
+                    try:
+                        if "sync_github_cloud" in globals(): sync_github_cloud()
+                        if "_sync_vers_hf_space" in globals():
+                            if os.path.isfile(p_histo): _sync_vers_hf_space("Historique/bourse_historique_reel/" + os.path.basename(p_histo), p_histo)
+                            if os.path.isfile(p_syn): _sync_vers_hf_space("Historique/Synthese_cloture/" + os.path.basename(p_syn), p_syn)
+                    except Exception as ex_pc:
+                        print(f"[PUSH-CLOTURE-ERR] {ex_pc}", flush=True)
+                threading.Thread(target=_push_cloture_immediate, args=(FICHIER_HISTO_SEANCE, FICHIER_SYNTHESE_CLOTURE), daemon=True).start()
             except Exception as e_cloture:
-                print(f"⚠️ Échec du transfert de clôture nominale : {e_cloture}")
+                print(f"[CLOTURE-ERR] {e_cloture}", flush=True)
 
         # Affichage console synchrone
         heure_systeme_actuelle = time.strftime('%H:%M:%S')
@@ -1733,6 +1746,33 @@ from urllib.parse import unquote, urlparse
 GH_TOKEN = os.environ.get("GH_TOKEN", "").strip()
 GH_REPO = (os.environ.get("GH_DATA_REPO", "") or os.environ.get("GH_REPO", "")).strip()
 _LAST_GH_SYNC = 0.0
+
+def _sync_lot_vers_hf_space(paires_rel_fp, msg="Auto-archive BVMT lot"):
+    try:
+        hf_tk = (os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or "").strip()
+        if not hf_tk or not paires_rel_fp:
+            return
+        from huggingface_hub import HfApi, CommitOperationAdd
+        api_hf = HfApi(token=hf_tk)
+        repo_hf = os.getenv("SPACE_ID", "hafdev/ch-wavecandle").strip()
+        ops = []
+        vues = set()
+        for rel, fp in paires_rel_fp:
+            if not fp or not os.path.isfile(fp) or os.path.getsize(fp) <= 100:
+                continue
+            clean_rel = rel.lstrip("/")
+            if not clean_rel.startswith("Historique/"):
+                clean_rel = "Historique/" + clean_rel
+            if clean_rel in vues:
+                continue
+            vues.add(clean_rel)
+            ops.append(CommitOperationAdd(path_in_repo=clean_rel, path_or_fileobj=fp))
+        if not ops:
+            return
+        api_hf.create_commit(repo_id=repo_hf, repo_type="space", operations=ops, commit_message=msg)
+        print(f"[🤗 HF-BATCH-SYNC] {len(ops)} fichier(s) archive(s) en 1 seul commit sur Hugging Face.", flush=True)
+    except Exception as ex_hf:
+        print(f"[⚠️ HF-BATCH-SYNC-ERR] : {ex_hf}", flush=True)
 
 def _sync_vers_hf_space(rel, fp):
     try:
@@ -2190,11 +2230,12 @@ def _pull_historique_github_complet(force=False):
     today_key = _now_tn.strftime("%Y-%m-%d")
     if not force and _LAST_PULL_DATE_TN == today_key:
         return 0
-    tk = globals().get("GH_TOKEN", "").strip()
+    tk = (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or globals().get("GH_TOKEN") or "").strip()
     repos = []
-    for r_cand in ["chemshaf-beep/ch-wavecandle-bvmt", globals().get("GH_REPO", "").strip()]:
+    for r_cand in ["chemshaf-beep/ch-wavecandle-bvmt", os.environ.get("GH_DATA_REPO", "").strip(), os.environ.get("GH_REPO", "").strip(), globals().get("GH_REPO", "").strip()]:
         if r_cand and r_cand not in repos:
             repos.append(r_cand)
+    print(f"[☁️ GITHUB-PULL-CHECK] token={'OK' if tk else 'VIDE'} | repos={repos}", flush=True)
     if not tk or not repos:
         return 0
     headers = {
@@ -2202,10 +2243,11 @@ def _pull_historique_github_complet(force=False):
         "Accept": "application/vnd.github+json",
         "User-Agent": "CH-WaveCandle-HFT"
     }
-    nb_dl = 0
+    nb_dl = 0; lot_hf_pull = []
     for repo in repos:
         for sub in ["bourse_historique_reel", "Synthese_cloture"]:
-            api_url = f"https://github.com{repo}/contents/Historique/{sub}"
+          for prefix_gh in ["Historique/", ""]:
+            api_url = "/".join(["https:/", "api.github.com", "repos", repo, "contents", f"{prefix_gh}{sub}"])
             try:
                 req = urllib.request.Request(api_url, headers=headers)
                 with urllib.request.urlopen(req, timeout=15) as resp:
@@ -2222,6 +2264,12 @@ def _pull_historique_github_complet(force=False):
                         continue
                     fp = os.path.join(dest_dir, fn)
                     if os.path.exists(fp) and os.path.getsize(fp) == gh_size and gh_size > 0:
+                        try:
+                            _d_recent = [(_now_tn - datetime.timedelta(days=k)).strftime("%d%m%Y") for k in range(0, 4)]
+                            if force and any(dt_r in fn for dt_r in _d_recent):
+                                lot_hf_pull.append((f"Historique/{sub}/{fn}", fp))
+                        except Exception:
+                            pass
                         continue
                     with urllib.request.urlopen(urllib.request.Request(dl_url, headers=headers), timeout=20) as r_dl:
                         raw_bytes = r_dl.read()
@@ -2232,11 +2280,12 @@ def _pull_historique_github_complet(force=False):
                         try:
                             _d_recent = [(_now_tn - datetime.timedelta(days=k)).strftime("%d%m%Y") for k in range(0, 4)]
                             if any(dt_r in fn for dt_r in _d_recent):
-                                _sync_vers_hf_space(f"Historique/{sub}/{fn}", fp)
+                                lot_hf_pull.append((f"Historique/{sub}/{fn}", fp))
                         except Exception:
                             pass
             except Exception as ex_pull:
                 log_diag_py("GH_HIST_PULL_ERR", f"{sub}: {ex_pull}")
+    if lot_hf_pull and "_sync_lot_vers_hf_space" in globals(): _sync_lot_vers_hf_space(lot_hf_pull, f"Auto-sync BVMT historique {today_key}")
     _LAST_PULL_DATE_TN = today_key
     if nb_dl > 0:
         print(f"[☁️ GITHUB-PULL] {nb_dl} fichier(s) historique(s) synchronisé(s) vers Hugging Face ({today_key}).", flush=True)
@@ -3330,4 +3379,5 @@ with gr.Blocks(title="CH-WaveCandle HFT") as demo:
 if __name__ == "__main__":
     threading.Thread(target=lancer_collecteur_bvmt, daemon=True).start()
     threading.Thread(target=boucle_synchro_github, daemon=True).start()
+    threading.Thread(target=lambda: (_pull_historique_github_complet(force=True), _generer_index_et_whitelist()), daemon=True).start()
     demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", "7860")), ssr_mode=False, app_kwargs={"middleware": [Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])]})
