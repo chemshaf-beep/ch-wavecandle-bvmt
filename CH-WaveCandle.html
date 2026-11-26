@@ -2280,7 +2280,7 @@ function restaurerStatsGlobales() {
   appliquerStatsBandeau(calculerStatsPlage(secMin, secMax));
 }
 
-function dessinerChandeliersMulti(data) { if (document.getElementById('selHorizon')?.value !== 'MULTI') return;
+function dessinerChandeliersMulti(data) { if (document.getElementById('selHorizon')?.value !== 'MULTI' && data?.granularite !== 'INTRA') return;
   const bougies = data.bougies;
   if (!bougies || !bougies.length) { chart.clear(); return; }
   const maxVolBougie = Math.max(...bougies.map(b => b.vol_tot), 1);
