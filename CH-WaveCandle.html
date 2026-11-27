@@ -103,7 +103,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href='data:application/manifest+json,{"name":"CH-WaveCandle HFT","short_name":"WaveCandle","display":"fullscreen","orientation":"landscape","background_color":"#020617","theme_color":"#020617"}'>
+<link rel="manifest" href='data:application/manifest+json,{"name":"CH-WaveCandle HFT","short_name":"WaveCandle","display":"fullscreen","orientation":"landscape","background_color":"%23020617","theme_color":"%23020617"}'>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <!-- CH_CACHE_GZIP_START -->
@@ -1165,6 +1165,90 @@ body.theme-clair #chHudOrientBtn {
   margin-bottom: 0 !important;
 }
 #ch-hud-tools:not(.vertical) { width: max-content !important; max-width: none !important; overflow: visible !important; } #ch-hud-tools:not(.vertical) .ch-hud-ctrl-bar { width: auto !important; flex: 0 0 auto !important; }</style>
+<script id="ch-sync-zoom-and-logos">
+window.__CH_GET_INIT_X_ZOOM = function(bougies){
+  const a = window.__CH_SAVED_PERIOD_ZOOM;
+  if(!a || !a.hasX || !Array.isArray(bougies) || bougies.length < 3) return {};
+  let s = a.pctStart, e = a.pctEnd;
+  if(a.dateStart && a.dateEnd){
+    const d1 = a.dateStart.slice(0, 16), d2 = a.dateEnd.slice(0, 16);
+    let i1 = bougies.findIndex(b => (b.date_deb_iso || b.cle || "").slice(0, 16) >= d1);
+    let i2 = -1;
+    for(let k = bougies.length - 1; k >= 0; k--){
+      if((bougies.at(k).date_fin_iso || bougies.at(k).cle || "").slice(0, 16) <= d2){ i2 = k; break; }
+    }
+    if(i1 >= 0 && i2 >= i1){
+      const minCandles = Math.min(bougies.length, 6);
+      if((i2 - i1 + 1) < minCandles){
+        const mid = Math.floor((i1 + i2) / 2);
+        i1 = Math.max(0, mid - Math.floor(minCandles / 2));
+        i2 = Math.min(bougies.length - 1, i1 + minCandles - 1);
+        i1 = Math.max(0, i2 - minCandles + 1);
+      }
+      s = (i1 / (bougies.length - 1)) * 100;
+      e = (i2 / (bougies.length - 1)) * 100;
+    }
+  }
+  const minSpan = Math.min(100, (Math.min(bougies.length, 6) / bougies.length) * 100);
+  if((e - s) < minSpan){
+    const c = (s + e) / 2;
+    s = Math.max(0, c - minSpan / 2);
+    e = Math.min(100, s + minSpan);
+    s = Math.max(0, e - minSpan);
+  }
+  if(s > 94){ s = Math.max(0, 100 - minSpan); e = 100; } return { start: Math.max(0, Math.min(98, s)), end: Math.min(100, Math.max(s + 2, e)) };
+};
+
+window.__CH_GET_INIT_Y_ZOOM = function(bougies){
+  const a = window.__CH_SAVED_PERIOD_ZOOM;
+  if(!a || !a.hasY || !Array.isArray(bougies) || bougies.length === 0) return {};
+  let axisMin = Infinity, axisMax = -Infinity;
+  for(const b of bougies){
+    const lo = Number(b.low ?? b.min ?? b.close ?? b.prix_fin);
+    const hi = Number(b.high ?? b.max ?? b.close ?? b.prix_fin);
+    if(lo > 0 && lo < axisMin) axisMin = lo;
+    if(hi > 0 && hi > axisMax) axisMax = hi;
+  }
+  if(!(axisMax > axisMin)) return {};
+  const pad = Math.max(0.02, (axisMax - axisMin) * 0.08);
+  axisMin = Math.max(0.01, axisMin - pad);
+  axisMax = axisMax + pad;
+  const span = axisMax - axisMin;
+  let ys = ((a.priceMin - axisMin) / span) * 100;
+  let ye = ((a.priceMax - axisMin) / span) * 100;
+  ys = Math.max(0, Math.min(95, ys));
+  ye = Math.min(100, Math.max(ys + 5, ye));
+  if(ys <= 0.5 && ye >= 99.5) return {};
+  return { start: ys, end: ye };
+};</script>
+<script id="ch-safe-coord-guard">
+(function(){
+  function wrapChartCoordMethods(){
+    if(typeof chart === "undefined" || !chart || chart.__chCoordGuarded) return;
+    chart.__chCoordGuarded = true;
+    const origFrom = chart.convertFromPixel.bind(chart);
+    const origTo = chart.convertToPixel.bind(chart);
+    chart.convertFromPixel = function(){
+      try {
+        const m = chart.getModel ? chart.getModel() : null;
+        const s0 = m && m.getSeriesByIndex ? m.getSeriesByIndex(0) : null;
+        if(!s0 || !s0.coordinateSystem) return new Array(NaN, NaN);
+        return origFrom.apply(chart, arguments);
+      } catch(e){ return new Array(NaN, NaN); }
+    };
+    chart.convertToPixel = function(){
+      try {
+        const m = chart.getModel ? chart.getModel() : null;
+        const s0 = m && m.getSeriesByIndex ? m.getSeriesByIndex(0) : null;
+        if(!s0 || !s0.coordinateSystem) return new Array(NaN, NaN);
+        return origTo.apply(chart, arguments);
+      } catch(e){ return new Array(NaN, NaN); }
+    };
+  }
+  wrapChartCoordMethods();
+  setInterval(wrapChartCoordMethods, 500);
+})();
+</script>
 </head>
 <body>
 <style>
@@ -1511,8 +1595,8 @@ body.theme-clair #chHudOrientBtn {
   <select id="selGranularite" style="display:none;">
     <option value="JOUR">Bougie : Journée</option>
     <option value="HEURE">Bougie : Heure</option>
-    <option value="15M">Bougie : 15 Minutes</option>
-    <option value="SEMAINE">Bougie : Semaine</option>
+    <option value="5M">Bougie : 05 Minutes</option><option value="10M">Bougie : 10 Minutes</option><option value="15M">Bougie : 15 Minutes</option><option value="30M">Bougie : 30 Minutes</option>
+    <option value="SEMAINE">Bougie : Semaine</option><option value="MOIS">Bougie : Mois</option><option value="TRIMESTRE">Bougie : Trimestre</option><option value="SEMESTRE">Bougie : Semestre</option><option value="ANNEE">Bougie : Année</option>
     <option value="MOIS">Bougie : Mois</option>
   </select>
   <select id="selCadenceLive" style="display:none;">
@@ -1798,7 +1882,7 @@ function creerElementAgressivite(posPct, st) {
   _dernierPiePos = posPct;
   _dernierPieSt = st;
   const w = chart.getWidth(), h = chart.getHeight();
-  const cx = (parseFloat(posPct.at(0)) / 100) * w;
+  try { const optS0 = chart.getOption()?.series; const pS0 = Array.isArray(optS0) ? optS0.find(s => s && (s.id === 'pieCamembert' || s.type === 'pie')) : null; if(pS0 && Array.isArray(pS0.center) && pS0.center.length >= 2 && document.getElementById('selPosCamembert')?.value !== 'MANUEL'){ posPct = pS0.center; _dernierPiePos = posPct; } } catch(e){} const cx = (parseFloat(posPct.at(0)) / 100) * w;
   const cy = (parseFloat(posPct.at(1)) / 100) * h;
   const rayonPx = Math.min(w, h) * 0.11;
   const agr = infoAgressivite(st);
@@ -1823,12 +1907,24 @@ function creerElementAgressivite(posPct, st) {
   };
 }
 function placerLabelAgressivite(posPct, st) {
-  const elPie = creerElementAgressivite(posPct, st);
+  if (!chart) return;
+  let syncPos = posPct;
+  try {
+    const optS = chart.getOption()?.series;
+    const pieS = Array.isArray(optS) ? optS.find(s => s && (s.id === 'pieCamembert' || s.type === 'pie')) : null;
+    if ((!Array.isArray(syncPos) || syncPos.length < 2) && pieS && Array.isArray(pieS.center) && pieS.center.length >= 2) {
+      syncPos = pieS.center;
+    }
+  } catch(e){}
+  const elPie = creerElementAgressivite(syncPos, st);
   if (elPie && chart) {
+    const isMasque = (document.getElementById('selPosCamembert')?.value === 'MASQUE');
+    const rPie = isMasque ? new Array(0, 0) : new Array('0%', '22%');
     chart.setOption({
-      title: [{ show: false }, { show: false }],
-      graphic: [elPie]
-    }, { replaceMerge: ['graphic'] });
+      title: new Array({ show: false }, { show: false }),
+      series: new Array({ id: 'pieCamembert', center: syncPos, radius: rPie }),
+      graphic: new Array(elPie)
+    }, { replaceMerge: new Array('graphic') });
   }
 }
 function _old_placer(posPct, st) {
@@ -2309,10 +2405,10 @@ function dessinerChandeliersMulti(data) { if (document.getElementById('selHorizo
       }
     },
     dataZoom: [
-      { id: 'zoomX_inside', type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: true, moveOnMouseMove: true },
-      { id: 'zoomY_inside', type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'shift', moveOnMouseMove: 'shift' },
-      { id: 'zoomX_slider', type: 'slider', xAxisIndex: 0, height: 18, bottom: 8, borderColor: '#333', fillerColor: 'rgba(0,229,255,0.15)' },
-      { id: 'zoomY_slider', type: 'slider', yAxisIndex: 0, right: 6, width: 14, borderColor: '#333', fillerColor: 'rgba(255,215,0,0.18)', showDetail: false }
+      Object.assign({ id: 'zoomX_inside', type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: true, moveOnMouseMove: true }, window.__CH_GET_INIT_X_ZOOM(bougies)),
+      Object.assign({ id: 'zoomY_inside', type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'shift', moveOnMouseMove: true }, window.__CH_GET_INIT_Y_ZOOM(typeof bougies !== 'undefined' ? bougies : null)),
+      Object.assign({ id: 'zoomX_slider', type: 'slider', xAxisIndex: 0, height: 18, bottom: 8, borderColor: '#333', fillerColor: 'rgba(0,229,255,0.15)' }, window.__CH_GET_INIT_X_ZOOM(bougies)),
+      Object.assign({ id: 'zoomY_slider', type: 'slider', orient: 'vertical', yAxisIndex: 0, top: 42, height: Math.max(260, (document.getElementById('chart-container')?.clientHeight || 520) - 92), right: 4, width: 16, borderColor: '#64748B', fillerColor: 'rgba(56,189,248,0.22)', handleSize: 22, minSpan: 12, brushSelect: false, showDetail: false }, window.__CH_GET_INIT_Y_ZOOM(typeof bougies !== 'undefined' ? bougies : null))
     ],
     xAxis: {
       type: 'category', data: bougies.map(b => b.label),
@@ -2594,7 +2690,7 @@ function dessinerGraphique(data) { if (document.getElementById("selHorizon")?.va
     seriePrincipale = [
       { type: 'lines', coordinateSystem: 'cartesian2d', z: 5, silent: true, data: segs },
       {
-        type: 'custom', z: 10, clip: true,
+        type: 'custom', clip: true, z: 10,
         renderItem: function (params, api) {
           const v = vagues[params.dataIndex];
           const pt = api.coord([(secDepuisHeure(v.heure_deb) + secDepuisHeure(v.heure_fin)) / 2, v.cmp]);
@@ -2746,9 +2842,9 @@ function dessinerGraphique(data) { if (document.getElementById("selHorizon")?.va
     },
     dataZoom: [
       { id: 'zoomX_inside', type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: true, moveOnMouseMove: true, start: zoomXStart, end: zoomXEnd },
-      { id: 'zoomY_inside', type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'shift', moveOnMouseMove: 'shift', start: zoomYStart, end: zoomYEnd },
+      { id: 'zoomY_inside', type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'shift', moveOnMouseMove: true, start: zoomYStart, end: zoomYEnd },
       { id: 'zoomX_slider', type: 'slider', xAxisIndex: 0, height: 18, bottom: 8, borderColor: '#333', fillerColor: 'rgba(0,229,255,0.15)', start: zoomXStart, end: zoomXEnd },
-      { id: 'zoomY_slider', type: 'slider', yAxisIndex: 0, right: 6, width: 14, borderColor: '#333', fillerColor: 'rgba(255,215,0,0.18)', showDetail: false, start: zoomYStart, end: zoomYEnd }
+      Object.assign({ id: 'zoomY_slider', type: 'slider', orient: 'vertical', yAxisIndex: 0, top: 42, height: Math.max(260, (document.getElementById('chart-container')?.clientHeight || 520) - 92), right: 4, width: 16, borderColor: '#64748B', fillerColor: 'rgba(56,189,248,0.22)', handleSize: 22, minSpan: 12, brushSelect: false, showDetail: false }, window.__CH_GET_INIT_Y_ZOOM(typeof bougies !== 'undefined' ? bougies : null))
     ],
     xAxis: { type: 'value', min: 32400, max: 54000, interval: 3600, axisLine: { lineStyle: { color: '#333' } }, splitLine: { lineStyle: { color: '#1E1E1E' } }, axisLabel: { color: '#999', formatter: val => heureDepuisSec(val).slice(0,5) } },
     yAxis: { type: 'value', position: 'right', min: +(prixMin - margeY * 0.3).toFixed(2), max: +(prixMax + margeY).toFixed(2), axisLine: { lineStyle: { color: '#333' } }, splitLine: { lineStyle: { color: '#1E1E1E' } }, axisLabel: { color: '#999', formatter: val => val.toFixed(2) } },
@@ -2928,7 +3024,7 @@ async function chargerMultiSeances() {
       if (modeBlocM === 'BLOCS_SEULS' && !estBlocM) continue;
       const ph = op.heure.split(':'), hh = parseInt(ph[0]||"9",10), mm = parseInt(ph[1]||"0",10);
       let cle = s.date_iso, label = s.date_fr.slice(0, 5);
-      if (gran === '15M') { const tm = Math.floor(mm/15)*15; cle = `${s.date_iso} ${String(hh).padStart(2,'0')}:${String(tm).padStart(2,'0')}`; label = `${s.date_fr.slice(0,5)} ${String(hh).padStart(2,'0')}:${String(tm).padStart(2,'0')}`; }
+      if (gran === '5M' || gran === '10M' || gran === '15M' || gran === '30M') { const stepM = parseInt(gran, 10) || 15; const tm = Math.floor(mm/stepM)*stepM; cle = `${s.date_iso} ${String(hh).padStart(2,'0')}:${String(tm).padStart(2,'0')}`; label = `${s.date_fr.slice(0,5)} ${String(hh).padStart(2,'0')}:${String(tm).padStart(2,'0')}`; }
       else if (gran === 'HEURE') { cle = `${s.date_iso} ${String(hh).padStart(2,'0')}:00`; label = `${s.date_fr.slice(0,5)} ${String(hh).padStart(2,'0')}h`; }
       else if (gran === 'SEMAINE') { const numSem = Math.floor((dt.getDate()-1)/7)+1; cle = `${s.date_iso.slice(0,7)}-S${numSem}`; label = `S${numSem} ${moisAnnee}`; }
       else if (gran === 'MOIS') { cle = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; label = `${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`; }
@@ -2945,7 +3041,7 @@ async function chargerMultiSeances() {
       else { b.qte_neu += op.qte; b.montant_neu += op.qte * op.prix; qN += op.qte; vN += op.qte * op.prix; }
     }
   }
-  const bougies = ordre.map(k => { const b = buckets[k]; b.cmp = b.vol_tot > 0 ? b.montant_tot / b.vol_tot : b.close; return b; });
+  const bougies = ordre.map(k => { const b = buckets[k]; b.cmp = b.vol_tot > 0 ? b.montant_tot / b.vol_tot : b.close; return b; }).filter(b => b && b.cle && !String(b.cle).includes('NaN') && Number.isFinite(b.open) && Number.isFinite(b.high) && Number.isFinite(b.low) && Number.isFinite(b.close) && b.open > 0 && b.close > 0);
   const vTot = qA + qV + qN, mTot = vA + vV + vN;
   globalData = { ticker, granularite: gran, date_deb_fr: asc[0].date_fr, date_fin_fr: asc[asc.length - 1].date_fr, bougies, stats: { dernier: bougies.length ? bougies[bougies.length - 1].close : 0, volume: vTot, nb_ticks: bougies.reduce((a, x) => a + x.nb_ticks, 0), cmp: vTot > 0 ? mTot / vTot : 0, qte_ach: qA, cmp_ach: qA > 0 ? vA / qA : 0, qte_ven: qV, cmp_ven: qV > 0 ? vV / qV : 0, qte_neu: qN, cmp_neu: qN > 0 ? vN / qN : 0, ecart_qte: qA - qV, h_deb_derniere: bougies.length ? bougies[0].date_full : '--', h_fin_derniere: bougies.length ? bougies[bougies.length - 1].date_full : '--' } };
   chart.clear();
@@ -3096,7 +3192,7 @@ document.getElementById('btnDossierRacine').onclick = async () => {
     try { dirHandleLive = await rootHandle.getDirectoryHandle('Cache_Live'); } catch (e) { dirHandleLive = null; }
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
-      const _savedH = localStorage.getItem('ch_pref_horizon') || 'UNIQUE'; document.getElementById('selHorizon').value = _savedH; if (_savedH === 'MULTI') { chargerMultiSeances(); return; } if (_savedH === 'LIVE' && typeof demarrerModeLive === 'function') { demarrerModeLive(); return; }
+      const _savedH = 'LIVE'; document.getElementById('selHorizon').value = _savedH; if (_savedH === 'MULTI') { chargerMultiSeances(); return; } if (_savedH === 'LIVE' && typeof demarrerModeLive === 'function') { demarrerModeLive(); return; }
       chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (err) {
@@ -3614,7 +3710,7 @@ async function demarrageAutomatiqueHttp() {
 
     ['btnDossierRacine','btnAutoSetup'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     if (seancesLocales.length > 0) {
-      const _savedH = localStorage.getItem('ch_pref_horizon') || 'UNIQUE'; document.getElementById('selHorizon').value = _savedH; if (_savedH === 'MULTI') { chargerMultiSeances(); return; } if (_savedH === 'LIVE' && typeof demarrerModeLive === 'function') { demarrerModeLive(); return; }
+      const _savedH = 'LIVE'; document.getElementById('selHorizon').value = _savedH; if (_savedH === 'MULTI') { chargerMultiSeances(); return; } if (_savedH === 'LIVE' && typeof demarrerModeLive === 'function') { demarrerModeLive(); return; }
       chargerDonnees(seancesLocales.at(0).date_iso, "", false);
     }
   } catch (e) { document.getElementById('statusText').style.color = '#FF3B3B'; document.getElementById('statusText').innerText = 'ERREUR AUTO : ' + e.message; }
@@ -6012,7 +6108,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
 
 
-<script id="ch-slim-datazoom">(function(){const isMob=()=>window.innerWidth<=960&&(window.innerHeight<=560||window.innerWidth<=768);const fitAll=()=>{if(!isMob())return;const vh=window.visualViewport?window.visualViewport.height:window.innerHeight;let barH=18;document.querySelectorAll("div,footer,section").forEach(el=>{const t=(el.innerText||"").trim();if(t.includes("Diagnostic")&&t.includes("CH-WAVECANDLE")&&el.offsetHeight>12&&el.offsetHeight<90){el.style.cssText+=";position:fixed!important;left:0!important;right:0!important;bottom:0!important;height:18px!important;min-height:18px!important;max-height:18px!important;padding:0 8px!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:space-between!important;flex-wrap:nowrap!important;overflow:hidden!important;z-index:50!important;";el.querySelectorAll("div,span").forEach(c=>{c.style.whiteSpace="nowrap";c.style.fontSize="8.8px";c.style.lineHeight="17px";});barH=18;}});document.querySelectorAll("[_echarts_instance_]").forEach(el=>{el.style.setProperty("position","fixed","important");el.style.setProperty("top","0","important");el.style.setProperty("left","0","important");el.style.setProperty("width","100vw","important");el.style.setProperty("height",(vh-barH)+"px","important");el.style.setProperty("max-height",(vh-barH)+"px","important");el.style.setProperty("margin","0","important");el.style.setProperty("padding","0","important");});};const smartLayout=function(opt){if(!opt||typeof opt!=="object")return;const mob=isMob();const dzW=mob?6:13,dzH=mob?6:13;if(opt.dataZoom){const list=Array.isArray(opt.dataZoom)?opt.dataZoom:[opt.dataZoom];list.forEach(dz=>{if(!dz||typeof dz!=="object"||dz.type==="inside")return;const isVert=dz.orient==="vertical"||(dz.yAxisIndex!==undefined&&dz.xAxisIndex===undefined);if(isVert){dz.width=dzW;dz.right=2;if(dz.height!==undefined&&dz.height<30)delete dz.height;}else{dz.height=dzH;dz.bottom=2;dz.showDetail=false;}dz.handleSize=mob?"65%":"90%";});}if(opt.grid){const grids=Array.isArray(opt.grid)?opt.grid:[opt.grid];const first=grids[0];if(first&&typeof first==="object"){first.top=mob?24:24;first.left=mob?16:48;}const last=grids[grids.length-1];if(last&&typeof last==="object"){last.bottom=mob?(dzH+25):40;last.right=mob?(dzW+36):50;}}if(opt.xAxis){(Array.isArray(opt.xAxis)?opt.xAxis:[opt.xAxis]).forEach(x=>{if(x&&x.axisLabel){x.axisLabel.fontSize=mob?8.5:11;x.axisLabel.margin=mob?2:6;}});}if(opt.yAxis){(Array.isArray(opt.yAxis)?opt.yAxis:[opt.yAxis]).forEach(y=>{if(y&&y.axisLabel){y.axisLabel.fontSize=mob?8.5:11;y.axisLabel.margin=mob?2:6;}});}};const patchInst=function(inst){if(!inst||inst.__chSlimDZ||typeof inst.setOption!=="function")return inst;inst.__chSlimDZ=true;const orig=inst.setOption.bind(inst);inst.setOption=function(opt,notMerge,lazyUpdate){try{fitAll();smartLayout(opt);}catch(e){}return orig(opt,notMerge,lazyUpdate);};try{fitAll();inst.resize({devicePixelRatio:Math.min(Math.max(window.devicePixelRatio||1,1),3)});}catch(e){}return inst;};const hook=function(){if(!window.echarts||window.echarts.__chHooked)return;window.echarts.__chHooked=true;const origInit=window.echarts.init.bind(window.echarts);window.echarts.init=function(dom,theme,opts){fitAll();const o=Object.assign({devicePixelRatio:Math.min(Math.max(window.devicePixelRatio||1,1),3)},opts||{});return patchInst(origInit(dom,theme,o));};document.querySelectorAll("[_echarts_instance_]").forEach(el=>{try{patchInst(window.echarts.getInstanceByDom(el));}catch(e){}});};const onResize=()=>{fitAll();document.querySelectorAll("[_echarts_instance_]").forEach(el=>{try{const ins=window.echarts.getInstanceByDom(el);if(ins)ins.resize({devicePixelRatio:Math.min(Math.max(window.devicePixelRatio||1,1),3)});}catch(e){}});};hook();window.addEventListener("load",()=>{fitAll();hook();onResize();});window.addEventListener("resize",onResize);if(window.visualViewport)window.visualViewport.addEventListener("resize",onResize);setTimeout(onResize,400);})();</script>
+<script id="ch-slim-datazoom">(function(){const isMob=()=>window.innerWidth<=960&&(window.innerHeight<=560||window.innerWidth<=768);const fitAll=()=>{if(!isMob())return;const vh=window.visualViewport?window.visualViewport.height:window.innerHeight;let barH=18;document.querySelectorAll("div,footer,section").forEach(el=>{const t=(el.innerText||"").trim();if(t.includes("Diagnostic")&&t.includes("CH-WAVECANDLE")&&el.offsetHeight>12&&el.offsetHeight<90){el.style.cssText+=";position:fixed!important;left:0!important;right:0!important;bottom:0!important;height:18px!important;min-height:18px!important;max-height:18px!important;padding:0 8px!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:space-between!important;flex-wrap:nowrap!important;overflow:hidden!important;z-index:50!important;";el.querySelectorAll("div,span").forEach(c=>{c.style.whiteSpace="nowrap";c.style.fontSize="8.8px";c.style.lineHeight="17px";});barH=18;}});document.querySelectorAll("[_echarts_instance_]").forEach(el=>{el.style.setProperty("position","fixed","important");el.style.setProperty("top","0","important");el.style.setProperty("left","0","important");el.style.setProperty("width","100vw","important");el.style.setProperty("height",(vh-barH)+"px","important");el.style.setProperty("max-height",(vh-barH)+"px","important");el.style.setProperty("margin","0","important");el.style.setProperty("padding","0","important");});};const smartLayout=function(opt){if(!opt||typeof opt!=="object")return;const mob=isMob();const dzW=mob?6:13,dzH=mob?6:13;if(opt.dataZoom){const list=Array.isArray(opt.dataZoom)?opt.dataZoom:[opt.dataZoom];list.forEach(dz=>{if(!dz||typeof dz!=="object"||dz.type==="inside")return;const isVert=dz.orient==="vertical"||(dz.yAxisIndex!==undefined&&dz.xAxisIndex===undefined);if(isVert){dz.width=mob?8:16;dz.right=4;dz.top=42;dz.height=Math.max(260,(document.getElementById('chart-container')?.clientHeight||520)-92);delete dz.bottom;dz.handleSize=mob?16:22;}else{dz.height=dzH;dz.bottom=2;dz.showDetail=false;dz.handleSize=mob?"65%":"90%";}});}if(opt.grid){const grids=Array.isArray(opt.grid)?opt.grid:[opt.grid];const first=grids[0];if(first&&typeof first==="object"){first.top=mob?24:24;first.left=mob?16:48;}const last=grids[grids.length-1];if(last&&typeof last==="object"){last.bottom=mob?(dzH+25):40;last.right=mob?(dzW+36):50;}}if(opt.xAxis){(Array.isArray(opt.xAxis)?opt.xAxis:[opt.xAxis]).forEach(x=>{if(x&&x.axisLabel){x.axisLabel.fontSize=mob?8.5:11;x.axisLabel.margin=mob?2:6;}});}if(opt.yAxis){(Array.isArray(opt.yAxis)?opt.yAxis:[opt.yAxis]).forEach(y=>{if(y&&y.axisLabel){y.axisLabel.fontSize=mob?8.5:11;y.axisLabel.margin=mob?2:6;}});}};const patchInst=function(inst){if(!inst||inst.__chSlimDZ||typeof inst.setOption!=="function")return inst;inst.__chSlimDZ=true;const orig=inst.setOption.bind(inst);inst.setOption=function(opt,notMerge,lazyUpdate){try{fitAll();smartLayout(opt);}catch(e){}return orig(opt,notMerge,lazyUpdate);};try{fitAll();inst.resize({devicePixelRatio:Math.min(Math.max(window.devicePixelRatio||1,1),3)});}catch(e){}return inst;};const hook=function(){if(!window.echarts||window.echarts.__chHooked)return;window.echarts.__chHooked=true;const origInit=window.echarts.init.bind(window.echarts);window.echarts.init=function(dom,theme,opts){fitAll();const o=Object.assign({devicePixelRatio:Math.min(Math.max(window.devicePixelRatio||1,1),3)},opts||{});return patchInst(origInit(dom,theme,o));};document.querySelectorAll("[_echarts_instance_]").forEach(el=>{try{patchInst(window.echarts.getInstanceByDom(el));}catch(e){}});};const onResize=()=>{fitAll();document.querySelectorAll("[_echarts_instance_]").forEach(el=>{try{const ins=window.echarts.getInstanceByDom(el);if(ins)ins.resize({devicePixelRatio:Math.min(Math.max(window.devicePixelRatio||1,1),3)});}catch(e){}});};hook();window.addEventListener("load",()=>{fitAll();hook();onResize();});window.addEventListener("resize",onResize);if(window.visualViewport)window.visualViewport.addEventListener("resize",onResize);setTimeout(onResize,400);})();</script>
 
 
 
@@ -6966,7 +7062,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
 
   function findHitNative(px, py){
     if(typeof chart === "undefined" || !chart || typeof dessinsUtilisateur === "undefined" || !Array.isArray(dessinsUtilisateur)) return -1;
-    const rect = chart.getModel().getComponent("grid", 0).coordinateSystem.getRect();
+    const gridComp = chart.getModel ? chart.getModel().getComponent("grid", 0) : null; if(!gridComp || !gridComp.coordinateSystem) return -1; const rect = gridComp.coordinateSystem.getRect();
     for(let i = dessinsUtilisateur.length - 1; i >= 0; i--){
       const d = dessinsUtilisateur.at(i);
       if(!d) continue;
@@ -7542,7 +7638,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const futLabels = generateFutureCategoryLabels(lastLbl, extra, granVal);
         const extData = x0.data.concat(futLabels);
 
-        const hasUserZoom = Array.isArray(opt.dataZoom) && opt.dataZoom.some(d => d && ((typeof d.start === "number" && d.start > 0.5) || (typeof d.end === "number" && d.end < 99.5))); const dzPatch = (!hasUserZoom && Array.isArray(opt.dataZoom)) ? opt.dataZoom.map(() => ({ start: 0, end: 100, startValue: null, endValue: null })) : undefined;
+        const newYSliderId = "zoomY_slider_" + (currentExpandMode || "AUTO"); const dzPatch = Array.isArray(opt.dataZoom) ? opt.dataZoom.map(d => (d && ((d.id && d.id.startsWith("zoomY_slider")) || d.yAxisIndex === 0 && d.type === "slider")) ? { id: newYSliderId, type: "slider", orient: "vertical", yAxisIndex: 0, top: 42, height: Math.max(260, (document.getElementById("chart-container")?.clientHeight || 520) - 92), right: 4, width: 16, borderColor: "#64748B", fillerColor: "rgba(56,189,248,0.22)", handleSize: 22, minSpan: 12, brushSelect: false, showDetail: false, ...(window.__CH_GET_INIT_Y_ZOOM(globalData?.bougies)) } : (d && d.id === "zoomY_inside" ? window.__CH_GET_INIT_Y_ZOOM(globalData?.bougies) : {})) : undefined;
 
         chart.setOption({
           xAxis: [{ data: extData, max: extData.length - 1 }],
@@ -7550,10 +7646,10 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
           ...(dzPatch ? { dataZoom: dzPatch } : {})
         });
       } else {
-        chart.setOption({ yAxis: yPatch });
+        const newYSliderId2 = "zoomY_slider_" + (currentExpandMode || "AUTO"); const dzYReset = Array.isArray(opt.dataZoom) ? opt.dataZoom.map(d => (d && ((d.id && d.id.startsWith("zoomY_slider")) || d.yAxisIndex === 0 && d.type === "slider")) ? { id: newYSliderId2, type: "slider", orient: "vertical", yAxisIndex: 0, top: 42, height: Math.max(260, (document.getElementById("chart-container")?.clientHeight || 520) - 92), right: 4, width: 16, borderColor: "#64748B", fillerColor: "rgba(56,189,248,0.22)", handleSize: 22, minSpan: 12, brushSelect: false, showDetail: false, ...(window.__CH_GET_INIT_Y_ZOOM(globalData?.bougies)) } : (d && d.id === "zoomY_inside" ? window.__CH_GET_INIT_Y_ZOOM(globalData?.bougies) : {})) : undefined; chart.setOption({ yAxis: yPatch, ...(dzYReset ? { dataZoom: dzYReset } : {}) });
       }
 
-      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
     } catch(e){} finally {
       setTimeout(() => { applyingAxis = false; }, 80);
     }
@@ -7710,7 +7806,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       selOutil.addEventListener("change", () => {
         if(selOutil.value !== "AUCUN"){
           selectedDrawIdx = -1;
-          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
         }
       });
     }
@@ -7724,7 +7820,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       if(!hit){
         if(selectedDrawIdx !== -1){
           selectedDrawIdx = -1;
-          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+          if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
         }
         return;
       }
@@ -7739,7 +7835,7 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         if(hit.pointKey === "ctrl1" || hit.pointKey === "ctrl2") d.ctrlEdited = true;
         dragTarget = { idx: hit.idx, pointKey: hit.pointKey };
       }
-      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
     });
 
     zr.on("mousemove", (params) => {
@@ -7777,13 +7873,13 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
         const dy = pt.at(1) - dragTarget.startDataY;
         d.points = dragTarget.origPoints.map(op => [op.at(0) + dx, op.at(1) + dy]);
       }
-      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+      if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
     });
 
     zr.on("mouseup", () => {
       if(dragTarget){
         dragTarget = null;
-        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
       }
     });
   }
@@ -9547,8 +9643,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const origMulti = window.dessinerChandeliersMulti;
       window.dessinerChandeliersMulti = function(){
         const res = origMulti.apply(this, arguments);
-        syncDessinsTimestamps(true);
-        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+        syncDessinsTimestamps(true); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); 
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
         return res;
       };
       window.dessinerChandeliersMulti.__chTimeAnchored = true;
@@ -9558,8 +9654,8 @@ window.__chOuvrirDocumentForum = async function(dataUrl, fileName, preloadedRows
       const origSingle = window.dessinerGraphique;
       window.dessinerGraphique = function(){
         const res = origSingle.apply(this, arguments);
-        syncDessinsTimestamps(true);
-        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
+        syncDessinsTimestamps(true); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); 
+        if(typeof rafraichirDessinsGraphique === "function") rafraichirDessinsGraphique(); if(typeof window.__CH_RESTORE_EXACT_X_TIME === "function") window.__CH_RESTORE_EXACT_X_TIME(); if(typeof window.__CH_RESTORE_Y_PX_SCALE === "function") window.__CH_RESTORE_Y_PX_SCALE(); if(typeof window.CH_TECH_RENDER === "function") setTimeout(window.CH_TECH_RENDER, 0);
         return res;
       };
       window.dessinerGraphique.__chTimeAnchored = true;
@@ -9884,31 +9980,25 @@ body.theme-clair .ch-per-btn:hover {
 
   async function syncClosedMarketClockFromSynthese(){
     const code = getTargetClosedDateCode();
-    if(!code) return;
-    const fn = "synthese_cloture_reel_" + code + ".csv";
-    const urls = [
-      [(typeof getHfBaseUrl === "function" ? getHfBaseUrl() : ("https:/" + "/hafdev-ch-wavecandle.hf.space")), "gradio_api/file=/app/Historique/Synthese_cloture/" + fn].join("/"),
-      "https://huggingface.co" + fn
-    ];
-    for(const u of urls){
+    if(!code || typeof lireFichierViaGradio !== "function") return;
+    const prevDate = new Date(); prevDate.setDate(prevDate.getDate() - 1);
+    while(prevDate.getDay() === 0 || prevDate.getDay() === 6) prevDate.setDate(prevDate.getDate() - 1);
+    const codePrev = String(prevDate.getDate()).padStart(2,"0") + String(prevDate.getMonth()+1).padStart(2,"0") + prevDate.getFullYear();
+    const candidates = code === codePrev ? new Array(code) : new Array(code, codePrev);
+    for(const c of candidates){
       try {
-        const res = await fetch(u, { cache: "no-store" });
-        if(!res.ok) continue;
-        const txt = await res.text();
+        const res = await lireFichierViaGradio("Synthese_cloture/synthese_cloture_reel_" + c + ".csv");
+        const txt = res && res.ok ? res.text : "";
+        if(!txt || txt.length < 20) continue;
         const lines = txt.split(/\r?\n/).filter(l => l.trim().length > 0);
         if(lines.length < 2) continue;
         const headers = lines.at(0).split(";").map(h => h.trim().replace(/^"|"$/g, ""));
         const idxH = headers.findIndex(h => /^heure(_marche|_python)?$/i.test(h));
         let heureSyn = "";
         for(let i = lines.length - 1; i >= 1; i--){
-          const cols = lines.at(i).split(";").map(c => c.trim().replace(/^"|"$/g, ""));
-          if(cols.at(0) === "CONFIG_SYSTEM" && idxH >= 0 && cols.at(idxH)){
-            heureSyn = cols.at(idxH);
-            break;
-          }
-          if(!heureSyn && idxH >= 0 && /^\d{2}:\d{2}(:\d{2})?$/.test(cols.at(idxH) || "")){
-            heureSyn = cols.at(idxH);
-          }
+          const cols = lines.at(i).split(";").map(x => x.trim().replace(/^"|"$/g, ""));
+          if(cols.at(0) === "CONFIG_SYSTEM" && idxH >= 0 && cols.at(idxH)){ heureSyn = cols.at(idxH); break; }
+          if(!heureSyn && idxH >= 0 && /^\d{2}:\d{2}(:\d{2})?$/.test(cols.at(idxH) || "")) heureSyn = cols.at(idxH);
         }
         if(heureSyn){
           const boxH = document.getElementById("boxHorlogeMarche");
@@ -9916,18 +10006,13 @@ body.theme-clair .ch-per-btn:hover {
             boxH.style.display = "inline-flex";
             const txtNode = Array.from(boxH.childNodes).find(n => n.nodeType === 3 && /\d{2}:\d{2}/.test(n.textContent));
             if(txtNode) txtNode.textContent = " " + heureSyn + " ";
-            else {
-              const sp = boxH.querySelector("span, b, strong") || boxH;
-              if(sp !== boxH) sp.textContent = heureSyn;
-              else boxH.textContent = "\uD83D\uDD52 " + heureSyn;
-            }
+            else { const sp = boxH.querySelector("span, b, strong") || boxH; if(sp !== boxH) sp.textContent = heureSyn; else boxH.textContent = "\uD83D\uDD52 " + heureSyn; }
           }
           break;
         }
       } catch(e){}
     }
   }
-
   window.addEventListener("load", () => {
     syncClosedMarketClockFromSynthese();
     setTimeout(syncClosedMarketClockFromSynthese, 1500);
@@ -9960,7 +10045,7 @@ body.theme-clair #chLogoPickerDrop { background: #FFFFFF; color: #0F172A; border
     "ARTES":["artes.tn","#CA8A04"],"TUNIS RE":["tunisre.com.tn","#1E3A8A"],"CARTHAGE CEMENT":["carthagecement.com.tn","#475569"],"ENNAKL AUTOMOBILES":["ennakl.com","#0F172A"],
     "LAND OR":["landor.com.tn","#D97706"],"ONE TECH HOLDING":["one-tech.com","#0284C7"],"NEW BODY LINE":["newbodyline.com.tn","#DB2777"],"CITY CARS":["citycars.tn","#B91C1C"],
     "EURO-CYCLES":["euro-cycles.com","#2563EB"],"CELLCOM":["cellcom.tn","#059669"],"SAH":["sah.tn","#0284C7"],"MPBS":["mpbs.com.tn","#92400E"],
-    "SOTIPAPIER":["sotipapier.com.tn","#15803D"],"TAWASOL GP HOLDING":["tawasolgroup.com","#1D4ED8"],"DELICE HOLDING":["groupedelice.com","#0284C7"],"UADH":["uadh.com.tn","#1E293B"],
+    "SOTIPAPIER":["sotipapier.com.tn","#15803D"],"TAWASOL GP HOLDING":["tawasolgroup.com","#1D4ED8"],"DELICE HOLDING":["delice.tn","#0284C7"],"UADH":["uadh.com.tn","#1E293B"],
     "UNIMED":["unimed.com.tn","#0D9488"],"ATELIER MEUBLE INT":["interieurs.com.tn","#78350F"],"BTE (ADP)":["bte.com.tn","#1E3A8A"],"SPDIT - SICAF":["sfbt.com.tn","#0369A1"],
     "AIR LIQUIDE TSIE":["airliquide.com","#0284C7"],"PLAC. TSIE-SICAF":["bvmt.com.tn","#334155"],"ASTREE":["astree.com.tn","#1E40AF"],"ALKIMIA":["alkimia.com.tn","#0F766E"],
     "TUNINVEST-SICAR":["africinvest.com","#1E3A8A"],"STAR":["star.com.tn","#15803D"],"MAGASIN GENERAL":["mg.tn","#EA580C"],"BH ASSURANCE":["bh-assurance.com","#B91C1C"],
@@ -9974,7 +10059,7 @@ body.theme-clair #chLogoPickerDrop { background: #FFFFFF; color: #0F172A; border
   };
   function makeHdBadgePng(tk, color){ try { const c = document.createElement("canvas"); c.width = 64; c.height = 64; const g = c.getContext("2d"); g.fillStyle = color || "#0284C7"; g.beginPath(); g.roundRect(0, 0, 64, 64, 14); g.fill(); const ini = (tk || "BV").replace(/[^A-Z0-9 ]/gi, "").trim().split(/\s+/).map(w => w.at(0)).join("").slice(0, 3).toUpperCase() || "BV"; g.fillStyle = "#FFFFFF"; g.font = "900 22px Segoe UI, Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ini, 32, 34); return c.toDataURL("image/png"); } catch(e) { return ""; } }
   function getBvmtLogoUrls(ticker){ const key = String(ticker || "").trim().toUpperCase(); const entry = BVMT_DOMAINS[key] || ["bvmt.com.tn", "#0284C7"]; const dom = entry.at(0), col = entry.at(1); return { primary: ["https:/", "www.google.com", "s2", "favicons?domain=" + encodeURIComponent(dom) + "&sz=128"].join("/"), fallback: makeHdBadgePng(key, col) }; }
-  function setImgWithFallback(img, ticker){ const u = getBvmtLogoUrls(ticker); img.src = u.fallback; const probe = new Image(); probe.onload = function(){ if(probe.naturalWidth > 16) img.src = u.primary; }; probe.src = u.primary; }
+  window.__CH_BAD_FAV = window.__CH_BAD_FAV || new Set(); function setImgWithFallback(img, ticker){ const u = getBvmtLogoUrls(ticker); img.src = u.fallback; if(window.__CH_BAD_FAV.has(u.primary)) return; const probe = new Image(); probe.onerror = function(){ window.__CH_BAD_FAV.add(u.primary); }; probe.onload = function(){ if(probe.naturalWidth > 16) img.src = u.primary; else window.__CH_BAD_FAV.add(u.primary); }; probe.src = u.primary; }
   window.getBvmtLogoUrls = getBvmtLogoUrls;
   function syncTickerLogos(){ const sel = document.getElementById("selTicker"); if(!sel) return; const tk = (sel.value || "DELICE HOLDING").trim().toUpperCase(); sel.style.setProperty("display", "none", "important"); let uBtn = document.getElementById("chUnifiedTickerBtn"); if(!uBtn){ uBtn = document.createElement("button"); uBtn.type = "button"; uBtn.id = "chUnifiedTickerBtn"; uBtn.style.cssText = "display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 6px;border-radius:6px;border:1px solid rgba(148,163,184,0.38);font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;"; uBtn.innerHTML = '<img id="chTopTickerLogo" class="ch-tk-logo-img" style="margin:0;" /><span id="chUnifiedTickerLbl"></span><span style="opacity:0.65;font-size:10px;margin-left:4px;">&#9662;</span>'; sel.parentElement.insertBefore(uBtn, sel); } const isDark = !document.body.classList.contains("theme-clair"); uBtn.style.background = isDark ? "rgba(15,23,42,0.88)" : "#FFFFFF"; uBtn.style.color = isDark ? "#F8FAFC" : "#0F172A"; const lblSpan = document.getElementById("chUnifiedTickerLbl"); if(lblSpan && lblSpan.textContent !== tk) lblSpan.textContent = tk; const topLogo = document.getElementById("chTopTickerLogo"); if(topLogo && topLogo.dataset.tk !== tk){ topLogo.dataset.tk = tk; setImgWithFallback(topLogo, tk); } const banner = document.getElementById("chChartTickerBanner"); if(banner){ if(!banner.dataset.logoObs){ banner.dataset.logoObs = "1"; new MutationObserver(() => syncTickerLogos()).observe(banner, { childList: true }); } let bLogo = banner.querySelector(".ch-tk-logo-img"); if(!bLogo){ bLogo = document.createElement("img"); bLogo.className = "ch-tk-logo-img"; banner.insertBefore(bLogo, banner.firstChild); } if(bLogo.dataset.tk !== tk){ bLogo.dataset.tk = tk; setImgWithFallback(bLogo, tk); } } }
   function initVisualLogoDropdown(){ const sel = document.getElementById("selTicker"), topLogo = document.getElementById("chUnifiedTickerBtn") || document.getElementById("chTopTickerLogo"); if(!sel || !topLogo || document.getElementById("chLogoPickerDrop")) return; const drop = document.createElement("div"); drop.id = "chLogoPickerDrop"; drop.innerHTML = '<input id="chLogoPickerSearch" type="text" placeholder="Rechercher parmi les 77 valeurs BVMT..." /><div id="chLogoPickerList"></div>'; document.body.appendChild(drop); const inp = drop.querySelector("#chLogoPickerSearch"), listBox = drop.querySelector("#chLogoPickerList"); function renderItems(filter){ const q = (filter || "").trim().toUpperCase(), cur = (sel.value || "").trim().toUpperCase(); listBox.innerHTML = ""; Array.from(sel.options).forEach(opt => { const val = opt.value.trim().toUpperCase(); if(q && !val.includes(q)) return; const row = document.createElement("div"); row.className = "ch-lp-item" + (val === cur ? " active" : ""); const im = document.createElement("img"); im.className = "ch-tk-logo-img"; setImgWithFallback(im, val); const sp = document.createElement("span"); sp.textContent = opt.textContent || val; row.appendChild(im); row.appendChild(sp); row.onclick = () => { sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true })); drop.style.display = "none"; syncTickerLogos(); }; listBox.appendChild(row); }); } topLogo.onclick = (e) => { e.stopPropagation(); if(drop.style.display === "flex"){ drop.style.display = "none"; return; } const r = topLogo.getBoundingClientRect(); drop.style.left = Math.max(8, r.left) + "px"; drop.style.top = (r.bottom + 6) + "px"; drop.style.display = "flex"; inp.value = ""; renderItems(""); setTimeout(() => inp.focus(), 30); }; inp.oninput = () => renderItems(inp.value); drop.onclick = (e) => e.stopPropagation(); document.addEventListener("click", () => { drop.style.display = "none"; }); }
@@ -9989,7 +10074,7 @@ body.theme-clair #chLogoPickerDrop { background: #FFFFFF; color: #0F172A; border
     box.dataset.yHoverZoomBound = "1";
     const Y_AXIS_ZONE_PX = 92;
     let yDragActive = false, yDragStartY = 0, yDragStartRange = new Array(0, 100);
-    function isOverYAxis(clientX){ const r = box.getBoundingClientRect(); return clientX >= (r.right - Y_AXIS_ZONE_PX) && clientX <= r.right; }
+    function isOverYAxis(clientX){ const r = box.getBoundingClientRect(); return clientX >= (r.right - 95) && clientX <= r.right; } function isOverYSliderHandle(clientX){ return false; }
     function getYZoomRange(){
       if(typeof chart === "undefined" || !chart) return new Array(0, 100);
       const opt = chart.getOption(), dzList = (opt && opt.dataZoom) || [];
@@ -10003,7 +10088,7 @@ body.theme-clair #chLogoPickerDrop { background: #FFFFFF; color: #0F172A; border
       const opt = chart.getOption(), dzList = (opt && opt.dataZoom) || [];
       dzList.forEach(d => {
         const isY = d.id === "zoomY_inside" || d.id === "zoomY_slider" || (Array.isArray(d.yAxisIndex) && d.yAxisIndex.includes(0)) || d.yAxisIndex === 0;
-        if(isY && d.id) chart.dispatchAction({ type: "dataZoom", dataZoomId: d.id, start: s, end: e });
+        if(isY && d.id){ const ya = opt && Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : null; const minB = (ya && typeof ya.min === "number") ? ya.min : 0.01; const maxB = (ya && typeof ya.max === "number") ? ya.max : 100; const safeS = (maxB > minB && minB < 0.01) ? Math.max(s, ((0.01 - minB) / (maxB - minB)) * 100) : s; chart.dispatchAction({ type: "dataZoom", dataZoomId: d.id, start: safeS, end: Math.max(safeS + 2, e) }); }
       });
     }
     box.addEventListener("mousemove", (e) => {
@@ -10019,7 +10104,7 @@ body.theme-clair #chLogoPickerDrop { background: #FFFFFF; color: #0F172A; border
       else if(box.style.cursor === "ns-resize") box.style.cursor = "";
     }, true);
     box.addEventListener("mousedown", (e) => {
-      if(e.button !== 0 || !isOverYAxis(e.clientX)) return;
+      if(e.button !== 0 || !isOverYAxis(e.clientX) || isOverYSliderHandle(e.clientX)) return;
       yDragActive = true; yDragStartY = e.clientY; yDragStartRange = getYZoomRange();
       e.stopPropagation(); e.preventDefault();
     }, true);
@@ -10043,5 +10128,987 @@ body.theme-clair #chLogoPickerDrop { background: #FFFFFF; color: #0F172A; border
   window.addEventListener("DOMContentLoaded", bindYAxisExclusiveZoom);
   window.addEventListener("load", bindYAxisExclusiveZoom);
 })();</script>
+<script id="ch-yaxis-guard-detector">
+(function(){
+  function logAxisDiag(msg){
+    try {
+      if(typeof window.logDiagError === "function") window.logDiagError("AXIS_Y_ERR", msg);
+      else if(typeof window.enregistrerErreurDiag === "function") window.enregistrerErreurDiag("AXIS_Y_ERR", msg);
+      else console.warn("[AXIS_Y_ERR]", msg);
+    } catch(e){}
+  }
+
+  function installYAxisDetector(){
+    if(typeof chart === "undefined" || !chart || chart.__chYGuardInstalled) return;
+    chart.__chYGuardInstalled = true;
+    let lock = false;
+
+    function auditYAxis(fromExpandChange){
+      if(lock || typeof chart === "undefined" || !chart) return;
+      const opt = chart.getOption();
+      if(!opt || !Array.isArray(opt.yAxis) || !opt.yAxis.at(0)) return;
+      const y0 = opt.yAxis.at(0);
+      const dzList = Array.isArray(opt.dataZoom) ? opt.dataZoom : [];
+      const dzY = dzList.find(d => d && (d.id === "zoomY_slider" || d.id === "zoomY_inside"));
+
+      let nextMin = typeof y0.min === "number" ? y0.min : null;
+      let nextMax = typeof y0.max === "number" ? y0.max : null;
+
+      if(nextMin !== null && nextMin < 0.01){
+        logAxisDiag("Borne Y négative détectée (" + nextMin + " TND) -> recalibrée à 0.01 TND");
+        nextMin = 0.01;
+        if(nextMax !== null && nextMax <= nextMin) nextMax = nextMin + 0.05;
+        lock = true;
+        try { chart.setOption({ yAxis: [{ min: +nextMin.toFixed(3), ...(nextMax !== null ? { max: +nextMax.toFixed(3) } : {}) }] }); } finally { lock = false; }
+      }
+
+      if(dzY){
+        const sPct = typeof dzY.start === "number" ? dzY.start : 0;
+        const ePct = typeof dzY.end === "number" ? dzY.end : 100;
+        if(fromExpandChange && (sPct > 1 || ePct < 99)){
+          logAxisDiag("Curseur Y désynchronisé (" + sPct.toFixed(0) + "%-" + ePct.toFixed(0) + "%) après changement d'échelle -> recalibré à 0%-100%");
+          lock = true;
+          try {
+            ["zoomY_inside", "zoomY_slider"].forEach(zId => {
+              chart.dispatchAction({ type: "dataZoom", dataZoomId: zId, start: 0, end: 100, startValue: null, endValue: null });
+            });
+          } finally { lock = false; }
+        }
+      }
+    }
+
+    chart.on("datazoom", () => auditYAxis(false));
+    chart.on("finished", () => auditYAxis(false));
+
+    const selExp = document.getElementById("selExpandAxes");
+    if(selExp && !selExp.dataset.yGuardHook){
+      selExp.dataset.yGuardHook = "1";
+      selExp.addEventListener("change", () => {
+        setTimeout(() => auditYAxis(true), 60);
+      });
+    }
+  }
+
+  installYAxisDetector();
+  setInterval(installYAxisDetector, 800);
+})();</script>
+<script id="ch-preserve-period-zoom">
+(function(){
+  window.__CH_SAVED_PERIOD_ZOOM = null;
+
+  function getGridHeightPx(){
+    const h = (typeof chart !== "undefined" && chart) ? chart.getHeight() : 500;
+    return Math.max(180, h - 90);
+  }
+
+  function recordUserZoom(){ if(window.__CH_RESTORING_Y) return;
+    if(typeof chart === "undefined" || !chart || typeof globalData === "undefined" || !globalData) return;
+    const opt = chart.getOption();
+    const dzList = (opt && Array.isArray(opt.dataZoom)) ? opt.dataZoom : [];
+    const dzX = dzList.find(d => d && (d.id === "zoomX_slider" || d.id === "zoomX_inside" || d.xAxisIndex === 0));
+    const dzY = dzList.find(d => d && ((d.id && d.id.startsWith("zoomY_slider")) || d.id === "zoomY_inside" || d.yAxisIndex === 0));
+
+    const sx = dzX && typeof dzX.start === "number" ? dzX.start : 0;
+    const ex = dzX && typeof dzX.end === "number" ? dzX.end : 100;
+    const sy = dzY && typeof dzY.start === "number" ? dzY.start : 0;
+    const ey = dzY && typeof dzY.end === "number" ? dzY.end : 100;
+
+    let priceMin = 0, priceMax = 0;
+    const ya = opt && Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : null;
+    let curAxisMin = (ya && typeof ya.min === "number") ? ya.min : Infinity;
+    let curAxisMax = (ya && typeof ya.max === "number") ? ya.max : -Infinity;
+    const bList = Array.isArray(globalData.bougies) ? globalData.bougies : [];
+    if(!(curAxisMax > curAxisMin) && bList.length > 0){
+      for(const b of bList){
+        const lo = Number(b.low ?? b.min ?? b.close ?? b.prix_fin);
+        const hi = Number(b.high ?? b.max ?? b.close ?? b.prix_fin);
+        if(lo > 0 && lo < curAxisMin) curAxisMin = lo;
+        if(hi > 0 && hi > curAxisMax) curAxisMax = hi;
+      }
+      if(curAxisMax > curAxisMin){
+        const pad = Math.max(0.02, (curAxisMax - curAxisMin) * 0.08);
+        curAxisMin = Math.max(0.01, curAxisMin - pad);
+        curAxisMax = curAxisMax + pad;
+      }
+    }
+    if(curAxisMax > curAxisMin){
+      const span = curAxisMax - curAxisMin;
+      priceMin = Math.max(0.01, curAxisMin + (sy / 100) * span);
+      priceMax = curAxisMin + (ey / 100) * span;
+    }
+
+    const hasExplicitY = (ya && typeof ya.min === "number" && typeof ya.max === "number");
+    const hasX = (sx > 0.5 || ex < 99.5);
+    const hasY = (sy > 0.5 || ey < 99.5 || hasExplicitY) && (priceMax > priceMin);
+
+    if(!hasX && !hasY){
+      window.__CH_SAVED_PERIOD_ZOOM = null;
+      return;
+    }
+
+    const bougies = Array.isArray(globalData.bougies) ? globalData.bougies : [];
+    let dStart = "", dEnd = "";
+    if(bougies.length > 1){
+      const xa = opt && Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : null;
+      const totalAxisLen = (xa && Array.isArray(xa.data) && xa.data.length >= bougies.length) ? xa.data.length : bougies.length;
+      const rawI1 = Math.floor((sx / 100) * (totalAxisLen - 1));
+      const rawI2 = Math.ceil((ex / 100) * (totalAxisLen - 1));
+      const maxReal = bougies.length - 1;
+      const i2 = Math.max(Math.min(maxReal, 5), Math.min(maxReal, rawI2));
+      const i1 = Math.max(0, Math.min(i2 - Math.min(maxReal, 5), rawI1));
+      dStart = bougies.at(i1)?.date_deb_iso || bougies.at(i1)?.cle || "";
+      dEnd = bougies.at(i2)?.date_fin_iso || bougies.at(i2)?.cle || "";
+    }
+
+    const gridH = getGridHeightPx();
+    const spanPrice = priceMax - priceMin;
+    window.__CH_SAVED_PERIOD_ZOOM = { hasX: hasX,
+      dateStart: dStart,
+      dateEnd: dEnd,
+      pctStart: sx,
+      pctEnd: ex,
+      hasY: hasY,
+      priceMin: priceMin,
+      priceMax: priceMax,
+      pxPerTnd: hasY && spanPrice > 0 ? (gridH / spanPrice) : 0,
+      centerPrice: hasY ? ((priceMin + priceMax) / 2) : 0
+    };
+  }
+
+  window.__CH_RESTORE_Y_PX_SCALE = function(){
+    const a = window.__CH_SAVED_PERIOD_ZOOM;
+    if(!a || !a.hasY || !(a.pxPerTnd > 0) || !(a.centerPrice > 0) || typeof chart === "undefined" || !chart) return;
+    const opt = chart.getOption() || {};
+    const ya = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : null;
+    let axisMin = (ya && typeof ya.min === "number") ? ya.min : Infinity;
+    let axisMax = (ya && typeof ya.max === "number") ? ya.max : -Infinity;
+    const bList = (typeof globalData !== "undefined" && globalData && Array.isArray(globalData.bougies)) ? globalData.bougies : [];
+    if(!(axisMax > axisMin) && bList.length > 0){
+      for(const b of bList){
+        const lo = Number(b.low ?? b.min ?? b.close ?? b.prix_fin);
+        const hi = Number(b.high ?? b.max ?? b.close ?? b.prix_fin);
+        if(lo > 0 && lo < axisMin) axisMin = lo;
+        if(hi > 0 && hi > axisMax) axisMax = hi;
+      }
+      if(axisMax > axisMin){
+        const pad = Math.max(0.02, (axisMax - axisMin) * 0.08);
+        axisMin = Math.max(0.01, axisMin - pad);
+        axisMax = axisMax + pad;
+      }
+    }
+    if(!(axisMax > axisMin)) return;
+    const gridH = getGridHeightPx();
+    const targetSpan = gridH / a.pxPerTnd;
+    const halfSpan = targetSpan / 2;
+    const targetMin = a.centerPrice - halfSpan;
+    const targetMax = a.centerPrice + halfSpan;
+    const fullSpan = axisMax - axisMin;
+    let sy = ((targetMin - axisMin) / fullSpan) * 100;
+    let ey = ((targetMax - axisMin) / fullSpan) * 100;
+    sy = Math.max(0, Math.min(96, sy));
+    ey = Math.min(100, Math.max(sy + 4, ey));
+    try {
+      window.__CH_RESTORING_Y = true;
+      new Array("zoomY_inside", "zoomY_slider").forEach(zId => {
+        try { chart.dispatchAction({ type: "dataZoom", dataZoomId: zId, start: sy, end: ey, startValue: null, endValue: null }); } catch(e){}
+      });
+      setTimeout(() => { window.__CH_RESTORING_Y = false; }, 180);
+    } catch(e){ window.__CH_RESTORING_Y = false; }
+  };
+
+  function hookContinuousZoom(){
+    if(typeof chart !== "undefined" && chart && !chart.__chContZoomHooked){
+      chart.__chContZoomHooked = true;
+      chart.on("datazoom", recordUserZoom);
+    }
+  }
+
+  const selTk = document.getElementById("selTicker");
+  if(selTk && !selTk.dataset.resetZoomHook){
+    selTk.dataset.resetZoomHook = "1";
+    selTk.addEventListener("change", () => { window.__CH_SAVED_PERIOD_ZOOM = null; });
+  }
+
+  hookContinuousZoom();
+  setInterval(hookContinuousZoom, 600);
+})();
+</script></script></script></script>
+<script id="ch-live-closed-guard">
+(function(){
+  function getBvmtSessionSchedule(tnDate){
+    let isRamadan = false;
+    try {
+      const hijriMonth = new Intl.DateTimeFormat("en-TN-u-ca-islamic", { month: "numeric", timeZone: "Africa/Tunis" }).format(tnDate);
+      if(String(hijriMonth).trim() === "9") isRamadan = true;
+    } catch(e){}
+    const m = tnDate.getMonth() + 1;
+    const isSummer = !isRamadan && (m === 7 || m === 8);
+    if(isRamadan){
+      return { regime: "Séance Ramadan", openStr: "09:30", negStr: "10:00 – 13:00 • Clôture 13:05 (TAL 13:10)", openMin: 570, closeMin: 790 };
+    }
+    if(isSummer){
+      return { regime: "Séance d'Été (Juil. – Août)", openStr: "08:30", negStr: "09:00 – 12:30 • Clôture 12:35 (TAL 12:40)", openMin: 510, closeMin: 760 };
+    }
+    return { regime: "Séance Normale", openStr: "08:30", negStr: "09:00 – 14:20 • Clôture 14:25 (TAL 14:30)", openMin: 510, closeMin: 870 };
+  }
+
+  function getTunisMarketState(){
+    const now = new Date();
+    const tn = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Tunis" }));
+    const sched = getBvmtSessionSchedule(tn);
+    const day = tn.getDay();
+    const mins = tn.getHours() * 60 + tn.getMinutes();
+    const isWeekend = (day === 0 || day === 6);
+    const isNightBeforeOpen = (mins >= 0 && mins < sched.openMin);
+    const isAfterClose = (mins >= sched.closeMin);
+    const isClosed = isWeekend || isNightBeforeOpen || isAfterClose;
+    let reason = "";
+    if(isWeekend) reason = `Week-end — Réouverture Lundi à ${sched.openStr} (${sched.regime} : ${sched.negStr})`;
+    else if(isNightBeforeOpen) reason = `Pré-ouverture BVMT à ${sched.openStr} • Négociations : ${sched.negStr} (heure de Tunis)`;
+    else if(isAfterClose) reason = `Séance clôturée • Prochaine ouverture BVMT à ${sched.openStr} (${sched.negStr})`;
+    return { isClosed, reason, sched };
+  }
+
+  function showLiveMarketClosedCard(state){
+    const container = document.getElementById("chart-container");
+    if(!container) return;
+    if(typeof timerSimulLive !== "undefined" && timerSimulLive){ clearInterval(timerSimulLive); timerSimulLive = null; }
+    if(typeof chart !== "undefined" && chart){ try { chart.clear(); } catch(e){} }
+    let overlay = document.getElementById("ch-live-closed-overlay");
+    if(!overlay){
+      overlay = document.createElement("div");
+      overlay.id = "ch-live-closed-overlay";
+      overlay.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(248,250,252,0.96);z-index:25;padding:16px;";
+      if(getComputedStyle(container).position === "static") container.style.position = "relative";
+      container.appendChild(overlay);
+    }
+    const sc = state.sched;
+    const isClair = (typeof estThemeClair === "function") ? estThemeClair() : !document.body.classList.contains("dark-theme");
+    overlay.style.background = isClair ? "rgba(248,250,252,0.96)" : "rgba(10,14,23,0.94)";
+    overlay.style.display = "flex";
+    const cardBg = isClair ? "#ffffff" : "#111827";
+    const cardBorder = isClair ? "#cbd5e1" : "rgba(56,189,248,0.32)";
+    const titleCol = isClair ? "#0f172a" : "#f8fafc";
+    const subCol = isClair ? "#475569" : "#94a3b8";
+    const boxBg = isClair ? "#f8fafc" : "#1e293b";
+    const boxBorder = isClair ? "#e2e8f0" : "rgba(148,163,184,0.22)";
+    const boxText = isClair ? "#334155" : "#e2e8f0";
+    const badgeBg = isClair ? "#fef2f2" : "rgba(239,68,68,0.16)";
+    const badgeBorder = isClair ? "#fecaca" : "rgba(248,113,113,0.4)";
+    const badgeText = isClair ? "#b91c1c" : "#fca5a5";
+    overlay.innerHTML = `
+      <div style="max-width:490px;width:100%;background:${cardBg};border:1px solid ${cardBorder};border-radius:14px;padding:24px 26px;text-align:center;box-shadow:0 14px 34px rgba(0,0,0,${isClair ? "0.08" : "0.45"});font-family:Inter,system-ui,sans-serif;">
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;background:${badgeBg};border:1px solid ${badgeBorder};color:${badgeText};font-size:12px;font-weight:700;letter-spacing:.4px;margin-bottom:12px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span>
+          MARCHÉ FERMÉ • ${sc.regime.toUpperCase()}
+        </div>
+        <div style="font-size:18px;font-weight:800;color:${titleCol};margin-bottom:6px;">Bourse des Valeurs Mobilières de Tunis</div>
+        <div style="font-size:13px;color:${subCol};line-height:1.5;margin-bottom:15px;">${state.reason}</div>
+        <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:12px;color:${boxText};background:${boxBg};border:1px solid ${boxBorder};border-radius:8px;padding:9px 14px;">
+          <span>Ouverture : <b style="color:${titleCol};">${sc.openStr}</b></span>
+          <span>•</span>
+          <span>Négociations : <b style="color:${titleCol};">${sc.negStr}</b></span>
+        </div>
+      </div>
+    `;
+    const st = document.getElementById("statusText");
+    if(st) st.innerText = `MARCHÉ FERMÉ (${sc.regime}) — Ouverture BVMT à ${sc.openStr} (${sc.negStr})`;
+  }
+
+  function hideLiveMarketClosedCard(){
+    const overlay = document.getElementById("ch-live-closed-overlay");
+    if(overlay) overlay.style.display = "none";
+  }
+
+  function checkLiveGuard(){
+    const selH = document.getElementById("selHorizon");
+    if(!selH || selH.value !== "LIVE"){ hideLiveMarketClosedCard(); return; }
+    const st = getTunisMarketState();
+    if(st.isClosed) showLiveMarketClosedCard(st);
+    else hideLiveMarketClosedCard();
+  }
+
+  const selH = document.getElementById("selHorizon");
+  if(selH && !selH.dataset.liveGuardBound){
+    selH.dataset.liveGuardBound = "1";
+    selH.addEventListener("change", () => {
+      window.__CH_SAVED_PERIOD_ZOOM = null;
+      setTimeout(checkLiveGuard, 20);
+    });
+  }
+
+  if(typeof window.rafraichirFluxLive === "function" && !window.rafraichirFluxLive.__chClosedGuarded){
+    const origLive = window.rafraichirFluxLive;
+    window.rafraichirFluxLive = async function(){
+      const st = getTunisMarketState();
+      if(st.isClosed){ showLiveMarketClosedCard(st); return; }
+      hideLiveMarketClosedCard();
+      return origLive.apply(this, arguments);
+    };
+    window.rafraichirFluxLive.__chClosedGuarded = true;
+  }
+
+  window.addEventListener("load", () => setTimeout(checkLiveGuard, 150));
+  setInterval(checkLiveGuard, 2000);
+})();
+</script></script>
+
+<script id="ch-sync-pie-and-exact-time">
+(function(){
+  // 1. Souder en permanence les 2 titres du Camembert sur le centre reel de series[pieCamembert]
+  function syncPieTitlesToCenter(){
+    if(typeof chart === "undefined" || !chart) return;
+    try {
+      const opt = chart.getOption() || {};
+      const sList = Array.isArray(opt.series) ? opt.series : [];
+      const pieS = sList.find(s => s && (s.id === "pieCamembert" || s.type === "pie"));
+      if(!pieS || !Array.isArray(pieS.center) || pieS.center.length < 2) return;
+      const isMasque = (document.getElementById("selPosCamembert")?.value === "MASQUE") || (Array.isArray(pieS.radius) && parseFloat(pieS.radius.at(1)) === 0);
+      const w = chart.getWidth(), h = chart.getHeight();
+      if(!(w > 0 && h > 0)) return;
+      const cx = (parseFloat(pieS.center.at(0)) / 100) * w;
+      const cy = (parseFloat(pieS.center.at(1)) / 100) * h;
+      const rayonPx = Math.min(w, h) * 0.11;
+      const yTop = Math.max(6, cy - rayonPx - 20);
+      const yBot = Math.min(h - 22, cy + rayonPx + 8);
+      const gList = Array.isArray(opt.graphic) ? opt.graphic : [];
+      const grp = gList.find(g => g && g.id === "grpAgressivitePie");
+      if(grp && Array.isArray(grp.children)){
+        const tTop = grp.children.find(c => c && c.id === "pieTxtTop");
+        const tBot = grp.children.find(c => c && c.id === "pieTxtBot");
+        if(tTop && tTop.style && (Math.abs((tTop.style.x || 0) - cx) > 1 || Math.abs((tTop.style.y || 0) - yTop) > 1 || Boolean(tTop.invisible) !== isMasque)){
+          chart.setOption({
+            graphic: [{
+              id: "grpAgressivitePie",
+              invisible: isMasque,
+              children: [
+                { id: "pieTxtTop", invisible: isMasque, style: { x: cx, y: yTop } },
+                { id: "pieTxtBot", invisible: isMasque, style: { x: cx, y: yBot } }
+              ]
+            }]
+          });
+        }
+      }
+    } catch(e){}
+  }
+
+  // 2. Restaurer la position exacte sur l'axe du temps X (date + heure exacte) APRES elargissement +25% / +50%
+  window.__CH_RESTORE_EXACT_X_TIME = function(){
+    const a = window.__CH_SAVED_PERIOD_ZOOM;
+    if(!a || !a.hasX || !a.dateStart || !a.dateEnd || typeof chart === "undefined" || !chart) return;
+    const bList = (typeof globalData !== "undefined" && globalData && Array.isArray(globalData.bougies)) ? globalData.bougies : [];
+    if(bList.length < 3) return;
+    const opt = chart.getOption() || {};
+    const xa = Array.isArray(opt.xAxis) ? opt.xAxis.at(0) : null;
+    const totalAxisLen = (xa && Array.isArray(xa.data) && xa.data.length >= bList.length) ? xa.data.length : bList.length;
+
+    const d1 = a.dateStart.slice(0, 16), d2 = a.dateEnd.slice(0, 16);
+    let i1 = bList.findIndex(b => (b.date_deb_iso || b.cle || "").slice(0, 16) >= d1);
+    let i2 = -1;
+    for(let k = bList.length - 1; k >= 0; k--){
+      if((bList.at(k).date_fin_iso || bList.at(k).cle || "").slice(0, 16) <= d2){ i2 = k; break; }
+    }
+    if(i1 < 0) i1 = 0;
+    if(i2 < i1) i2 = Math.min(bList.length - 1, i1 + Math.min(bList.length - 1, 6));
+    const minCandles = Math.min(bList.length, 6);
+    if((i2 - i1 + 1) < minCandles){
+      const mid = Math.floor((i1 + i2) / 2);
+      i1 = Math.max(0, mid - Math.floor(minCandles / 2));
+      i2 = Math.min(bList.length - 1, i1 + minCandles - 1);
+      i1 = Math.max(0, i2 - minCandles + 1);
+    }
+
+    const denom = Math.max(1, totalAxisLen - 1);
+    const sx = Math.max(0, Math.min(98, (i1 / denom) * 100));
+    const ex = Math.min(100, Math.max(sx + 1, (i2 / denom) * 100));
+    try {
+      window.__CH_RESTORING_Y = true;
+      new Array("zoomX_inside", "zoomX_slider").forEach(xId => {
+        try { chart.dispatchAction({ type: "dataZoom", dataZoomId: xId, start: sx, end: ex, startValue: null, endValue: null }); } catch(e){}
+      });
+      setTimeout(() => { window.__CH_RESTORING_Y = false; }, 120);
+    } catch(e){ window.__CH_RESTORING_Y = false; }
+  };
+
+  setInterval(syncPieTitlesToCenter, 220);
+})();
+</script>
+<script id="ch-zoom-telemetry-hud">
+(function(){
+  window.__CH_HUD_VISIBLE = false;
+
+  function ensureTelemetryHudBox(){
+    let box = document.getElementById("ch-zoom-telemetry-hud-box");
+    if(box) return box;
+    box = document.createElement("div");
+    box.id = "ch-zoom-telemetry-hud-box";
+    box.style.cssText = "display:none;position:fixed;top:92px;right:34px;z-index:9999;background:rgba(15,23,42,0.93);color:#e2e8f0;border:1px solid #38bdf8;border-radius:10px;padding:9px 12px;font-family:Consolas,monospace;font-size:11px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,0.3);min-width:300px;backdrop-filter:blur(6px);";
+    box.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(148,163,184,0.25);padding-bottom:4px;margin-bottom:5px;gap:8px;">
+        <span style="font-weight:700;color:#38bdf8;">🔬 DÉTECTEUR & MESURE AXES (X/Y)</span>
+        <div style="display:flex;gap:4px;">
+          <button id="ch-hud-min-btn" title="Réduire / Développer" style="background:transparent;border:1px solid #475569;color:#cbd5e1;border-radius:4px;padding:0 5px;cursor:pointer;font-size:10px;">—</button>
+          <button id="ch-hud-close-btn" title="Fermer" style="background:transparent;border:1px solid #ef4444;color:#fca5a5;border-radius:4px;padding:0 5px;cursor:pointer;font-size:10px;">✕</button>
+        </div>
+      </div>
+      <div id="ch-hud-body"></div>
+    `;
+    document.body.appendChild(box);
+    document.getElementById("ch-hud-min-btn").onclick = () => {
+      const b = document.getElementById("ch-hud-body");
+      const btn = document.getElementById("ch-hud-min-btn");
+      if(b.style.display === "none"){ b.style.display = "block"; btn.innerText = "—"; }
+      else { b.style.display = "none"; btn.innerText = "+"; }
+    };
+    document.getElementById("ch-hud-close-btn").onclick = () => {
+      window.__CH_HUD_VISIBLE = false;
+      box.style.display = "none";
+      const chk = document.getElementById("ch-menu-hud-chk");
+      if(chk) chk.checked = false;
+    };
+    return box;
+  }
+
+  window.__CH_TOGGLE_TELEMETRY_HUD = function(forceState){
+    const box = ensureTelemetryHudBox();
+    window.__CH_HUD_VISIBLE = (typeof forceState === "boolean") ? forceState : !window.__CH_HUD_VISIBLE;
+    box.style.display = window.__CH_HUD_VISIBLE ? "block" : "none";
+    const chk = document.getElementById("ch-menu-hud-chk");
+    if(chk) chk.checked = window.__CH_HUD_VISIBLE;
+    if(window.__CH_HUD_VISIBLE) updateTelemetryHud();
+  };
+
+  function injectHudMenuItemInAutres(){
+    if(document.getElementById("ch-menu-hud-item")) return;
+    const allEls = document.querySelectorAll("div, label");
+    for(const el of allEls){
+      const txt = (el.textContent || "").trim();
+      if(txt.includes("Masque automatique barre Info bourse") && el.offsetWidth > 140 && el.offsetWidth < 380 && el.offsetHeight < 90){
+        const parentBox = el.parentElement || el;
+        if(parentBox.querySelector("#ch-menu-hud-item")) return;
+        const row = document.createElement("label");
+        row.id = "ch-menu-hud-item";
+        row.style.cssText = "display:flex;align-items:center;gap:8px;padding:7px 10px;margin-top:6px;background:rgba(30,41,59,0.85);border:1px solid rgba(56,189,248,0.35);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:#e2e8f0;";
+        row.innerHTML = `<input id="ch-menu-hud-chk" type="checkbox" ${window.__CH_HUD_VISIBLE ? "checked" : ""} style="cursor:pointer;accent-color:#38bdf8;width:15px;height:15px;"><span>🔬 Détecteur & Mesure Axes</span>`;
+        row.onclick = (e) => {
+          e.stopPropagation();
+          window.__CH_TOGGLE_TELEMETRY_HUD();
+        };
+        parentBox.appendChild(row);
+        break;
+      }
+    }
+  }
+
+  function updateTelemetryHud(){
+    injectHudMenuItemInAutres();
+    if(!window.__CH_HUD_VISIBLE) return;
+    const box = ensureTelemetryHudBox();
+    box.style.display = "block";
+    const body = document.getElementById("ch-hud-body");
+    if(!body || body.style.display === "none") return;
+
+    const gran = document.getElementById("selGranularite")?.value || document.getElementById("selGranulariteIntra")?.value || "--";
+    const axMode = document.getElementById("selExpandAxes")?.value || "AUTO";
+    let yMinStr = "--", yMaxStr = "--", dzYStr = "--", dzXStr = "--", clipErr = 0, dataRangeStr = "--";
+
+    if(typeof chart !== "undefined" && chart){
+      const opt = chart.getOption() || {};
+      const ya = Array.isArray(opt.yAxis) ? opt.yAxis.at(0) : null;
+      if(ya){
+        yMinStr = typeof ya.min === "number" ? ya.min.toFixed(3) : String(ya.min ?? "auto");
+        yMaxStr = typeof ya.max === "number" ? ya.max.toFixed(3) : String(ya.max ?? "auto");
+      }
+      const dzList = Array.isArray(opt.dataZoom) ? opt.dataZoom : [];
+      const dzY = dzList.find(d => d && ((d.id && d.id.startsWith("zoomY_slider")) || d.yAxisIndex === 0));
+      const dzX = dzList.find(d => d && (d.id === "zoomX_slider" || d.xAxisIndex === 0));
+      if(dzY) dzYStr = `${(dzY.start ?? 0).toFixed(1)}% → ${(dzY.end ?? 100).toFixed(1)}% (${dzY.id || "Y"})`;
+      if(dzX) dzXStr = `${(dzX.start ?? 0).toFixed(1)}% → ${(dzX.end ?? 100).toFixed(1)}%`;
+
+      const bougies = (typeof globalData !== "undefined" && globalData && Array.isArray(globalData.bougies)) ? globalData.bougies : [];
+      if(bougies.length > 0){
+        let dMin = Infinity, dMax = -Infinity;
+        const yMinNum = typeof ya?.min === "number" ? ya.min : -Infinity;
+        for(const b of bougies){
+          const lo = Number(b.low ?? b.min ?? b.close);
+          const hi = Number(b.high ?? b.max ?? b.close);
+          if(lo > 0 && lo < dMin) dMin = lo;
+          if(hi > 0 && hi > dMax) dMax = hi;
+          if(hi > 0 && hi < yMinNum) clipErr++;
+        }
+        if(dMax > dMin) dataRangeStr = `${dMin.toFixed(3)} → ${dMax.toFixed(3)} (${bougies.length} b.)`;
+      }
+    }
+
+    let visDatesStr = "--";
+    try {
+      const optD = (typeof chart !== "undefined" && chart) ? chart.getOption() : null;
+      const xaD = optD && Array.isArray(optD.xAxis) ? optD.xAxis.at(0) : null;
+      const xLabels = (xaD && Array.isArray(xaD.data)) ? xaD.data : [];
+      const dzListD = (optD && Array.isArray(optD.dataZoom)) ? optD.dataZoom : [];
+      const dzXD = dzListD.find(d => d && (d.id === "zoomX_slider" || d.xAxisIndex === 0));
+      if(xLabels.length > 0 && dzXD){
+        const idx1 = Math.max(0, Math.min(xLabels.length - 1, Math.floor(((dzXD.start ?? 0) / 100) * (xLabels.length - 1))));
+        const idx2 = Math.max(idx1, Math.min(xLabels.length - 1, Math.ceil(((dzXD.end ?? 100) / 100) * (xLabels.length - 1))));
+        visDatesStr = `${xLabels.at(idx1)} → ${xLabels.at(idx2)}`;
+      }
+    } catch(e){}
+
+    const mem = window.__CH_SAVED_PERIOD_ZOOM;
+    const memYStr = mem ? `hasY:${mem.hasY ? "OUI" : "NON"} | px/TND:${(mem.pxPerTnd || 0).toFixed(0)} | C:${(mem.centerPrice || 0).toFixed(3)}` : "Aucune mémoire";
+    const memXStr = (mem && mem.hasX && mem.dateStart) ? `${mem.dateStart} → ${mem.dateEnd}` : "Auto (non verrouillé)";
+
+    body.innerHTML = `
+      <div>Période: <b style="color:#38bdf8;">${gran}</b> | Axe: <b>${axMode}</b></div>
+      <div>Plage X visible: <b style="color:#fde047;">${visDatesStr}</b></div>
+      <div>Mémoire X: <span style="color:#93c5fd;">${memXStr}</span></div>
+      <div>Données: <span style="color:#94a3b8;">${dataRangeStr}</span></div>
+      <div>yAxis actif: <b style="color:#fbbf24;">${yMinStr} → ${yMaxStr}</b></div>
+      <div>Slider Y: <b style="color:${dzYStr.startsWith("0.0% → 100.0%") ? "#f87171" : "#4ade80"};">${dzYStr}</b></div>
+      <div>Slider X: <span style="color:#cbd5e1;">${dzXStr}</span></div>
+      <div>Mémoire Y: <span style="color:#a5f3fc;">${memYStr}</span></div>
+      <div>Bougies hors-cadre bas: <b style="color:${clipErr > 0 ? "#fb923c" : "#4ade80"};">${clipErr} (clip: ON)</b></div>
+    `;
+  }
+
+  document.addEventListener("click", () => setTimeout(injectHudMenuItemInAutres, 40));
+  window.addEventListener("load", () => setTimeout(injectHudMenuItemInAutres, 300));
+  setInterval(updateTelemetryHud, 350);
+})();
+</script>
+<script id="ch-smart-ticker-watermark">
+(function(){
+  function updateSmartTickerWatermark(){
+    const container = document.getElementById("chart-container");
+    if(!container) return;
+    const closedOv = document.getElementById("ch-live-closed-overlay");
+    const isClosedVisible = closedOv && closedOv.style.display !== "none";
+
+    let wm = document.getElementById("ch-chart-ticker-watermark");
+    if(!wm){
+      wm = document.createElement("div");
+      wm.id = "ch-chart-ticker-watermark";
+      if(getComputedStyle(container).position === "static") container.style.position = "relative";
+      container.appendChild(wm);
+    }
+    if(isClosedVisible){
+      wm.style.display = "none";
+      return;
+    }
+
+    const selTk = document.getElementById("selTicker");
+    const tickerName = (selTk && selTk.value ? selTk.value : "DELICE HOLDING").trim().toUpperCase();
+    const selH = document.getElementById("selHorizon");
+    const hVal = selH ? selH.value : "MULTI";
+    const gran = document.getElementById("selGranularite")?.value || "JOUR";
+    const granMap = { "5M": "5 min", "10M": "10 min", "15M": "15 min", "30M": "30 min", "HEURE": "1 Heure", "JOUR": "Journalier (1J)", "SEMAINE": "Hebdomadaire (1S)", "MOIS": "Mensuel (1M)" };
+    const subLabel = hVal === "MULTI" ? `Multi-Séances • ${granMap[gran] || gran}` : (hVal === "LIVE" ? "Séance Direct Live" : "Séance Unique");
+
+    const isClair = (typeof estThemeClair === "function") ? estThemeClair() : !document.body.classList.contains("dark-theme");
+    const toolsBox = document.getElementById("floatingTools") || document.querySelector(".floating-tools, #toolbox");
+    const toolsOpen = toolsBox && toolsBox.offsetParent !== null && toolsBox.offsetWidth > 60 && toolsBox.getBoundingClientRect().left < 220;
+    const piePos = document.getElementById("selPosCamembert")?.value || "AUTO";
+
+    const isMobileView = window.innerWidth <= 960;
+    let leftPx = isMobileView ? 12 : (toolsOpen ? 196 : 18);
+    let topPx = isMobileView ? 44 : 10;
+    let bottomPx = "auto";
+
+    if(piePos === "HG"){
+      topPx = "auto";
+      bottomPx = isMobileView ? 58 : 46;
+    }
+
+        let clonedMediaHtml = "";
+    if(selTk && selTk.parentElement){
+      const prevBadge = selTk.previousElementSibling || selTk.parentElement.querySelector("[id*='logo'], [class*='logo']");
+      if(prevBadge){
+        const imgEl = prevBadge.tagName === "IMG" ? prevBadge : prevBadge.querySelector("img");
+        const svgEl = prevBadge.tagName === "SVG" ? prevBadge : prevBadge.querySelector("svg");
+        if(imgEl && imgEl.src){
+          clonedMediaHtml = `<img src="${imgEl.src}" alt="${tickerName}" style="width:26px;height:26px;object-fit:contain;display:block;" />`;
+        } else if(svgEl){
+          const svgClone = svgEl.cloneNode(true);
+          svgClone.setAttribute("width", "24");
+          svgClone.setAttribute("height", "24");
+          svgClone.style.cssText = "width:24px;height:24px;display:block;";
+          clonedMediaHtml = svgClone.outerHTML;
+        }
+      }
+    }
+    const initials = tickerName.split(/\s+/).map(w => w || "").join("").slice(0, 3) || tickerName.slice(0, 3);
+    const logoHtml = clonedMediaHtml
+      ? `<div style="width:30px;height:30px;border-radius:7px;background:#ffffff;border:1px solid rgba(148,163,184,0.35);display:flex;align-items:center;justify-content:center;padding:2px;flex-shrink:0;overflow:hidden;">${clonedMediaHtml}</div>`
+      : `<div style="width:30px;height:30px;border-radius:7px;background:${isClair ? "#e0f2fe" : "rgba(56,189,248,0.18)"};color:${isClair ? "#0284c7" : "#38bdf8"};font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initials}</div>`;
+    wm.style.cssText = `
+      position:absolute;
+      left:${leftPx}px;
+      top:${topPx === "auto" ? "auto" : topPx + "px"};
+      bottom:${bottomPx === "auto" ? "auto" : bottomPx + "px"};
+      z-index:18;
+      pointer-events:none;
+      user-select:none;
+      display:flex;
+      flex-direction:row;
+      align-items:center;
+      gap:9px;
+      padding:5px 11px;
+      border-radius:9px;
+      background:${isClair ? "rgba(255,255,255,0.78)" : "rgba(15,23,42,0.74)"};
+      border:1px solid ${isClair ? "rgba(148,163,184,0.3)" : "rgba(56,189,248,0.24)"};
+      backdrop-filter:blur(5px);
+    `;
+    wm.innerHTML = `
+      ${logoHtml}
+      <div style="display:flex;flex-direction:column;gap:1px;">
+        <div style="font-family:Inter,system-ui,sans-serif;font-size:15px;font-weight:800;letter-spacing:0.6px;color:${isClair ? "#0f172a" : "#f1f5f9"};line-height:1.15;">${tickerName}</div>
+        <div style="font-family:Consolas,monospace;font-size:10.5px;font-weight:600;color:${isClair ? "#0284c7" : "#38bdf8"};">${subLabel} • BVMT</div>
+      </div>
+    `;
+  }
+
+  window.addEventListener("load", () => setTimeout(updateSmartTickerWatermark, 200));
+  window.addEventListener("resize", updateSmartTickerWatermark);
+  setInterval(updateSmartTickerWatermark, 400);
+})();
+</script>
+<style id="ch-mobile-pro-ui">
+@media screen and (max-width: 960px) and (pointer: coarse), screen and (max-width: 768px) {
+  html, body {
+    width: 100% !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  }
+
+  /* 1. Barre superieure mobile ultra-nette (36px) */
+  #chMobControls {
+    top: calc(4px + env(safe-area-inset-top)) !important;
+    left: calc(6px + env(safe-area-inset-left)) !important;
+    right: calc(6px + env(safe-area-inset-right)) !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    z-index: 100002 !important;
+    pointer-events: auto !important;
+  }
+  #chMobControls button {
+    height: 34px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  #chMobControls select {
+    height: 34px !important;
+    font-size: 12.5px !important;
+    font-weight: 800 !important;
+    border-radius: 8px !important;
+    padding: 0 8px !important;
+    flex: 1 1 auto !important;
+    min-width: 110px !important;
+    max-width: 52vw !important;
+  }
+
+  /* 2. Ruban KPI horizontal fluide sous la barre du haut */
+  .ch-kpi-strip {
+    margin-top: calc(42px + env(safe-area-inset-top)) !important;
+    padding: 4px 8px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 6px !important;
+    scrollbar-width: none !important;
+  }
+  .ch-kpi-strip::-webkit-scrollbar { display: none !important; }
+  .ch-kpi-strip > * {
+    flex: 0 0 auto !important;
+    font-size: 11.5px !important;
+    padding: 4px 9px !important;
+    border-radius: 7px !important;
+    white-space: nowrap !important;
+  }
+
+  /* 3. Barre de periodes (5m..1A) calibree loin de Plage + - */
+  #ch-period-bar, .period-bar {
+    max-width: calc(100vw - 148px) !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding: 2px 4px !important;
+  }
+  #ch-period-bar::-webkit-scrollbar { display: none !important; }
+  #ch-period-bar button, .period-bar button {
+    font-size: 11.5px !important;
+    padding: 4px 8px !important;
+    min-height: 28px !important;
+  }
+
+  /* 4. Cartouche Valeur + Logo compact et lisible */
+  #ch-chart-ticker-watermark {
+    padding: 4px 8px !important;
+    gap: 7px !important;
+    border-radius: 8px !important;
+    max-width: 60vw !important;
+  }
+  #ch-chart-ticker-watermark > div:last-child > div:first-child { font-size: 12.5px !important; }
+  #ch-chart-ticker-watermark > div:last-child > div:last-child { font-size: 9.5px !important; }
+
+  /* 5. Tiroir lateral Menu propre (Camembert + Case a cocher Detecteur) */
+  header button, div:has(> #selTicker) button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    font-size: 13px !important;
+    min-height: 38px !important;
+    border-radius: 8px !important;
+  }
+  header input[type="checkbox"], div:has(> #selTicker) input[type="checkbox"], #ch-menu-hud-chk {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+    flex: 0 0 18px !important;
+    margin: 0 !important;
+  }
+  #ch-menu-hud-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+  }
+
+  /* 6. Boite Outils (#ch-hud-tools) tactile moderne au pouce */
+  #ch-hud-tools {
+    max-width: min(92vw, 330px) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.38) !important;
+    z-index: 99990 !important;
+    touch-action: manipulation !important;
+  }
+  #ch-hud-tools select, #ch-hud-tools button {
+    min-height: 38px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+  #ch-hud-tools.ch-mob-tools-closed {
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    top: auto !important;
+    bottom: calc(36px + env(safe-area-inset-bottom)) !important;
+    left: 10px !important;
+    right: auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  #ch-hud-tools.ch-mob-tools-closed > *:not(#ch-mob-tools-fab) { display: none !important; }
+}
+</style>
+<script id="ch-mobile-pro-touch-engine">
+(function(){
+  function isMobileViewport(){
+    return window.innerWidth <= 960;
+  }
+
+  function unlockHudInteractiveControls(){
+    const hud = document.getElementById("ch-hud-tools");
+    if(!hud || hud.dataset.controlsUnlocked) return;
+    hud.dataset.controlsUnlocked = "1";
+
+    hud.addEventListener("touchstart", function(e){
+      const t = e.target;
+      if(t && (t.tagName === "SELECT" || t.tagName === "OPTION" || t.tagName === "BUTTON" || t.tagName === "INPUT" || t.closest("select") || t.closest("button"))){
+        e.stopPropagation();
+      }
+    }, { capture: true, passive: true });
+
+    hud.addEventListener("mousedown", function(e){
+      const t = e.target;
+      if(t && (t.tagName === "SELECT" || t.tagName === "OPTION" || t.tagName === "BUTTON" || t.tagName === "INPUT" || t.closest("select") || t.closest("button"))){
+        e.stopPropagation();
+      }
+    }, { capture: true });
+
+    const selOutil = document.getElementById("selOutilDessin");
+    if(selOutil && !selOutil.dataset.mobAutoCollapse){
+      selOutil.dataset.mobAutoCollapse = "1";
+      selOutil.addEventListener("change", function(){
+        if(!isMobileViewport()) return;
+        const v = String(selOutil.value || "").toUpperCase();
+        const isDraw = v !== "" && v !== "NONE" && v !== "CURSEUR" && v !== "MAIN" && v !== "MAIN_LIBRE" && v !== "PAN";
+        if(isDraw){
+          setMobileToolsOpen(false);
+          updateMobileDrawBanner(selOutil.options[selOutil.selectedIndex]?.text || v);
+        } else {
+          updateMobileDrawBanner("");
+        }
+      });
+    }
+  }
+
+  function updateMobileDrawBanner(toolLabel){
+    let banner = document.getElementById("ch-mob-draw-banner");
+    if(!toolLabel){
+      if(banner) banner.style.display = "none";
+      return;
+    }
+    if(!banner){
+      banner = document.createElement("div");
+      banner.id = "ch-mob-draw-banner";
+      banner.style.cssText = "position:fixed;bottom:calc(36px + env(safe-area-inset-bottom));right:10px;z-index:99991;background:rgba(15,23,42,0.92);color:#38bdf8;border:1px solid #38bdf8;border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,0.35);";
+      document.body.appendChild(banner);
+    }
+    banner.style.display = "flex";
+    banner.innerHTML = `<span>✏️ ${toolLabel} : touchez & glissez</span><button type="button" id="ch-mob-exit-draw" style="background:#ef4444;color:#fff;border:none;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">Fin</button>`;
+    document.getElementById("ch-mob-exit-draw").onclick = () => {
+      const selOutil = document.getElementById("selOutilDessin");
+      if(selOutil){ selOutil.value = "NONE"; selOutil.dispatchEvent(new Event("change")); }
+      banner.style.display = "none";
+    };
+  }
+
+  function setMobileToolsOpen(open){
+    const hud = document.getElementById("ch-hud-tools");
+    const fab = document.getElementById("ch-mob-tools-fab");
+    if(!hud || !fab) return;
+    if(open){
+      hud.classList.remove("ch-mob-tools-closed");
+      hud.style.display = "flex";
+      hud.style.flexDirection = "column";
+      hud.style.top = "auto";
+      hud.style.bottom = "calc(38px + env(safe-area-inset-bottom))";
+      hud.style.left = "10px";
+      fab.innerHTML = "<span>✕ Fermer Outils</span>";
+      fab.style.background = "linear-gradient(135deg,#dc2626,#b91c1c)";
+      fab.style.marginBottom = "8px";
+    } else {
+      hud.classList.add("ch-mob-tools-closed");
+      fab.innerHTML = "<span>🛠 Outils & Tracés</span>";
+      fab.style.background = "linear-gradient(135deg,#0284c7,#0369a1)";
+      fab.style.marginBottom = "0";
+    }
+  }
+
+  function setupMobileToolsFab(){
+    const hud = document.getElementById("ch-hud-tools");
+    if(!hud) return;
+    if(!isMobileViewport()){
+      hud.classList.remove("ch-mob-tools-closed");
+      const fabOld = document.getElementById("ch-mob-tools-fab");
+      if(fabOld) fabOld.style.display = "none";
+      return;
+    }
+
+    if(!hud.dataset.mobFabInit){
+      hud.dataset.mobFabInit = "1";
+      hud.classList.add("ch-mob-tools-closed");
+    }
+
+    let fab = document.getElementById("ch-mob-tools-fab");
+    if(!fab){
+      fab = document.createElement("button");
+      fab.id = "ch-mob-tools-fab";
+      fab.type = "button";
+      fab.style.cssText = "display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:999px;background:linear-gradient(135deg,#0284c7,#0369a1);color:#ffffff;border:1px solid rgba(255,255,255,0.3);font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:700;box-shadow:0 6px 18px rgba(2,132,199,0.45);cursor:pointer;pointer-events:auto;";
+      fab.innerHTML = "<span>🛠 Outils & Tracés</span>";
+      fab.onclick = (e) => {
+        e.stopPropagation();
+        const isClosed = hud.classList.contains("ch-mob-tools-closed");
+        setMobileToolsOpen(isClosed);
+      };
+      hud.insertBefore(fab, hud.firstChild);
+    }
+    fab.style.display = "inline-flex";
+  }
+
+  function installTouchDrawingBridge(){
+    const container = document.getElementById("chart-container");
+    if(!container || container.dataset.touchBridgeInstalled) return;
+    container.dataset.touchBridgeInstalled = "1";
+
+    function isDrawingToolSelected(){
+      const selTool = document.getElementById("selOutilDessin");
+      if(!selTool) return false;
+      const v = String(selTool.value || "").toUpperCase();
+      return v !== "" && v !== "NONE" && v !== "CURSEUR" && v !== "MAIN" && v !== "MAIN_LIBRE" && v !== "PAN";
+    }
+
+    function dispatchSimulatedMouse(type, touch, target){
+      if(!touch || !target) return;
+      const ev = new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        screenX: touch.screenX,
+        screenY: touch.screenY,
+        button: 0,
+        buttons: type === "mouseup" ? 0 : 1
+      });
+      target.dispatchEvent(ev);
+    }
+
+    let activeTouchDrawing = false;
+
+    container.addEventListener("touchstart", function(e){
+      if(e.touches.length !== 1) return;
+      if(isDrawingToolSelected()){
+        activeTouchDrawing = true;
+        e.preventDefault();
+        const t = e.touches.item(0);
+        const target = document.elementFromPoint(t.clientX, t.clientY) || container;
+        dispatchSimulatedMouse("mousemove", t, target);
+        dispatchSimulatedMouse("mousedown", t, target);
+      }
+    }, { passive: false });
+
+    container.addEventListener("touchmove", function(e){
+      if(!activeTouchDrawing || e.touches.length !== 1) return;
+      e.preventDefault();
+      const t = e.touches.item(0);
+      const target = document.elementFromPoint(t.clientX, t.clientY) || container;
+      dispatchSimulatedMouse("mousemove", t, target);
+    }, { passive: false });
+
+    container.addEventListener("touchend", function(e){
+      if(!activeTouchDrawing) return;
+      activeTouchDrawing = false;
+      const t = e.changedTouches ? e.changedTouches.item(0) : null;
+      const target = (t && document.elementFromPoint(t.clientX, t.clientY)) || container;
+      dispatchSimulatedMouse("mouseup", t, target);
+      dispatchSimulatedMouse("click", t, target);
+    }, { passive: false });
+  }
+
+  window.addEventListener("load", () => {
+    unlockHudInteractiveControls();
+    setupMobileToolsFab();
+    installTouchDrawingBridge();
+  });
+  window.addEventListener("resize", setupMobileToolsFab);
+  setInterval(() => {
+    unlockHudInteractiveControls();
+    setupMobileToolsFab();
+    installTouchDrawingBridge();
+  }, 600);
+})();
+</script>
 </body>
 </html>
