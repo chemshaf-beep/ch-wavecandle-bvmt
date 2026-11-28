@@ -13426,7 +13426,7 @@ window.addEventListener("load", () => {
         return;
       }
       // Pendant le zoom/deplacement, fusionner les rafales setOption en 1 seule execution par frame (evite les 23 appels/s qui font tomber a 4 FPS!)
-      if(!hasGraphic){ if(!isLiveMode && !userInteracting && (now - lastSeriesRenderTime) < 3000) return;
+      if(!notMerge && !hasGraphic){
         window.__chQueuedZoomOpt = Object.assign(window.__chQueuedZoomOpt || {}, opt);
         if(!window.__chZoomRaf){
           window.__chZoomRaf = true;
